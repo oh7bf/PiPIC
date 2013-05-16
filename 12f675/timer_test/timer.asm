@@ -2,7 +2,7 @@
 ; Test code for timer of 12f675. Led blinking is accelerating. 
 ; The internal 4MHz oscillator is used.
 ;
-; Wed May 15 23:48:27 CEST 2013
+; Thu May 16 18:38:46 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 timer.asm
@@ -175,7 +175,7 @@ led		equ	0
 
 ; variables in ram
 ; can use 20-5F, use STATUS bit 5 to select Bank 0 or 1
-i		equ     H'20' ; time delay 0=maximum, 255=minimum 
+delay 		equ     H'20' ; time delay 0=maximum, 255=minimum 
 
 ; reset vector
 		org	H'00'
@@ -189,21 +189,20 @@ i		equ     H'20' ; time delay 0=maximum, 255=minimum
                 call timerint
                 retfie
 
-timerint        movf    GPIO, W
-                xorlw   B'00000001' 
-                movwf   GPIO
-                incf    i, W
-                movwf   i
+; inverse GP0 output bit, shorten delay and clear interrupt flag 
+timerint        movlw   B'00000001' 
+                xorwf   GPIO, F
+                incf    delay, W
+                movwf   delay 
                 movwf   TMR1H
                 bcf     PIR1, TMR1IF
                 return
-
 
 ; turn comparators off and enable pins for I/O functions
 setup		movlw	H'07'		
 		movwf	CMCON		
 
-; AN0-AN3 disabled, digital I/O	
+; AN0-AN3 disabled, used for digital I/O	
 		bsf	STATUS, RP0
                 clrf    ANSEL           
 
@@ -232,9 +231,8 @@ setup		movlw	H'07'
 ; set TMR1ON bit T1CON bit 0 
                 bsf     T1CON, TMR1ON
 
-; initial delay maximum i=0
-                clrw
-                movwf i
+; initial delay maximum=0
+                clrf    delay 
   
 ; loop forever and wait for interrupts
 loop            nop
