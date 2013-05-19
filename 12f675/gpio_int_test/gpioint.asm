@@ -195,9 +195,8 @@ i               equ     H'20'
 
 ; GP1 has changed 
 gp1int          movlw   B'00000001'     ; inverse GP0 output bit
-                xorwf   GPIO, F
+                xorwf   GPIO, F         ; should remove mismatch condition too
                 incf    i, F            ; i++
-                movf    GPIO, W         ; to remove change mismatch condition
                 bcf     INTCON, GPIF
                 return 
 
@@ -213,23 +212,16 @@ setup		bcf     STATUS, RP0     ; bank 0
 ; GP0 digital output, GP1:5 inputs 
 		movlw   B'00111110'	
 		movwf	TRISIO
+
 ; write/read GPIO
                 bcf     STATUS, RP0         ; bank 0
                 movwf   GPIO                ; write GPIO outputs
-                movf    GPIO, W             ; read GPIO inputs
 
 ; enable GP1 change interrupt
                 bsf     STATUS, RP0         ; bank 1
                 bsf     IOC, IOC1           ; activate change int on GP1
                 bcf     INTCON, GPIF        ; clear GPIO change interrupt flag
                 bsf     INTCON, GPIE        ; enable interrupt on change
-
-; clear GP2/INT flag
-                bcf     INTCON, INTF
-
-; REMOVE:
-; set PEIE bit INTCON bit 6
-                bsf     INTCON, PEIE
 
 ; global interrupts enable
                 bsf     INTCON, GIE
