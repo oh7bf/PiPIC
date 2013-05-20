@@ -2,7 +2,7 @@
 ; Test GPIO interrupts on 12f675.  
 ; The internal 4MHz oscillator is used.
 ;
-; Sun May 19 16:50:31 CEST 2013
+; Mon May 20 21:26:49 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 gpioint.asm
@@ -180,6 +180,9 @@ led		equ	0
 ; variables in ram
 ; can use 20-5F, use STATUS bit 5 to select Bank 0 or 1
 i               equ     H'20'
+w_temp          equ     H'5E'
+w_temp2         equ     H'DE'
+status_temp     equ     H'5F'
 
 ; reset vector
 		org	H'00'
@@ -187,10 +190,25 @@ i               equ     H'20'
 
 ; interrupt vector, general interrupt handling routine goes here
 		org	H'04'
+
+; save W and STATUS
+                movwf   w_temp          ; could be bank 0 or 1
+                swapf   STATUS, W
+                bcf     STATUS, RP0     ; bank 0 
+                movwf   status_temp
+
 ; GP1 change interrupt 
-                bcf     STATUS, RP0 ; bank 0
+                bcf     STATUS, RP0     ; bank 0
                 btfsc   INTCON, GPIF
                 call    gp1int
+
+; recover W and STATUS
+                bcf     STATUS, RP0     ; bank 0
+                swapf   status_temp, W  
+                movwf   STATUS          ; bank to original state  
+                swapf   w_temp, F
+                swapf   w_temp, W
+
                 retfie
 
 ; GP1 has changed 
@@ -226,7 +244,7 @@ setup		bcf     STATUS, RP0     ; bank 0
 ; global interrupts enable
                 bsf     INTCON, GIE
 
-; loop to poll any received data
+; loop and wait interrupts 
 loop            nop 
                 goto    loop
 
