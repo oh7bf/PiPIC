@@ -2,7 +2,7 @@
 ; Attempt to do slow software i2c on 12f675. To be tested. 
 ; The internal 4MHz oscillator is used.
 ;
-; Sun Jun 16 21:11:00 CEST 2013
+; Mon Jun 17 19:40:23 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 i2ctest.asm
@@ -234,9 +234,9 @@ status_temp     equ     H'34'    ; temperorary storage in interrupt service
 ; 14-18 us acknowledgement bit
 ; 
 ; 6   us  return from sdaint service
-; 7   us  recover W and STATUS
+; 9   us  recover W and STATUS
 ; ------------------------------------
-; 13  us  ready for next start bit
+; 15  us  ready for next start bit
 ;
 
 ; save W and STATUS
@@ -296,6 +296,8 @@ asclhigh        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 bsf     GPIO, LED          ; led on              1 us
 
 reinit          clrf    i2cstate           ;                     1 us
+                bsf     STATUS, RP1        ; bank 1              1 us
+                bcf     INTCON, INTF       ;                     1 us
                 return                     ;                     2 us
 
 
