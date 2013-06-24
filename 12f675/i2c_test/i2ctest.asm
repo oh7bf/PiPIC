@@ -2,15 +2,17 @@
 ; Attempt to do slow software i2c on 12f675. To be tested. 
 ; The internal 4MHz oscillator is used.
 ;
-; Mon Jun 17 19:40:23 CEST 2013
+; Mon Jun 24 20:36:53 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 i2ctest.asm
 ; program 12f675: sudo ./rpp-tlc -w -i i2ctest.hex
 ; hardware: 
 ; GPO--1kohm--LED--GND
+; GP1--acknowledge address
 ; GP2/INT--SDA
 ; GP3--SCL
+; GP4--received "0" or "1"
 ; GP5--1kohm--LED--GND
 ;
 ; Configuration:
@@ -40,7 +42,7 @@
 ; - prescaler assigned to WDT
 ; - WDT rate 1:128 (TMR0 rate 1:256)
 ;
-; INTCON interrupt control, bank 1
+; INTCON interrupt control, bank 0 or 1
 ; 7     6      5      4      3      2      1      0
 ; GIE | PEIE | T0IE | INTE | GPIE | T0IF | INTF | GPIF
 ; 0     0      0      0      0      0      0      0
@@ -246,6 +248,8 @@ status_temp     equ     H'34'    ; temperorary storage in interrupt service
                 movwf   status_temp     ;                          1 us
 
 ; I2C SDA or GP2/INT down edge, takes 2+1+2= 5 us to reach 'sdaint'
+                btfss   GPIO, SCL       ; check that SCL=1
+                goto    endint
                 btfss   INTCON, INTE    ;                          1-2 us
                 goto    endint          ;                          2 us
                 btfsc   INTCON, INTF    ;                          1-2 us
@@ -261,30 +265,39 @@ endint          bcf     STATUS, RP0     ; bank 0                   1 us
                 retfie                  ;                          2 us
 
 ; I2C SDA changed from 1 to 0 if INTEDG=0, could be start bit 1->0 
-sdaint          btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
-                goto    sdaint             ;                     2 us
+sdaint          btfsc   GPIO, SCL          ; wait until SCL=0
+                goto    sdaint 
+sclow           btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
+                goto    sclow              ;                     2 us
                 movlw   B'11111011'        ;                     1 us
                 iorwf   GPIO, W            ;                     1 us
                 addlw   B'00000001'        ; carry C=SDA now     1 us
                 rlf     i2cdata, F         ; carry to i2cdata    1 us
+
+                bsf     GPIO, GPIO4        ; received bit to GPIO4
+                btfss   i2cdata, 0
+                bcf     GPIO, GPIO4
+
 sclhigh         btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 goto    sclhigh            ;                     2 us
                 incf    i2cstate, F        ;                     1 us
+
                 btfss   i2cstate, I2RCVD   ;                     1-2 us
-                goto    sdaint             ;                     2 us
+                goto    sclow              ;                     2 us
 
 ; check if address matches
                 movlw   B'11111110'        ;                     1 us
                 andwf   i2cdata, W         ;                     1 us
-                sublw   H'4C'              ; address 37          1 us
-                btfsc   STATUS, Z          ;                     1-2 us
+                sublw   H'4C'              ; address 38 or 0x26  1 us
+                btfss   STATUS, Z          ;                     1-2 us
                 goto    reinit             ;                     2 us
 
 ; positive acknowledgement by pulling SDA down
-                bcf     GPIO, SDA          ; SDA=0               1 us
                 bsf     STATUS, RP1        ; bank 1              1 us 
-                bcf     TRISIO, SDA        ; SDA output          1 us 
+                bcf     TRISIO, SDA        ; SDA=0 output        1 us 
                 bcf     STATUS, RP1        ; bank 0              1 us
+;                bcf     GPIO, SDA          ; SDA=0               1 us
+                bsf     GPIO, GPIO1
 asclow          btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
                 goto    asclow             ;                     2 us
 asclhigh        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
@@ -292,11 +305,11 @@ asclhigh        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 bsf     STATUS, RP1        ; bank 1              1 us
                 bsf     TRISIO, SDA        ; SDA input, floats to high  1 us 
                 bcf     STATUS, RP1        ; bank 0              1 us
-                bsf     GPIO, SDA          ; SDA=1               1 us
+;                bsf     GPIO, SDA          ; SDA=1               1 us
                 bsf     GPIO, LED          ; led on              1 us
+                bcf     GPIO, GPIO1
 
 reinit          clrf    i2cstate           ;                     1 us
-                bsf     STATUS, RP1        ; bank 1              1 us
                 bcf     INTCON, INTF       ;                     1 us
                 return                     ;                     2 us
 
@@ -306,8 +319,8 @@ setup		bcf     STATUS, RP0     ; bank 0
                 movlw	H'07'		
 		movwf	CMCON		
 
-; initial data on GP0=0, GP5=0, GP2=1, GP3=1
-		movlw   B'00011110'	
+; initial data on GP0=0, GP1=0, GP4=0, GP5=0, GP2=0, GP3=1
+		movlw   B'00001000'	
 		movwf   GPIO	
 
 ; LED2 on if WDT reset
@@ -318,8 +331,8 @@ setup		bcf     STATUS, RP0     ; bank 0
 		bsf	STATUS, RP0     ; bank 1
                 clrf    ANSEL           
 
-; GP0, GP5 digital output, GP2, GP3 inputs 
-		movlw   B'00011110'	
+; GP0, GP1, GP4, GP5 digital output, GP2, GP3 inputs 
+		movlw   B'00001100'	
 		movwf	TRISIO
 
 ; weak pull up on GP1
@@ -330,12 +343,14 @@ setup		bcf     STATUS, RP0     ; bank 0
                 bcf     STATUS, RP0  ; bank 0
                 clrf    i2cstate
 
-; no prescaler for WDT, thus typical reset after 18 ms (10-30 ms) 
-                clrwdt
-                bsf     STATUS, RP0         ; bank 1
-                bcf     OPTION_REG, PSA     ; should use movwf instead? 
+; no prescaler for WDT, thus typical reset after 128x18 ms (10-30 ms)=2.3 s 
+;                clrwdt
+;                bsf     STATUS, RP0         ; bank 1
+;                movlw   B'11111111'         ; prescaler used for WDT
+;                movwf   OPTION_REG 
 
 ; enable SDA or GP2/INT interrupt on falling edge 
+                bsf     STATUS, RP0         ; bank 1
                 bcf     OPTION_REG, INTEDG  ; 1->0 edge
                 bcf     INTCON, INTF        ; clear INT flag
                 bsf     INTCON, INTE        ; enable INT
@@ -343,7 +358,10 @@ setup		bcf     STATUS, RP0     ; bank 0
 ; global interrupts enable
                 bsf     INTCON, GIE
 
-loop            clrwdt                      ; wait for start bit INT
+                bcf     STATUS, RP0         ; bank 0
+ 
+loop            nop                         ; read GPIO and store
+                clrwdt                      ; wait for start bit INT
                 goto    loop
 
                 end
