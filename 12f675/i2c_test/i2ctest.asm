@@ -1,19 +1,20 @@
 
-; Attempt to do slow software i2c on 12f675. To be tested. 
-; The internal 4MHz oscillator is used.
+; Attempt to do slow software i2c on 12f675. This works but needs external
+; transistor to pull down the SDA line. The internal 4MHz oscillator is used.
 ;
-; Mon Jun 24 20:36:53 CEST 2013
+; Wed Jun 26 20:45:31 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 i2ctest.asm
 ; program 12f675: sudo ./rpp-tlc -w -i i2ctest.hex
 ; hardware: 
 ; GPO--1kohm--LED--GND
-; GP1--acknowledge address
-; GP2/INT--SDA
+; GP1--100kohm--2N3904 base
+; GP2/INT--SDA--2N3904 collector
 ; GP3--SCL
 ; GP4--received "0" or "1"
 ; GP5--1kohm--LED--GND
+; GND--2N3904 emmitter
 ;
 ; Configuration:
 ; - data code protection disabled
@@ -180,6 +181,7 @@
 LED             equ     0    ; green=address matched
 LED2            equ     5    ; red=WDT occured
 SDA             equ     2    ; slave SDA=GPIO2, check also TRISIO
+SDACK           equ     1    ; 1=SDA acknowledge
 SCL             equ     3    ; slave SCL=GPIO3, check also IOC
 
 ; variables in ram
@@ -241,6 +243,10 @@ status_temp     equ     H'34'    ; temperorary storage in interrupt service
 ; 15  us  ready for next start bit
 ;
 
+; Note that bcf and bsf commands on GPIO will change output data on input pins 
+; to reflect input at the time of execution. This will then be the output
+; when pin is changed from input to output. 
+
 ; save W and STATUS
                 movwf   w_temp          ; could be bank 0 or 1     1 us
                 swapf   STATUS, W       ;                          1 us
@@ -293,21 +299,13 @@ sclhigh         btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 goto    reinit             ;                     2 us
 
 ; positive acknowledgement by pulling SDA down
-                bsf     STATUS, RP1        ; bank 1              1 us 
-                bcf     TRISIO, SDA        ; SDA=0 output        1 us 
-                bcf     STATUS, RP1        ; bank 0              1 us
-;                bcf     GPIO, SDA          ; SDA=0               1 us
-                bsf     GPIO, GPIO1
+                bsf     GPIO, SDACK        ; SDACK=1 
 asclow          btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
                 goto    asclow             ;                     2 us
 asclhigh        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 goto    asclhigh           ;                     2 us
-                bsf     STATUS, RP1        ; bank 1              1 us
-                bsf     TRISIO, SDA        ; SDA input, floats to high  1 us 
-                bcf     STATUS, RP1        ; bank 0              1 us
-;                bsf     GPIO, SDA          ; SDA=1               1 us
                 bsf     GPIO, LED          ; led on              1 us
-                bcf     GPIO, GPIO1
+                bcf     GPIO, SDACK        ; SDACK=0 
 
 reinit          clrf    i2cstate           ;                     1 us
                 bcf     INTCON, INTF       ;                     1 us
@@ -357,11 +355,9 @@ setup		bcf     STATUS, RP0     ; bank 0
 
 ; global interrupts enable
                 bsf     INTCON, GIE
-
-                bcf     STATUS, RP0         ; bank 0
  
-loop            nop                         ; read GPIO and store
-                clrwdt                      ; wait for start bit INT
+loop            nop                         ; wait for start bit INT 
+                clrwdt                      
                 goto    loop
 
                 end
