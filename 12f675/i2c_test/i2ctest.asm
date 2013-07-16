@@ -2,7 +2,7 @@
 ; Attempt to do slow software i2c on 12f675. This works but needs external
 ; transistor to pull down the SDA line. The internal 4MHz oscillator is used.
 ;
-; Wed Jun 26 20:45:31 CEST 2013
+; Tue Jul 16 22:30:23 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 i2ctest.asm
@@ -181,7 +181,7 @@
 LED             equ     0    ; green=address matched
 LED2            equ     5    ; red=WDT occured
 SDA             equ     2    ; slave SDA=GPIO2, check also TRISIO
-SDACK           equ     1    ; 1=SDA acknowledge
+SDACK           equ     1    ; GPIO1 1=SDA acknowledge
 SCL             equ     3    ; slave SCL=GPIO3, check also IOC
 
 ; variables in ram
@@ -219,28 +219,29 @@ status_temp     equ     H'34'    ; temperorary storage in interrupt service
 ;
 ; 3-4 us  INT latency
 ; 4   us  save W and STATUS
-; 5   us  check that INT happened
+; 7   us  check that INT happened
 ; -------------------------------
-; 12-13  us  total before starting to follow SCL
+; 14-15  us  total before starting to follow SCL
 ;
+; 2-4 us  check that SCL LOW
 ; 2-4 us  to detect SCL LOW-HIGH edge
 ; 4   us  read SDA bit to i2cdata
 ; 2-4 us  to detect SLC HIGH-LOW edge 
 ; 4   us  check that less than 8 bits received
 ; -------------------------------------
-; 12-16 us for one bit reading
+; 14-20 us for one bit reading
 ; 
-; 8   us  check that address matches and pull SDA down
+; 6   us  check that address matches and pull SDA down
 ; 2-4 us  to detect SCL LOW-HIGH edge 
 ; 2-4 us  to detect SCL HIGH-LOW edge
 ; 2   us  let SDA float high
 ; --------------------------------------
-; 14-18 us acknowledgement bit
+; 12-16 us acknowledgement bit
 ; 
 ; 6   us  return from sdaint service
-; 9   us  recover W and STATUS
+; 7   us  recover W and STATUS
 ; ------------------------------------
-; 15  us  ready for next start bit
+; 13  us  ready for next start bit
 ;
 
 ; Note that bcf and bsf commands on GPIO will change output data on input pins 
@@ -253,9 +254,9 @@ status_temp     equ     H'34'    ; temperorary storage in interrupt service
                 bcf     STATUS, RP0     ; bank 0                   1 us
                 movwf   status_temp     ;                          1 us
 
-; I2C SDA or GP2/INT down edge, takes 2+1+2= 5 us to reach 'sdaint'
-                btfss   GPIO, SCL       ; check that SCL=1
-                goto    endint
+; I2C SDA or GP2/INT down edge, takes 2+2+1+2= 7 us to reach 'sdaint'
+                btfss   GPIO, SCL       ; check that SCL=1         1-2 us
+                goto    endint          ;                          2 us
                 btfss   INTCON, INTE    ;                          1-2 us
                 goto    endint          ;                          2 us
                 btfsc   INTCON, INTF    ;                          1-2 us
@@ -271,8 +272,8 @@ endint          bcf     STATUS, RP0     ; bank 0                   1 us
                 retfie                  ;                          2 us
 
 ; I2C SDA changed from 1 to 0 if INTEDG=0, could be start bit 1->0 
-sdaint          btfsc   GPIO, SCL          ; wait until SCL=0
-                goto    sdaint 
+sdaint          btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
+                goto    sdaint             ;                     2 us
 sclow           btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
                 goto    sclow              ;                     2 us
                 movlw   B'11111011'        ;                     1 us
@@ -280,9 +281,9 @@ sclow           btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
                 addlw   B'00000001'        ; carry C=SDA now     1 us
                 rlf     i2cdata, F         ; carry to i2cdata    1 us
 
-                bsf     GPIO, GPIO4        ; received bit to GPIO4
-                btfss   i2cdata, 0
-                bcf     GPIO, GPIO4
+                bsf     GPIO, GPIO4        ; received bit to GPIO4 1 us
+                btfss   i2cdata, 0         ;                     1-2 us
+                bcf     GPIO, GPIO4        ;                     1 us
 
 sclhigh         btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 goto    sclhigh            ;                     2 us
@@ -294,18 +295,27 @@ sclhigh         btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
 ; check if address matches
                 movlw   B'11111110'        ;                     1 us
                 andwf   i2cdata, W         ;                     1 us
-                sublw   H'4C'              ; address 38 or 0x26  1 us
+; address 38 or 0x26 shifted one bit left  
+                sublw   H'4C'              ;                     1 us
                 btfss   STATUS, Z          ;                     1-2 us
-                goto    reinit             ;                     2 us
+                goto    noack              ;                     2 us
 
 ; positive acknowledgement by pulling SDA down
-                bsf     GPIO, SDACK        ; SDACK=1 
+                bsf     GPIO, SDACK        ; SDACK=1             1 us 
 asclow          btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
                 goto    asclow             ;                     2 us
 asclhigh        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 goto    asclhigh           ;                     2 us
                 bsf     GPIO, LED          ; led on              1 us
-                bcf     GPIO, SDACK        ; SDACK=0 
+                bcf     GPIO, SDACK        ; SDACK=0             1 us 
+                goto    reinit             ;                     2 us
+
+; follow acknowledgement cycle on SCL, do not act on SDA
+noack           btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
+                goto    noack              ;                     2 us
+noackhigh       btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
+                goto    noackhigh          ;                     2 us
+                bcf     GPIO, LED          ; led off             1 us
 
 reinit          clrf    i2cstate           ;                     1 us
                 bcf     INTCON, INTF       ;                     1 us
