@@ -2,7 +2,7 @@
 ; Attempt to do slow software i2c on 12f675. This works but needs external
 ; transistor to pull down the SDA line. The internal 4MHz oscillator is used.
 ;
-; Tue Jul 16 22:30:23 CEST 2013
+; Sat Jul 20 20:06:10 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 i2ctest.asm
@@ -281,18 +281,16 @@ sclow           btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
                 addlw   B'00000001'        ; carry C=SDA now     1 us
                 rlf     i2cdata, F         ; carry to i2cdata    1 us
 
-                bsf     GPIO, GPIO4        ; received bit to GPIO4 1 us
-                btfss   i2cdata, 0         ;                     1-2 us
-                bcf     GPIO, GPIO4        ;                     1 us
+                call    debug4             ; show bit on GPIO4 output
 
 sclhigh         btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 goto    sclhigh            ;                     2 us
-                incf    i2cstate, F        ;                     1 us
 
-                btfss   i2cstate, I2RCVD   ;                     1-2 us
+                incf    i2cstate, F        ; i2cstate++          1 us
+                btfss   i2cstate, I2RCVD   ; 8 bits received?    1-2 us
                 goto    sclow              ;                     2 us
 
-; check if address matches
+; 8 bits received, check if address matches
                 movlw   B'11111110'        ;                     1 us
                 andwf   i2cdata, W         ;                     1 us
 ; address 38 or 0x26 shifted one bit left  
@@ -300,26 +298,93 @@ sclhigh         btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 btfss   STATUS, Z          ;                     1-2 us
                 goto    noack              ;                     2 us
 
+                call    posack             ; positive acknowledgement
+
+                bsf     GPIO, LED          ; led on              1 us
+                btfss   i2cdata, 0         ; if R/_W=0 go to receive byte
+                goto    breceive           ;
+
+; transmit byte here
+
+                goto    reinit             ;                     2 us
+
+noack           call    negack             ; negative acknowledgement
+
+; wait for stop bit here and read first data bit
+breceive        clrf    i2cstate           ;                     1 us 
+atlow           btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
+                goto    atlow
+                movlw   B'11111011'        ;                     1 us
+                iorwf   GPIO, W            ;                     1 us
+                addlw   B'00000001'        ; carry C=SDA now     1 us
+                rlf     i2cdata, F         ; carry to i2cdata    1 us
+                incf    i2cstate, F        ; i2cstate++          1 us
+
+                call    debug4             ; show bit on GPIO4 output
+
+; if SDA=1 start waiting SCL=0
+                btfsc   i2cdata, 0
+                goto    athigh 
+; otherwise wait for SDA=0->1 or SCL=0
+wstopb          btfsc   GPIO, SDA
+                goto    stopb              ; stop bit received probably
+                btfss   GPIO, SCL
+                goto    sclow2
+                goto    wstopb
+
+athigh          btfsc   GPIO, SCL          ; wait until SCL=0
+                goto    athigh
+
+; no stop bit received, continue reading bits(subroutine?)
+sclow2          btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
+                goto    sclow2             ;                     2 us
+                movlw   B'11111011'        ;                     1 us
+                iorwf   GPIO, W            ;                     1 us
+                addlw   B'00000001'        ; carry C=SDA now     1 us
+                rlf     i2cdata, F         ; carry to i2cdata    1 us
+
+                call    debug4
+
+sclhigh2        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
+                goto    sclhigh2           ;                     2 us
+
+                incf    i2cstate, F        ;                     1 us
+                btfss   i2cstate, I2RCVD   ; 8 bits received?    1-2 us
+                goto    sclow2             ;                     2 us
+
+                call    posack             ; positive acknowledgement
+                goto    breceive
+
+stopb           btfss   GPIO, SCL          ; check that SCL is still 1
+                goto    sclow2             ; otherwise return to reading bits 
+reinit          clrf    i2cstate           ;                     1 us 
+                bcf     INTCON, INTF       ;                     1 us
+                return                     ;                     2 us
+
 ; positive acknowledgement by pulling SDA down
-                bsf     GPIO, SDACK        ; SDACK=1             1 us 
+posack          bsf     GPIO, SDACK        ; set SDACK=1         1 us 
 asclow          btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
                 goto    asclow             ;                     2 us
 asclhigh        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 goto    asclhigh           ;                     2 us
-                bsf     GPIO, LED          ; led on              1 us
-                bcf     GPIO, SDACK        ; SDACK=0             1 us 
-                goto    reinit             ;                     2 us
+                bcf     GPIO, SDACK        ; set SDACK=0         1 us 
+                return
 
-; follow acknowledgement cycle on SCL, do not act on SDA
-noack           btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
-                goto    noack              ;                     2 us
+; negative acknowledgement: follow acknowledgement cycle on SCL, do not act 
+; on SDA
+negack          btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
+                goto    negack             ;                     2 us
 noackhigh       btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 goto    noackhigh          ;                     2 us
                 bcf     GPIO, LED          ; led off             1 us
+                return
 
-reinit          clrf    i2cstate           ;                     1 us
-                bcf     INTCON, INTF       ;                     1 us
-                return                     ;                     2 us
+; for debugging reflect received bit on GPIO4
+debug4          bsf     GPIO, GPIO4        ; received bit to GPIO4 1 us
+                btfss   i2cdata, 0         ;                     1-2 us
+                bcf     GPIO, GPIO4        ;                     1 us
+                return
+
 
 
 ; turn comparators off and enable pins for I/O functions
@@ -351,11 +416,19 @@ setup		bcf     STATUS, RP0     ; bank 0
                 bcf     STATUS, RP0  ; bank 0
                 clrf    i2cstate
 
-; no prescaler for WDT, thus typical reset after 128x18 ms (10-30 ms)=2.3 s 
-;                clrwdt
-;                bsf     STATUS, RP0         ; bank 1
-;                movlw   B'11111111'         ; prescaler used for WDT
-;                movwf   OPTION_REG 
+; if no prescaler for WDT typical reset after 128x18 ms (10-30 ms)=2.3 s 
+                clrwdt
+                clrf    TMR0
+                bsf     STATUS, RP0         ; bank 1
+
+; this is needed only when PS2:PS0 is 000 or 001, otherwise comment out
+                movlw   B'00101111'         ; prescaler used for WDT
+                movwf   OPTION_REG 
+                clrwdt
+; comment out until here
+
+                movlw   B'00101100'         ; try 16x18 ms (10-30 ms)=288 ms
+                movwf   OPTION_REG
 
 ; enable SDA or GP2/INT interrupt on falling edge 
                 bsf     STATUS, RP0         ; bank 1
