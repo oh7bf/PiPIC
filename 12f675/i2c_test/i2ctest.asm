@@ -2,7 +2,7 @@
 ; Attempt to do slow software i2c on 12f675. This works but needs external
 ; transistor to pull down the SDA line. The internal 4MHz oscillator is used.
 ;
-; Sun Jul 21 19:36:52 CEST 2013
+; Mon Jul 22 22:03:39 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 i2ctest.asm
@@ -188,24 +188,31 @@ SCL             equ     3    ; slave SCL=GPIO3, check also IOC
 ; can use 20-5F, use STATUS bit 5 to select Bank 0 or 1
 ; 
 ; i2cstate
-; 7   6   5   4   3        2       1       0
-; - | - | - | - | I2RCVD | I2BN2 | I2BN1 | I2BN0 
+; 7        6   5   4   3        2       1       0
+; I2ADDR | - | - | - | I2RCVD | I2BN2 | I2BN1 | I2BN0 
 ; 0   0   0   0   0        0       0       0
-; - I2BN0:2 number of bits received
-; - I2RCVD=1 8 bits have been received
+; - I2ADDR=1 chip address matched
+; - I2BN0:2 number of bits received/transmitted
+; - I2RCVD=1 8 bits have been received/transmitted
 
 I2BN0           equ     H'0000'
 I2BN1           equ     H'0001'
 I2BN2           equ     H'0002'
 I2RCVD          equ     H'0003'
+I2ADDR          equ     H'0007'
 
 i2cstate        equ     H'20'    ; state of bit transfer
 i2cdata         equ     H'21'    ; received data byte
+i2ctxdata       equ     H'22'    ; data byte to transmit
 
 ; three byte buffer for received data
 i2crec1         equ     H'5D'    ; first received byte    
 i2crec2         equ     H'5E'    ; second received byte    
 i2crec3         equ     H'5F'    ; third received byte   
+
+; two byte buffer for data to transmit
+i2ctx1          equ     H'5B'
+i2ctx2          equ     H'5C'
  
 i               equ     H'30'
 w_temp          equ     H'33'    ; temperorary W storage in interrupt service
@@ -296,6 +303,7 @@ sclhigh         btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 goto    sclow              ;                     2 us
 
 ; 8 bits received, check if address matches
+                bsf     i2cstate, I2ADDR   ; set I2ADDR=1
                 movlw   B'11111110'        ;                     1 us
                 andwf   i2cdata, W         ;                     1 us
 ; address 38 or 0x26 shifted one bit left  
@@ -310,15 +318,52 @@ sclhigh         btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 goto    breceive           ;
 
 ; transmit byte here
+                movf    i2ctx1, W          ; copy byte from tx buffer
+                movwf   i2ctxdata          ;
+                clrf    i2cstate           ; clear i2cstate=0    1 us
+tathigh         btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
+                goto    tathigh            ;                     2 us
+
+                rlf     i2ctxdata, F       ; MSB to carry        1 us
+                btfsc   STATUS, C          ; if carry=0
+                goto    setsda
+                bsf     GPIO, SDACK        ; pull down SDA
+                goto    tatlow
+setsda          bcf     GPIO, SDACK        ; else let SDA float high 
+
+tatlow          btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
+                goto    tatlow
+
+                incf    i2cstate, F        ; i2cstate++          1 us
+                btfss   i2cstate, I2RCVD   ; 8 bits transmitted? 1-2 us
+                goto    tathigh            ;                     2 us
+
+tathigh2        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
+                goto    tathigh2           ;                     2 us
+
+                bcf     GPIO, SDACK        ; let SDA float high
+
+tatlow2         btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
+                goto    tatlow2
+
+tathigh3        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
+                goto    tathigh3           ;                     2 us
+
+tatlow3         btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
+                goto    tatlow3
 
                 goto    reinit             ;                     2 us
 
 noack           call    negack             ; negative acknowledgement
+                bcf     i2cstate, I2ADDR   ; clear I2ADDR=0
 
 ; wait for stop bit here and read first data bit
-breceive        clrf    i2cstate           ; clear i2cstate=0    1 us
-                movlw   i2crec1            ; intialize FSR
-                movwf   FSR                ;  
+breceive        movlw   i2crec1            ; intialize FSR 
+                movwf   FSR                ; 
+ 
+rxloop          movlw   B'10000000'
+                andwf   i2cstate, F        ; clear i2cstate bits except I2ADDR 
+
 atlow           btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
                 goto    atlow
                 movlw   B'11111011'        ;                     1 us
@@ -362,10 +407,11 @@ sclhigh2        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 call    posack             ; positive acknowledgement
 
                 movf    i2cdata, W         ; move received byte to buffer
-                movwf   INDF
+                btfsc   i2cstate, I2ADDR   ; save data to buffer if chip
+                movwf   INDF               ; address matched
                 incf    FSR, F             ; pointer to next
                 
-                goto    breceive
+                goto    rxloop 
 
 stopb           btfss   GPIO, SCL          ; check that SCL is still 1
                 goto    sclow2             ; otherwise return to reading bits 
@@ -430,6 +476,12 @@ setup		bcf     STATUS, RP0     ; bank 0
                 clrf    i2crec1
                 clrf    i2crec2
                 clrf    i2crec3
+
+; test data to i2ctx1
+                movlw   H'C5'
+                movwf   i2ctx1 
+                movlw   H'5C'
+                movwf   i2ctx2 
 
 ; if no prescaler for WDT typical reset after 128x18 ms (10-30 ms)=2.3 s 
                 clrwdt
