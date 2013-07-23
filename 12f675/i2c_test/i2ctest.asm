@@ -2,7 +2,7 @@
 ; Attempt to do slow software i2c on 12f675. This works but needs external
 ; transistor to pull down the SDA line. The internal 4MHz oscillator is used.
 ;
-; Mon Jul 22 22:03:39 CEST 2013
+; Tue Jul 23 21:31:37 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 i2ctest.asm
@@ -205,14 +205,18 @@ i2cstate        equ     H'20'    ; state of bit transfer
 i2cdata         equ     H'21'    ; received data byte
 i2ctxdata       equ     H'22'    ; data byte to transmit
 
-; three byte buffer for received data
-i2crec1         equ     H'5D'    ; first received byte    
-i2crec2         equ     H'5E'    ; second received byte    
-i2crec3         equ     H'5F'    ; third received byte   
+; five byte buffer for received data
+i2crec1         equ     H'5B'    ; first received byte    
+i2crec2         equ     H'5C'    ; second received byte    
+i2crec3         equ     H'5D'    ; third received byte   
+i2crec4         equ     H'5E'    ; fourth received byte    
+i2crec5         equ     H'5F'    ; fifth received byte   
 
-; two byte buffer for data to transmit
-i2ctx1          equ     H'5B'
-i2ctx2          equ     H'5C'
+; four byte buffer for data to transmit
+i2ctx1          equ     H'57'
+i2ctx2          equ     H'58'
+i2ctx3          equ     H'59'
+i2ctx4          equ     H'5A'
  
 i               equ     H'30'
 w_temp          equ     H'33'    ; temperorary W storage in interrupt service
@@ -317,8 +321,11 @@ sclhigh         btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 btfss   i2cdata, 0         ; if R/_W=0 go to receive byte
                 goto    breceive           ;
 
-; transmit byte here
-                movf    i2ctx1, W          ; copy byte from tx buffer
+; transmit bytes from tx buffer here
+                movlw   i2ctx1             ; intialize FSR
+                movwf   FSR                ; 
+ 
+txloop          movf    INDF, W            ; copy byte from tx buffer
                 movwf   i2ctxdata          ;
                 clrf    i2cstate           ; clear i2cstate=0    1 us
 tathigh         btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
@@ -338,6 +345,8 @@ tatlow          btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
                 btfss   i2cstate, I2RCVD   ; 8 bits transmitted? 1-2 us
                 goto    tathigh            ;                     2 us
 
+                incf    FSR, F             ; pointer to next byte
+
 tathigh2        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 goto    tathigh2           ;                     2 us
 
@@ -345,6 +354,9 @@ tathigh2        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
 
 tatlow2         btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
                 goto    tatlow2
+
+                btfss   GPIO, SDA          ; if postive acknowledgement
+                goto    txloop             ; from master continue sending
 
 tathigh3        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 goto    tathigh3           ;                     2 us
