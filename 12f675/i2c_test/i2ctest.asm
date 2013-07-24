@@ -2,7 +2,7 @@
 ; Attempt to do slow software i2c on 12f675. This works but needs external
 ; transistor to pull down the SDA line. The internal 4MHz oscillator is used.
 ;
-; Tue Jul 23 21:31:37 CEST 2013
+; Wed Jul 24 22:09:40 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 i2ctest.asm
@@ -189,17 +189,19 @@ SCL             equ     3    ; slave SCL=GPIO3, check also IOC
 ; 
 ; i2cstate
 ; 7        6   5   4   3        2       1       0
-; I2ADDR | - | - | - | I2RCVD | I2BN2 | I2BN1 | I2BN0 
-; 0   0   0   0   0        0       0       0
+; I2ADDR | I2DATA | - | - | I2RCVD | I2BN2 | I2BN1 | I2BN0 
+; 0        0        0   0   0        0       0       0
 ; - I2ADDR=1 chip address matched
+; - I2DATA=1 new command/data available in receiver buffer
 ; - I2BN0:2 number of bits received/transmitted
 ; - I2RCVD=1 8 bits have been received/transmitted
 
-I2BN0           equ     H'0000'
-I2BN1           equ     H'0001'
-I2BN2           equ     H'0002'
-I2RCVD          equ     H'0003'
-I2ADDR          equ     H'0007'
+I2BN0           equ     H'00'
+I2BN1           equ     H'01'
+I2BN2           equ     H'02'
+I2RCVD          equ     H'03'
+I2DATA          equ     H'06'
+I2ADDR          equ     H'07'
 
 i2cstate        equ     H'20'    ; state of bit transfer
 i2cdata         equ     H'21'    ; received data byte
@@ -288,8 +290,9 @@ endint          bcf     STATUS, RP0     ; bank 0                   1 us
                 retfie                  ;                          2 us
 
 ; I2C SDA changed from 1 to 0 if INTEDG=0, could be start bit 1->0 
-sdaint          btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
-                goto    sdaint             ;                     2 us
+sdaint          clrf    i2cstate           ; clear i2cstate=0    1 us  
+sclwait         btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
+                goto    sclwait            ;                     2 us
 sclow           btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
                 goto    sclow              ;                     2 us
                 movlw   B'11111011'        ;                     1 us
@@ -373,7 +376,7 @@ noack           call    negack             ; negative acknowledgement
 breceive        movlw   i2crec1            ; intialize FSR 
                 movwf   FSR                ; 
  
-rxloop          movlw   B'10000000'
+rxloop          movlw   B'11000000'
                 andwf   i2cstate, F        ; clear i2cstate bits except I2ADDR 
 
 atlow           btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
@@ -422,13 +425,14 @@ sclhigh2        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 btfsc   i2cstate, I2ADDR   ; save data to buffer if chip
                 movwf   INDF               ; address matched
                 incf    FSR, F             ; pointer to next
+                bsf     i2cstate, I2DATA   ; I2DATA=1
                 
                 goto    rxloop 
 
 stopb           btfss   GPIO, SCL          ; check that SCL is still 1
                 goto    sclow2             ; otherwise return to reading bits 
-reinit          clrf    i2cstate           ; clear i2cstate=0    1 us 
-                bcf     INTCON, INTF       ;                     1 us
+
+reinit          bcf     INTCON, INTF       ;                     1 us
                 return                     ;                     2 us
 
 ; positive acknowledgement by pulling SDA down
@@ -517,9 +521,30 @@ setup		bcf     STATUS, RP0     ; bank 0
 
 ; global interrupts enable
                 bsf     INTCON, GIE
- 
-loop            nop                         ; wait for start bit INT 
-                clrwdt                      
+
+; main command loop 
+loop            clrwdt
+                btfss   i2cstate, I2DATA
+                goto    loop
+                bcf     i2cstate, I2DATA
+
+; command 0x01 copy data memory byte at given address to transmit buffer
+                movf    i2crec1, W
+                sublw   H'01'              
+                btfss   STATUS, Z
+                goto    cmd2
+                movf    i2crec2, W
+                movwf   FSR
+                movf    INDF, W 
+                movwf   i2ctx1
+                goto    loop
+
+; command 0x02 non implemented yet 
+cmd2            movf    i2crec1, W
+                sublw   H'02'              ;                     1 us
+                btfss   STATUS, Z          ;                     1-2 us
+                nop
+          
                 goto    loop
 
                 end
