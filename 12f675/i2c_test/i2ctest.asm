@@ -1,20 +1,20 @@
 
-; Attempt to do slow software i2c on 12f675. This works but needs external
-; transistor to pull down the SDA line. The internal 4MHz oscillator is used.
+; Attempt to do slow software i2c on 12f675. 
+; The internal 4MHz oscillator is used.
 ;
-; Wed Jul 24 22:09:40 CEST 2013
+; Thu Jul 25 23:30:22 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 i2ctest.asm
 ; program 12f675: sudo ./rpp-tlc -w -i i2ctest.hex
 ; hardware: 
 ; GPO--1kohm--LED--GND
-; GP1--100kohm--2N3904 base
-; GP2/INT--SDA--2N3904 collector
+; GP1
+; GP2/INT--SDA
 ; GP3--SCL
 ; GP4--received "0" or "1"
 ; GP5--1kohm--LED--GND
-; GND--2N3904 emmitter
+; GND
 ;
 ; Configuration:
 ; - data code protection disabled
@@ -180,9 +180,8 @@
 ; constants
 LED             equ     0    ; green=address matched
 LED2            equ     5    ; red=WDT occured
-SDA             equ     2    ; slave SDA=GPIO2, check also TRISIO
-SDACK           equ     1    ; GPIO1 1=SDA acknowledge
-SCL             equ     3    ; slave SCL=GPIO3, check also IOC
+SDA             equ     2    ; slave SDA=GPIO2
+SCL             equ     3    ; slave SCL=GPIO3
 
 ; variables in ram
 ; can use 20-5F, use STATUS bit 5 to select Bank 0 or 1
@@ -337,9 +336,14 @@ tathigh         btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 rlf     i2ctxdata, F       ; MSB to carry        1 us
                 btfsc   STATUS, C          ; if carry=0
                 goto    setsda
-                bsf     GPIO, SDACK        ; pull down SDA
+                bcf     GPIO, SDA          ; pull down SDA
+                bsf     STATUS, RP0        ; bank 1
+                bcf     TRISIO, SDA        ; 
+                bcf     STATUS, RP0        ; bank 0
                 goto    tatlow
-setsda          bcf     GPIO, SDACK        ; else let SDA float high 
+setsda          bsf     STATUS, RP0        ; bank 1
+                bsf     TRISIO, SDA        ; else let SDA float high 
+                bcf     STATUS, RP0        ; bank 0
 
 tatlow          btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
                 goto    tatlow
@@ -353,7 +357,9 @@ tatlow          btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
 tathigh2        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 goto    tathigh2           ;                     2 us
 
-                bcf     GPIO, SDACK        ; let SDA float high
+                bsf     STATUS, RP0        ; bank 1
+                bsf     TRISIO, SDA        ; let SDA float high
+                bcf     STATUS, RP0        ; bank 0
 
 tatlow2         btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
                 goto    tatlow2
@@ -436,12 +442,17 @@ reinit          bcf     INTCON, INTF       ;                     1 us
                 return                     ;                     2 us
 
 ; positive acknowledgement by pulling SDA down
-posack          bsf     GPIO, SDACK        ; set SDACK=1         1 us 
+posack          bcf     GPIO, SDA          ; 
+                bsf     STATUS, RP0        ; bank 1
+                bcf     TRISIO, SDA        ; 
+                bcf     STATUS, RP0        ; bank 0
 asclow          btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
                 goto    asclow             ;                     2 us
 asclhigh        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 goto    asclhigh           ;                     2 us
-                bcf     GPIO, SDACK        ; set SDACK=0         1 us 
+                bsf     STATUS, RP0        ; bank 1
+                bsf     TRISIO, SDA        ; 
+                bcf     STATUS, RP0        ; bank 0
                 return
 
 ; negative acknowledgement: follow acknowledgement cycle on SCL, do not act 
@@ -539,12 +550,39 @@ loop            clrwdt
                 movwf   i2ctx1
                 goto    loop
 
-; command 0x02 non implemented yet 
+; command 0x10 clear GPIO0=0 output 
 cmd2            movf    i2crec1, W
-                sublw   H'02'              ;                     1 us
-                btfss   STATUS, Z          ;                     1-2 us
-                nop
-          
+                sublw   H'10'
+                btfss   STATUS, Z
+                goto    cmd3
+                bcf     GPIO, 0 
+                goto    loop
+
+; command 0x20 set GPIO0=1 output 
+cmd3            movf    i2crec1, W
+                sublw   H'20'
+                btfss   STATUS, Z
+                goto    cmd4
+                bsf     GPIO, 0 
+                goto    loop
+
+; command 0x15 clear GPIO5=0 output 
+cmd4            movf    i2crec1, W
+                sublw   H'15'
+                btfss   STATUS, Z
+                goto    cmd5
+                bcf     GPIO, 5 
+                goto    loop
+
+; command 0x25 set GPIO5=1 output 
+cmd5            movf    i2crec1, W
+                sublw   H'25'
+                btfss   STATUS, Z
+                goto    cmd6
+                bsf     GPIO, 5 
+                goto    loop
+
+cmd6            nop
                 goto    loop
 
                 end
