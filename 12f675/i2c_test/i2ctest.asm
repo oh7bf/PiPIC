@@ -187,7 +187,7 @@ SCL             equ     3    ; slave SCL=GPIO3
 ; can use 20-5F, use STATUS bit 5 to select Bank 0 or 1
 ; 
 ; i2cstate
-; 7        6   5   4   3        2       1       0
+; 7        6        5   4   3        2       1       0
 ; I2ADDR | I2DATA | - | - | I2RCVD | I2BN2 | I2BN1 | I2BN0 
 ; 0        0        0   0   0        0       0       0
 ; - I2ADDR=1 chip address matched

@@ -1,0 +1,41 @@
+=head1 NAME
+
+pipic -  send commands and read data from PIC
+
+=head1 SYNOPSIS
+
+B<pipic> B<-a> i2c address [B<-c> command|B<-r> b|w|2w] [B<-h>] [B<-v>] [B<-V>]
+
+=head1 DESCRIPTION
+
+The B<pipic> is used to send commands to a PIC processor on i2c bus connected
+to Raspberry Pi. The commands are simply one data byte and can be followed by
+one to four bytes of parameter data. The PIC processor has the necessary
+command interpretation loop programmed in. After the command has been
+executed the possible results can be read with option B<-r>. 
+
+=head1 OPTIONS
+
+B<-a> chip address on i2c bus
+
+B<-c> send command and parameter bytes to PIC
+
+B<-r> read byte, word or two words from PIC
+
+B<-h> display a short help text
+
+B<-v> verbose
+
+B<-V> print version
+
+=head1 BUGS
+
+
+=head1 AUTHORS
+
+Jaakko Koivuniemi 
+
+=head1 LINKS
+
+=head1 SEE ALSO
+
