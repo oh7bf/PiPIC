@@ -19,7 +19,7 @@ executed the possible results can be read with option B<-r>.
 
 B<-a> chip address on i2c bus
 
-B<-c> send command and parameter bytes to PIC
+B<-c> send command byte to PIC
 
 B<-d> byte, word or two words of data after command byte
 
@@ -31,6 +31,46 @@ B<-v> verbose
 
 B<-V> print version
 
+=head1 COMMANDS
+
+0x00 do nothing
+
+0x01 0xNN read byte from file and write it to output buffer
+
+0x10 clear GPIO0=0 output
+
+0x11 clear GPIO1=0 output
+
+0x14 clear GPIO4=0 output
+
+0x15 clear GPIO5=0 output
+
+0x20 set GPIO0=1 output
+
+0x21 set GPIO1=1 output
+
+0x24 set GPIO4=1 output
+
+0x25 set GPIO5=1 output
+
+0x30 0xNN write byte to GPIO
+
+0x31 0xNN write byte to TRISIO
+
+0x40 read analog input AN0
+
+0x41 read analog input AN1
+
+0x43 read analog input AN3
+
+=head1 EXAMPLE
+
+Set GPIO5 output to "1", chip address 0x26 (or 38) and command 0x25 (or 37)
+
+B<pipic> B<-a> 38 B<-c> 37 
+
+This assumes that GP5 has been configured as digital output.
+
 =head1 WARNING
 
 No checking is done where the data is written. Could make some hardware 
@@ -40,8 +80,7 @@ unusable.
 
 Jaakko Koivuniemi 
 
-=head1 LINKS
-
 =head1 SEE ALSO
 
 i2cdetect(8), i2cset(8), i2cget(8)
+
