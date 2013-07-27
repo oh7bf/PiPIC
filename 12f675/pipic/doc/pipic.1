@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPIC 1"
-.TH PIPIC 1 "2013-07-26" "version 20130726" "Raspberry Pi"
+.TH PIPIC 1 "2013-07-27" "version 20130727" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -133,7 +133,8 @@
 pipic \-  send commands and read data from PIC
 .SH "SYNOPSIS"
 .IX Header "SYNOPSIS"
-\&\fBpipic\fR \fB\-a\fR i2c address [\fB\-c\fR command|\fB\-r\fR b|w|2w] [\fB\-h\fR] [\fB\-v\fR] [\fB\-V\fR]
+\&\fBpipic\fR \fB\-a\fR i2c address [\fB\-c\fR command [\fB\-d\fR data b|w|2w] | \fB\-r\fR b|w|2w] 
+[\fB\-h\fR] [\fB\-v\fR] [\fB\-V\fR]
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
 The \fBpipic\fR is used to send commands to a \s-1PIC\s0 processor on i2c bus connected
@@ -147,6 +148,8 @@ executed the possible results can be read with option \fB\-r\fR.
 .PP
 \&\fB\-c\fR send command and parameter bytes to \s-1PIC\s0
 .PP
+\&\fB\-d\fR byte, word or two words of data after command byte
+.PP
 \&\fB\-r\fR read byte, word or two words from \s-1PIC\s0
 .PP
 \&\fB\-h\fR display a short help text
@@ -154,8 +157,10 @@ executed the possible results can be read with option \fB\-r\fR.
 \&\fB\-v\fR verbose
 .PP
 \&\fB\-V\fR print version
-.SH "BUGS"
-.IX Header "BUGS"
+.SH "WARNING"
+.IX Header "WARNING"
+No checking is done where the data is written. Could make some hardware 
+unusable.
 .SH "AUTHORS"
 .IX Header "AUTHORS"
 Jaakko Koivuniemi
@@ -163,3 +168,4 @@ Jaakko Koivuniemi
 .IX Header "LINKS"
 .SH "SEE ALSO"
 .IX Header "SEE ALSO"
+\&\fIi2cdetect\fR\|(8), \fIi2cset\fR\|(8), \fIi2cget\fR\|(8)
