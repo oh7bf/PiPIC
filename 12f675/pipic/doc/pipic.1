@@ -124,31 +124,35 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPIC 1"
-.TH PIPIC 1 "2013-07-27" "version 20130727" "Raspberry Pi"
+.TH PIPIC 1 "2013-07-28" "version 20130728" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
 .nh
 .SH "NAME"
-pipic \-  send commands and read data from PIC
+pipic \-  send commands and read data from PiPIC
 .SH "SYNOPSIS"
 .IX Header "SYNOPSIS"
-\&\fBpipic\fR \fB\-a\fR i2c address [\fB\-c\fR command [\fB\-d\fR data b|w|2w] | \fB\-r\fR b|w|2w] 
+\&\fBpipic\fR \fB\-a\fR i2c address [\fB\-c\fR command [\fB\-d\fR data] | \fB\-r\fR b|w|W] 
 [\fB\-h\fR] [\fB\-v\fR] [\fB\-V\fR]
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
 The \fBpipic\fR is used to send commands to a \s-1PIC\s0 processor on i2c bus connected
-to Raspberry Pi. The commands are simply one data byte and can be followed by
-one to four bytes of parameter data. The \s-1PIC\s0 processor has the necessary
-command interpretation loop programmed in. After the command has been
-executed the possible results can be read with option \fB\-r\fR.
+to Raspberry Pi. The command is one byte of data and is given with option
+\&\fB\-c\fR as a decimal integer 0\-255. The command byte can be followed by
+one to four bytes of parameter data. The parameter is given with switch
+\&\fB\-d\fR as a decimal integer with 'b', 'w' or 'W' at end. The \s-1PIC\s0 processor 
+has the necessary command interpretation loop programmed in. After the 
+command has been executed the possible results can be read with option \fB\-r\fR
+by specifying the length of data 'b' for byte, 'w' for 16\-bit word and
+\&'W' for 32\-bit word.
 .SH "OPTIONS"
 .IX Header "OPTIONS"
 \&\fB\-a\fR chip address on i2c bus
 .PP
 \&\fB\-c\fR send command byte to \s-1PIC\s0
 .PP
-\&\fB\-d\fR byte, word or two words of data after command byte
+\&\fB\-d\fR byte (b), word (w) or two words (W) of data after command byte
 .PP
 \&\fB\-r\fR read byte, word or two words from \s-1PIC\s0
 .PP
@@ -195,6 +199,10 @@ Set \s-1GPIO5\s0 output to \*(L"1\*(R", chip address 0x26 (or 38) and command 0x
 \&\fBpipic\fR \fB\-a\fR 38 \fB\-c\fR 37
 .PP
 This assumes that \s-1GP5\s0 has been configured as digital output.
+.PP
+Read status register at address 0x03 from PIC12f675, chip address 0x26 (or 38)
+.PP
+\&\fBpipic\fR \fB\-a\fR 38 \fB\-c\fR 1 \fB\-d\fR 3b \fB\-r\fR b
 .SH "WARNING"
 .IX Header "WARNING"
 No checking is done where the data is written. Could make some hardware 

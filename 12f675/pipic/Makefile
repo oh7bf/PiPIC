@@ -14,7 +14,7 @@ LDFLAGS       = -O
 %.o : %.cxx
 	$(CXX) $(CXXFLAGS) -c $<
 
-all: ptreadim
+all: pipic 
 
 pipic: pipic.o
 	$(LD) $(LDFLAGS) $^ -o $@
