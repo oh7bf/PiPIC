@@ -27,14 +27,14 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Sat Jul 27 11:46:43 CEST 2013
+; Tue Jul 30 21:24:35 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 pic12si2c.asm
 ; program 12f675: sudo ./rpp-tlc -w -i pic12si2c.hex
 ; hardware: 
-; GPO      I/O
-; GP1      I/O
+; GPO      AN0 analog in 
+; GP1      AN1 analog in
 ; GP2/INT--SDA
 ; GP3------SCL
 ; GP4      I/O
@@ -205,6 +205,9 @@
 SDA             equ     2    ; slave SDA=GPIO2
 SCL             equ     3    ; slave SCL=GPIO3
 
+;LED             equ     0    ; green=address matched
+;LED2            equ     5    ; red=WDT occured
+
 ; variables in ram
 ; can use 20-5F, use STATUS bit 5 to select Bank 0 or 1
 ; 
@@ -331,7 +334,7 @@ sclhigh         btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 goto    sclow              ;                     2 us
 
 ; 8 bits received, check if address matches
-                bsf     i2cstate, I2ADDR   ; set I2ADDR=1
+                bsf     i2cstate, I2ADDR   ; set I2ADDR=1        1 us
                 movlw   B'11111110'        ;                     1 us
                 andwf   i2cdata, W         ;                     1 us
 ; address 38 or 0x26 shifted one bit left  
@@ -339,11 +342,11 @@ sclhigh         btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 btfss   STATUS, Z          ;                     1-2 us
                 goto    noack              ;                     2 us
 
-                call    posack             ; positive acknowledgement
+                call    posack             ; positive acknowledgement 15-17 us
 
 ;                bsf     GPIO, LED          ; led on              1 us
-                btfss   i2cdata, 0         ; if R/_W=0 go to receive byte
-                goto    breceive           ;
+                btfss   i2cdata, 0         ; if R/_W=0 go to receive byte 1 us
+                goto    breceive           ;                      2 us
 
 ; transmit bytes from tx buffer here
                 movlw   i2ctx1             ; intialize FSR
@@ -463,19 +466,19 @@ stopb           btfss   GPIO, SCL          ; check that SCL is still 1
 reinit          bcf     INTCON, INTF       ;                     1 us
                 return                     ;                     2 us
 
-; positive acknowledgement by pulling SDA down
-posack          bcf     GPIO, SDA          ; 
-                bsf     STATUS, RP0        ; bank 1
-                bcf     TRISIO, SDA        ; 
-                bcf     STATUS, RP0        ; bank 0
+; positive acknowledgement by pulling SDA down 15 - 17 us
+posack          bcf     GPIO, SDA          ;                     1 us 
+                bsf     STATUS, RP0        ; bank 1              1 us
+                bcf     TRISIO, SDA        ;                     1 us
+                bcf     STATUS, RP0        ; bank 0              1 us
 asclow          btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
                 goto    asclow             ;                     2 us
 asclhigh        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 goto    asclhigh           ;                     2 us
-                bsf     STATUS, RP0        ; bank 1
-                bsf     TRISIO, SDA        ; 
-                bcf     STATUS, RP0        ; bank 0
-                return
+                bsf     STATUS, RP0        ; bank 1              1 us
+                bsf     TRISIO, SDA        ;                     1 us
+                bcf     STATUS, RP0        ; bank 0              1 us
+                return                     ;                     2 us
 
 ; negative acknowledgement: follow acknowledgement cycle on SCL, do not act 
 ; on SDA
@@ -507,12 +510,17 @@ setup		bcf     STATUS, RP0     ; bank 0
 ;                btfss   STATUS, NOT_TO
 ;                bsf     GPIO, LED2         
 
-; AN0-AN3 disabled, used for digital I/O	
-		bsf	STATUS, RP0     ; bank 1
-                clrf    ANSEL           
+; right justified, ref VDD, A/D on
+                movlw   B'10000001'
+                movwf   ADCON0
 
-; GP0, GP1, GP4, GP5 digital output, GP2, GP3 inputs 
-		movlw   B'00001100'	
+; AN0-AN1 enabled, AN2-AN3 disabled and used for digital I/O, FOSC/8
+		bsf	STATUS, RP0     ; bank 1
+                movlw   B'00010011'
+                movwf   ANSEL
+
+; GP4, GP5 digital output, GP0, GP1 analog inputs, GP2, GP3 digital inputs 
+		movlw   B'00001111'	
 		movwf	TRISIO
 
 ; weak pull up on GP1
@@ -572,39 +580,160 @@ loop            clrwdt
                 movwf   i2ctx1
                 goto    loop
 
-; command 0x10 clear GPIO0=0 output 
+; command 0x02 write received four bytes to transmit buffer
 cmd2            movf    i2crec1, W
-                sublw   H'10'
+                sublw   H'02'              
                 btfss   STATUS, Z
                 goto    cmd3
+                movf    i2crec2, W
+                movwf   i2ctx1
+                movf    i2crec3, W
+                movwf   i2ctx2
+                movf    i2crec4, W
+                movwf   i2ctx3
+                movf    i2crec5, W
+                movwf   i2ctx4
+                goto    loop
+
+; command 0x10 clear GPIO0=0 output 
+cmd3            movf    i2crec1, W
+                sublw   H'10'
+                btfss   STATUS, Z
+                goto    cmd4
                 bcf     GPIO, 0 
                 goto    loop
 
 ; command 0x20 set GPIO0=1 output 
-cmd3            movf    i2crec1, W
+cmd4            movf    i2crec1, W
                 sublw   H'20'
                 btfss   STATUS, Z
-                goto    cmd4
+                goto    cmd5
                 bsf     GPIO, 0 
                 goto    loop
 
+; command 0x11 clear GPIO1=0 output 
+cmd5            movf    i2crec1, W
+                sublw   H'11'
+                btfss   STATUS, Z
+                goto    cmd6
+                bcf     GPIO, 1 
+                goto    loop
+
+; command 0x21 set GPIO1=1 output 
+cmd6            movf    i2crec1, W
+                sublw   H'21'
+                btfss   STATUS, Z
+                goto    cmd7
+                bsf     GPIO, 1 
+                goto    loop
+
+; command 0x14 clear GPIO4=0 output 
+cmd7            movf    i2crec1, W
+                sublw   H'14'
+                btfss   STATUS, Z
+                goto    cmd8
+                bcf     GPIO, 4 
+                goto    loop
+
+; command 0x24 set GPIO4=1 output 
+cmd8            movf    i2crec1, W
+                sublw   H'24'
+                btfss   STATUS, Z
+                goto    cmd9
+                bsf     GPIO, 4 
+                goto    loop
+
 ; command 0x15 clear GPIO5=0 output 
-cmd4            movf    i2crec1, W
+cmd9            movf    i2crec1, W
                 sublw   H'15'
                 btfss   STATUS, Z
-                goto    cmd5
+                goto    cmd10
                 bcf     GPIO, 5 
                 goto    loop
 
 ; command 0x25 set GPIO5=1 output 
-cmd5            movf    i2crec1, W
+cmd10           movf    i2crec1, W
                 sublw   H'25'
                 btfss   STATUS, Z
-                goto    cmd6
+                goto    cmd11
                 bsf     GPIO, 5 
                 goto    loop
 
-cmd6            nop
+; command 0x30 write byte to GPIO 
+cmd11           movf    i2crec1, W
+                sublw   H'30'
+                btfss   STATUS, Z
+                goto    cmd12
+                movf    i2crec2, W
+                movwf   GPIO 
+                goto    loop
+
+; command 0x31 write byte to TRISIO 
+cmd12           movf    i2crec1, W
+                sublw   H'31'
+                btfss   STATUS, Z
+                goto    cmd13
+                movf    i2crec2, W
+                bsf     STATUS, RP0         ; bank 1
+                movwf   TRISIO
+                bcf     STATUS, RP0         ; bank 0
+                goto    loop
+
+; command 0x40 read AN0 analog input voltage
+cmd13           movf    i2crec1, W
+                sublw   H'40'
+                btfss   STATUS, Z
+                goto    cmd14
+                movlw   B'10000001' ; switch on A/D, VREF=VDD, AN0
+                movwf   ADCON0
+                bsf     ADCON0, GO  ; start conversion
+wadc0           btfss   ADCON0, NOT_DONE
+                goto    wadc0
+                movf    ADRESH, W 
+                movwf   i2ctx1 
+                bsf     STATUS, RP0         ; bank 1
+                movf    ADRESL, W
+                movwf   i2ctx2
+                bcf     STATUS, RP0         ; bank 0
+                goto    loop
+
+; command 0x41 read AN1 analog input voltage
+cmd14           movf    i2crec1, W
+                sublw   H'41'
+                btfss   STATUS, Z
+                goto    cmd15
+                movlw   B'10000101' ; switch on A/D, VREF=VDD, AN1
+                movwf   ADCON0
+                bsf     ADCON0, GO  ; start conversion
+wadc1           btfss   ADCON0, NOT_DONE
+                goto    wadc1
+                movf    ADRESH, W 
+                movwf   i2ctx1 
+                bsf     STATUS, RP0         ; bank 1
+                movf    ADRESL, W
+                movwf   i2ctx2
+                bcf     STATUS, RP0         ; bank 0
+                goto    loop
+
+; command 0x43 read AN3 analog input voltage
+cmd15           movf    i2crec1, W
+                sublw   H'43'
+                btfss   STATUS, Z
+                goto    cmd16
+                movlw   B'10001101' ; switch on A/D, VREF=VDD, AN3
+                movwf   ADCON0
+                bsf     ADCON0, GO  ; start conversion
+wadc3           btfss   ADCON0, NOT_DONE
+                goto    wadc3
+                movf    ADRESH, W 
+                movwf   i2ctx1 
+                bsf     STATUS, RP0         ; bank 1
+                movf    ADRESL, W
+                movwf   i2ctx2
+                bcf     STATUS, RP0         ; bank 0
+                goto    loop
+
+cmd16           nop
                 goto    loop
 
                 end

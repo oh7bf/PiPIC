@@ -25,9 +25,9 @@ B<-a> chip address on i2c bus
 
 B<-c> send command byte to PIC
 
-B<-d> byte (b), word (w) or two words (W) of data after command byte
+B<-d> data byte (b), 16-bit word (w) or 32-bit word (W) after command byte
 
-B<-r> read byte, word or two words from PIC
+B<-r> read byte, 16-bit word or 32-bit words from PIC
 
 B<-h> display a short help text
 
@@ -39,7 +39,9 @@ B<-V> print version
 
 0x00 do nothing
 
-0x01 0xNN read byte from file and write it to output buffer
+0x01 0xNN read byte from file address and write it to output buffer
+
+0x02 0xNNNNNNNN write four bytes to transmit buffer, used for debugging
 
 0x10 clear GPIO0=0 output
 
@@ -69,6 +71,10 @@ B<-V> print version
 
 =head1 EXAMPLE
 
+Test i2c communication 
+
+B<pipic> B<-a> 38 B<-c> 2 B<-d> 1375211866W B<-r> W
+
 Set GPIO5 output to "1", chip address 0x26 (or 38) and command 0x25 (or 37)
 
 B<pipic> B<-a> 38 B<-c> 37 
@@ -78,6 +84,12 @@ This assumes that GP5 has been configured as digital output.
 Read status register at address 0x03 from PIC12f675, chip address 0x26 (or 38)
 
 B<pipic> B<-a> 38 B<-c> 1 B<-d> 3b B<-r> b
+
+Read analog voltage from AN0
+
+B<pipic> B<-a> 38 B<-c> 64 B<-r> w
+
+This assumes that GP0 has been configured as analog input.
 
 =head1 WARNING
 
@@ -90,5 +102,5 @@ Jaakko Koivuniemi
 
 =head1 SEE ALSO
 
-i2cdetect(8), i2cset(8), i2cget(8)
+pipicfile(1), i2cdetect(8), i2cset(8), i2cget(8)
 

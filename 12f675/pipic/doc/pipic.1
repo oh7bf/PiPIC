@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPIC 1"
-.TH PIPIC 1 "2013-07-28" "version 20130728" "Raspberry Pi"
+.TH PIPIC 1 "2013-07-30" "version 20130730" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -152,9 +152,9 @@ by specifying the length of data 'b' for byte, 'w' for 16\-bit word and
 .PP
 \&\fB\-c\fR send command byte to \s-1PIC\s0
 .PP
-\&\fB\-d\fR byte (b), word (w) or two words (W) of data after command byte
+\&\fB\-d\fR data byte (b), 16\-bit word (w) or 32\-bit word (W) after command byte
 .PP
-\&\fB\-r\fR read byte, word or two words from \s-1PIC\s0
+\&\fB\-r\fR read byte, 16\-bit word or 32\-bit words from \s-1PIC\s0
 .PP
 \&\fB\-h\fR display a short help text
 .PP
@@ -165,7 +165,9 @@ by specifying the length of data 'b' for byte, 'w' for 16\-bit word and
 .IX Header "COMMANDS"
 0x00 do nothing
 .PP
-0x01 0xNN read byte from file and write it to output buffer
+0x01 0xNN read byte from file address and write it to output buffer
+.PP
+0x02 0xNNNNNNNN write four bytes to transmit buffer, used for debugging
 .PP
 0x10 clear GPIO0=0 output
 .PP
@@ -194,6 +196,10 @@ by specifying the length of data 'b' for byte, 'w' for 16\-bit word and
 0x43 read analog input \s-1AN3\s0
 .SH "EXAMPLE"
 .IX Header "EXAMPLE"
+Test i2c communication
+.PP
+\&\fBpipic\fR \fB\-a\fR 38 \fB\-c\fR 2 \fB\-d\fR 1375211866W \fB\-r\fR W
+.PP
 Set \s-1GPIO5\s0 output to \*(L"1\*(R", chip address 0x26 (or 38) and command 0x25 (or 37)
 .PP
 \&\fBpipic\fR \fB\-a\fR 38 \fB\-c\fR 37
@@ -203,6 +209,12 @@ This assumes that \s-1GP5\s0 has been configured as digital output.
 Read status register at address 0x03 from PIC12f675, chip address 0x26 (or 38)
 .PP
 \&\fBpipic\fR \fB\-a\fR 38 \fB\-c\fR 1 \fB\-d\fR 3b \fB\-r\fR b
+.PP
+Read analog voltage from \s-1AN0\s0
+.PP
+\&\fBpipic\fR \fB\-a\fR 38 \fB\-c\fR 64 \fB\-r\fR w
+.PP
+This assumes that \s-1GP0\s0 has been configured as analog input.
 .SH "WARNING"
 .IX Header "WARNING"
 No checking is done where the data is written. Could make some hardware 
@@ -212,4 +224,4 @@ unusable.
 Jaakko Koivuniemi
 .SH "SEE ALSO"
 .IX Header "SEE ALSO"
-\&\fIi2cdetect\fR\|(8), \fIi2cset\fR\|(8), \fIi2cget\fR\|(8)
+\&\fIpipicfile\fR\|(1), \fIi2cdetect\fR\|(8), \fIi2cset\fR\|(8), \fIi2cget\fR\|(8)
