@@ -63,11 +63,21 @@ B<-V> print version
 
 0x31 0xNN write byte to TRISIO
 
+0x32 0xNN AND GPIO with byte
+
+0x33 0xNN OR GPIO with byte
+
+0x34 0xNN XOR GPIO with byte
+
 0x40 read analog input AN0
 
 0x41 read analog input AN1
 
 0x43 read analog input AN3
+
+0x50 reset timer
+
+0x51 read timer
 
 =head1 EXAMPLE
 

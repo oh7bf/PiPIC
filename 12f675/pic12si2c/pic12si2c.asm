@@ -27,7 +27,7 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Tue Jul 30 21:24:35 CEST 2013
+; Wed Jul 31 22:32:01 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 pic12si2c.asm
@@ -243,6 +243,11 @@ i2ctx1          equ     H'57'
 i2ctx2          equ     H'58'
 i2ctx3          equ     H'59'
 i2ctx4          equ     H'5A'
+
+; time counter is increased every 0.524288 seconds 
+timeh           equ     H'23'    ; 
+timem           equ     H'24'
+timel           equ     H'25'
  
 i               equ     H'30'
 w_temp          equ     H'33'    ; temperorary W storage in interrupt service
@@ -523,12 +528,21 @@ setup		bcf     STATUS, RP0     ; bank 0
 		movlw   B'00001111'	
 		movwf	TRISIO
 
+; clear TMR1H:TTMR1L register pair 
+                bcf     STATUS, RP0  ; bank 0
+                clrf    TMR1H
+                clrf    TMR1L 
+; clear TMR1IF flag 
+                bcf    PIR1, TMR1IF 
+; timer1 on, prescaler 1:8, internal clock 1MHz, time1 enabled
+                movlw   B'00110001'
+                movwf   T1CON
+
 ; weak pull up on GP1
 ;                bsf     WPU, MSDA
 ;                bcf     OPTION_REG, NOT_GPPU
 
 ; clear i2cstate bits and received data buffer i2rec1:3
-                bcf     STATUS, RP0  ; bank 0
                 clrf    i2cstate
                 clrf    i2crec1
                 clrf    i2crec2
@@ -565,9 +579,13 @@ setup		bcf     STATUS, RP0     ; bank 0
 
 ; main command loop 
 loop            clrwdt
-                btfss   i2cstate, I2DATA
+                btfsc   i2cstate, I2DATA
+                goto    i2cmd
+                btfsc   PIR1, TMR1IF 
+                goto    nxtime
                 goto    loop
-                bcf     i2cstate, I2DATA
+
+i2cmd           bcf     i2cstate, I2DATA
 
 ; command 0x01 copy data memory byte at given address to transmit buffer
                 movf    i2crec1, W
@@ -679,11 +697,38 @@ cmd12           movf    i2crec1, W
                 bcf     STATUS, RP0         ; bank 0
                 goto    loop
 
-; command 0x40 read AN0 analog input voltage
+; command 0x32 AND byte with GPIO 
 cmd13           movf    i2crec1, W
-                sublw   H'40'
+                sublw   H'32'
                 btfss   STATUS, Z
                 goto    cmd14
+                movf    i2crec2, W
+                andwf   GPIO, F 
+                goto    loop
+
+; command 0x33 OR byte with GPIO 
+cmd14           movf    i2crec1, W
+                sublw   H'33'
+                btfss   STATUS, Z
+                goto    cmd15
+                movf    i2crec2, W
+                iorwf   GPIO, F 
+                goto    loop
+
+; command 0x34 XOR byte with GPIO 
+cmd15           movf    i2crec1, W
+                sublw   H'34'
+                btfss   STATUS, Z
+                goto    cmd16
+                movf    i2crec2, W
+                xorwf   GPIO, F 
+                goto    loop
+
+; command 0x40 read AN0 analog input voltage
+cmd16           movf    i2crec1, W
+                sublw   H'40'
+                btfss   STATUS, Z
+                goto    cmd17
                 movlw   B'10000001' ; switch on A/D, VREF=VDD, AN0
                 movwf   ADCON0
                 bsf     ADCON0, GO  ; start conversion
@@ -698,10 +743,10 @@ wadc0           btfss   ADCON0, NOT_DONE
                 goto    loop
 
 ; command 0x41 read AN1 analog input voltage
-cmd14           movf    i2crec1, W
+cmd17           movf    i2crec1, W
                 sublw   H'41'
                 btfss   STATUS, Z
-                goto    cmd15
+                goto    cmd18
                 movlw   B'10000101' ; switch on A/D, VREF=VDD, AN1
                 movwf   ADCON0
                 bsf     ADCON0, GO  ; start conversion
@@ -716,10 +761,10 @@ wadc1           btfss   ADCON0, NOT_DONE
                 goto    loop
 
 ; command 0x43 read AN3 analog input voltage
-cmd15           movf    i2crec1, W
+cmd18           movf    i2crec1, W
                 sublw   H'43'
                 btfss   STATUS, Z
-                goto    cmd16
+                goto    cmd19
                 movlw   B'10001101' ; switch on A/D, VREF=VDD, AN3
                 movwf   ADCON0
                 bsf     ADCON0, GO  ; start conversion
@@ -733,7 +778,44 @@ wadc3           btfss   ADCON0, NOT_DONE
                 bcf     STATUS, RP0         ; bank 0
                 goto    loop
 
-cmd16           nop
+; command 0x50 reset internal timer
+cmd19           movf    i2crec1, W
+                sublw   H'50'
+                btfss   STATUS, Z
+                goto    cmd20
+                clrf    timel
+                clrf    timem
+                clrf    timeh
+                goto    loop 
+
+; command 0x51 read internal timer
+cmd20           movf    i2crec1, W
+                sublw   H'51'
+                btfss   STATUS, Z
+                goto    cmd21
+                movf    timeh, W
+                movwf   i2ctx1
+                movf    timem, W
+                movwf   i2ctx2
+                movf    timel, W
+                movwf   i2ctx3
+                goto    loop 
+
+cmd21           nop
+                goto    loop
+
+; increase internal timer every 0.524288 seconds (assuming 1:8 prescaler) 
+nxtime          bcf     PIR1, TMR1IF
+                incf    timel, F            ; timel++ 
+                btfss   STATUS, Z
+                goto    timedone               
+                incf    timem, F            ; timem++
+                btfss   STATUS, Z 
+                goto    timedone               
+                incf    timeh, F            ; timeh++
+                btfss   STATUS, Z 
+timedone        nop       
+ 
                 goto    loop
 
                 end
