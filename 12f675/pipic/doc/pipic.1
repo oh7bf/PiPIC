@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPIC 1"
-.TH PIPIC 1 "2013-07-31" "version 20130731" "Raspberry Pi"
+.TH PIPIC 1 "2013-08-01" "version 20130801" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -169,6 +169,10 @@ by specifying the length of data 'b' for byte, 'w' for 16\-bit word and
 .PP
 0x02 0xNNNNNNNN write four bytes to transmit buffer, used for debugging
 .PP
+0x03 0xNN read \s-1EEPROM\s0 address
+.PP
+0x04 0xNNNN write to \s-1EEPROM\s0 address
+.PP
 0x10 clear GPIO0=0 output
 .PP
 0x11 clear GPIO1=0 output
@@ -204,6 +208,14 @@ by specifying the length of data 'b' for byte, 'w' for 16\-bit word and
 0x50 reset timer
 .PP
 0x51 read timer
+.PP
+0x60 stop and remove timer command
+.PP
+0x61 start timer command
+.PP
+0x62 0xNNNNNNNN set counting down time and mode
+.PP
+0x63 0xNNNNNNNN set timer command and up to three parameter bytes
 .SH "EXAMPLE"
 .IX Header "EXAMPLE"
 Test i2c communication

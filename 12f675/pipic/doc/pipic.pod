@@ -43,6 +43,10 @@ B<-V> print version
 
 0x02 0xNNNNNNNN write four bytes to transmit buffer, used for debugging
 
+0x03 0xNN read EEPROM address
+
+0x04 0xNNNN write to EEPROM address
+
 0x10 clear GPIO0=0 output
 
 0x11 clear GPIO1=0 output
@@ -78,6 +82,14 @@ B<-V> print version
 0x50 reset timer
 
 0x51 read timer
+
+0x60 stop and remove timer command
+
+0x61 start timer command
+
+0x62 0xNNNNNNNN set counting down time and mode
+
+0x63 0xNNNNNNNN set timer command and up to three parameter bytes
 
 =head1 EXAMPLE
 
