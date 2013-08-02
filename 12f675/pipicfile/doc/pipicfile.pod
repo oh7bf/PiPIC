@@ -1,0 +1,39 @@
+=head1 NAME
+
+pipicfile -  print files from PiPIC
+
+=head1 SYNOPSIS
+
+B<pipicfile> B<-a> i2c address [B<-f> file address] [B<-h>] [B<-v>] [B<-V>]
+
+=head1 DESCRIPTION
+
+The B<pipicfile> is used to read files from a PiPIC processor on i2c bus 
+connected to Raspberry Pi. If not file address is give, all the addresses
+are printed. Use B<-v> to see the register names.
+
+=head1 OPTIONS
+
+B<-a> chip address on i2c bus
+
+B<-f> file address 
+
+B<-h> display a short help text
+
+B<-v> verbose
+
+B<-V> print version
+
+=head1 WARNING
+
+No checking is done where the query data is written. Could make some hardware 
+unusable.
+
+=head1 AUTHORS
+
+Jaakko Koivuniemi 
+
+=head1 SEE ALSO
+
+pipic(1), i2cdetect(8), i2cset(8), i2cget(8)
+
