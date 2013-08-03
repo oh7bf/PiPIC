@@ -21,12 +21,11 @@
 ****************************************************************************
 *
 * Fri Jul 26 20:28:06 CEST 2013
-* Edit: Sun Jul 28 19:34:53 CEST 2013
-* 
+* Edit: Sat Aug  3 17:28:22 CEST 2013
+*
 * Jaakko Koivuniemi
 **/
 
-#include <iostream>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,12 +40,12 @@
 
 void printusage()
 {
-  std::cout << "usage: pipic -a address [-c command [-d data] | -r b|w|W] [-h] [-v] [-V]\n";
+  printf("usage: pipic -a address [-c command [-d data] | -r b|w|W] [-h] [-v] [-V]\n");
 }
 
 void printversion()
 {
-  std::cout << "pipic v. 20130728, Jaakko Koivuniemi\n";
+  printf("pipic v. 20130803, Jaakko Koivuniemi\n");
 }
 
 
@@ -67,7 +66,6 @@ int main(int argc, char **argv)
   int  address=0x00;
   int  cmd=-1; // no operation
   unsigned char buf[10];
-  char nstr[100]="";
 
   int optch=0;
   while(optch!=-1)
@@ -75,11 +73,11 @@ int main(int argc, char **argv)
       optch=getopt(argc,argv,"a:c:d:r:hvV");
       if(optch=='a')
 	{
-	  address=atoi(optarg);
+          sscanf(optarg,"%X",&address);
 	}
       if(optch=='c')
 	{
-          cmd=atoi(optarg);
+          sscanf(optarg,"%X",&cmd);        
 	}
       if(optch=='d')
         {
@@ -90,9 +88,9 @@ int main(int argc, char **argv)
         }
       if(optch=='r')
 	{
-          if(strcmp(optarg,"b")==0) rbyte=1;
-          if(strcmp(optarg,"w")==0) rword=1;
-          if(strcmp(optarg,"W")==0) rword2=1;
+          if(optarg[0]=='b') rbyte=1;
+          if(optarg[0]=='w') rword=1;
+          if(optarg[0]=='W') rword2=1;
 	}
       if(optch=='v')
 	{
@@ -117,19 +115,17 @@ int main(int argc, char **argv)
     }
 
 // open port for reading and writing
-  if(verb==1) std::cout << "Open " << fileName << "\n";
+  if(verb==1) printf("Open %s\n", fileName);
   if((fd = open(fileName, O_RDWR)) < 0) 
   {
-     std::cout << "Failed to open i2c port: " << strerror(errno) << "\n";
+     perror("Failed to open i2c port");
      return -1;
   }
 
-  sprintf(nstr,"0x%02x",address);
-  if(verb==1) std::cout << "Chip address " << nstr << "\n";
+  if(verb==1) printf("Chip address 0x%02x\n", address);
   if(ioctl(fd, I2C_SLAVE, address) < 0) 
   {
-     std::cout << "Unable to get bus access to talk to slave: " 
-     << strerror(errno) << "\n";
+     perror("Unable to get bus access to talk to slave");
      return -1;
   }
 
@@ -142,7 +138,7 @@ int main(int argc, char **argv)
         if(verb==1) printf("Send 0x%02x%02x\n",buf[0],buf[1]);
         if((write(fd, buf, 2)) != 2) 
         {
-           std::cout << "Error writing to i2c slave: " << strerror(errno) << "\n";
+           perror("Error writing to i2c slave");
            return -1;
         }
      }
@@ -153,7 +149,7 @@ int main(int argc, char **argv)
         if(verb==1) printf("Send 0x%02x%02x%02x\n",buf[0],buf[1],buf[2]); 
         if((write(fd, buf, 3)) != 3) 
         {
-           std::cout << "Error writing to i2c slave: " << strerror(errno) << "\n";
+           perror("Error writing to i2c slave");
            return -1;
         }
      }
@@ -168,7 +164,7 @@ int main(int argc, char **argv)
         if(verb==1) printf("Send 0x%02x%02x%02x%02x%02x\n",buf[0],buf[1],buf[2],buf[3],buf[4]);
         if((write(fd, buf, 5)) != 5) 
         {
-           std::cout << "Error writing to i2c slave: " << strerror(errno) << "\n";
+           perror("Error writing to i2c slave");
            return -1;
         }
      }
@@ -177,7 +173,7 @@ int main(int argc, char **argv)
         if(verb==1) printf("Send 0x%02x\n",buf[0]);
         if((write(fd, buf, 1)) != 1) 
         {
-           std::cout << "Error writing to i2c slave: " << strerror(errno) << "\n";
+           perror("Error writing to i2c slave");
            return -1;
         }
      }
@@ -188,7 +184,7 @@ int main(int argc, char **argv)
   {
      if(read(fd, buf,1)!=1) 
      {
-        std::cout << "Unable to read from slave: " << strerror(errno) << "\n";
+        perror("Unable to read from slave");
         return -1;
      }
      else 
@@ -202,7 +198,7 @@ int main(int argc, char **argv)
   {
      if(read(fd, buf,2)!=2) 
      {
-        std::cout << "Unable to read from slave: " << strerror(errno) << "\n";
+        perror("Unable to read from slave");
         return -1;
      }
      else 
@@ -216,7 +212,7 @@ int main(int argc, char **argv)
   {
      if(read(fd, buf,4)!=4) 
      {
-        std::cout << "Unable to read from slave: " << strerror(errno) << "\n";
+        perror("Unable to read from slave");
         return -1;
      }
      else 

@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPIC 1"
-.TH PIPIC 1 "2013-08-01" "version 20130801" "Raspberry Pi"
+.TH PIPIC 1 "2013-08-03" "version 20130803" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -139,7 +139,7 @@ pipic \-  send commands and read data from PiPIC
 .IX Header "DESCRIPTION"
 The \fBpipic\fR is used to send commands to a \s-1PIC\s0 processor on i2c bus connected
 to Raspberry Pi. The command is one byte of data and is given with option
-\&\fB\-c\fR as a decimal integer 0\-255. The command byte can be followed by
+\&\fB\-c\fR as a hexadecimal 0x00 \- 0xFF. The command byte can be followed by
 one to four bytes of parameter data. The parameter is given with switch
 \&\fB\-d\fR as a decimal integer with 'b', 'w' or 'W' at end. The \s-1PIC\s0 processor 
 has the necessary command interpretation loop programmed in. After the 
@@ -154,7 +154,7 @@ by specifying the length of data 'b' for byte, 'w' for 16\-bit word and
 .PP
 \&\fB\-d\fR data byte (b), 16\-bit word (w) or 32\-bit word (W) after command byte
 .PP
-\&\fB\-r\fR read byte, 16\-bit word or 32\-bit words from \s-1PIC\s0
+\&\fB\-r\fR read byte (b), 16\-bit word (w) or 32\-bit word (W) from \s-1PIC\s0
 .PP
 \&\fB\-h\fR display a short help text
 .PP
@@ -172,6 +172,8 @@ by specifying the length of data 'b' for byte, 'w' for 16\-bit word and
 0x03 0xNN read \s-1EEPROM\s0 address
 .PP
 0x04 0xNNNN write to \s-1EEPROM\s0 address
+.PP
+0x05 read \s-1TMR1\s0 as 16\-bit word
 .PP
 0x10 clear GPIO0=0 output
 .PP
@@ -220,23 +222,40 @@ by specifying the length of data 'b' for byte, 'w' for 16\-bit word and
 .IX Header "EXAMPLE"
 Test i2c communication
 .PP
-\&\fBpipic\fR \fB\-a\fR 38 \fB\-c\fR 2 \fB\-d\fR 1375211866W \fB\-r\fR W
+\&\fBpipic\fR \fB\-a\fR 0x26 \fB\-c\fR 0x02 \fB\-d\fR 1375211866W \fB\-r\fR W
 .PP
 Set \s-1GPIO5\s0 output to \*(L"1\*(R", chip address 0x26 (or 38) and command 0x25 (or 37)
 .PP
-\&\fBpipic\fR \fB\-a\fR 38 \fB\-c\fR 37
+\&\fBpipic\fR \fB\-a\fR 0x26 \fB\-c\fR 0x25
 .PP
 This assumes that \s-1GP5\s0 has been configured as digital output.
 .PP
 Read status register at address 0x03 from PIC12f675, chip address 0x26 (or 38)
 .PP
-\&\fBpipic\fR \fB\-a\fR 38 \fB\-c\fR 1 \fB\-d\fR 3b \fB\-r\fR b
+\&\fBpipic\fR \fB\-a\fR 26 \fB\-c\fR 1 \fB\-d\fR 3b \fB\-r\fR b
 .PP
 Read analog voltage from \s-1AN0\s0
 .PP
-\&\fBpipic\fR \fB\-a\fR 38 \fB\-c\fR 64 \fB\-r\fR w
+\&\fBpipic\fR \fB\-a\fR 26 \fB\-c\fR 40 \fB\-r\fR w
 .PP
 This assumes that \s-1GP0\s0 has been configured as analog input.
+.PP
+Read internal timer
+.PP
+\&\fBpipic\fR \fB\-a\fR 26 \fB\-c\fR 51 \fB\-r\fR W
+.SH "FILES"
+.IX Header "FILES"
+\&\fI/etc/modprobe.d/i2c.conf\fR
+.PP
+This file should have a line like
+.PP
+options i2c_bcm2708 baudrate=20000
+.PP
+which sets the \s-1SCL\s0 clock to 20 kHz.
+.PP
+\&\fI/etc/modprobe.d/raspi\-blacklist.conf\fR
+.PP
+Check that \fIi2c_bcm2708\fR is commented out in this file.
 .SH "WARNING"
 .IX Header "WARNING"
 No checking is done where the data is written. Could make some hardware 

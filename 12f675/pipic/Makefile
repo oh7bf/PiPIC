@@ -3,15 +3,15 @@
 # Makefile for compiling 'pipic' on Raspberry Pi. 
 #
 # Fri Jul 26 21:19:33 CEST 2013
-# Edit: 
+# Edit: Sat Aug  3 17:18:10 CEST 2013
 # Jaakko Koivuniemi
 
-CXX           = g++
+CXX           = gcc
 CXXFLAGS      = -g -O -Wall 
-LD            = g++
+LD            = gcc
 LDFLAGS       = -O
 
-%.o : %.cxx
+%.o : %.c
 	$(CXX) $(CXXFLAGS) -c $<
 
 all: pipic 

@@ -11,7 +11,7 @@ B<pipic> B<-a> i2c address [B<-c> command [B<-d> data] | B<-r> b|w|W]
 
 The B<pipic> is used to send commands to a PIC processor on i2c bus connected
 to Raspberry Pi. The command is one byte of data and is given with option
-B<-c> as a decimal integer 0-255. The command byte can be followed by
+B<-c> as a hexadecimal 0x00 - 0xFF. The command byte can be followed by
 one to four bytes of parameter data. The parameter is given with switch
 B<-d> as a decimal integer with 'b', 'w' or 'W' at end. The PIC processor 
 has the necessary command interpretation loop programmed in. After the 
@@ -27,7 +27,7 @@ B<-c> send command byte to PIC
 
 B<-d> data byte (b), 16-bit word (w) or 32-bit word (W) after command byte
 
-B<-r> read byte, 16-bit word or 32-bit words from PIC
+B<-r> read byte (b), 16-bit word (w) or 32-bit word (W) from PIC
 
 B<-h> display a short help text
 
@@ -46,6 +46,8 @@ B<-V> print version
 0x03 0xNN read EEPROM address
 
 0x04 0xNNNN write to EEPROM address
+
+0x05 read TMR1 as 16-bit word
 
 0x10 clear GPIO0=0 output
 
@@ -95,23 +97,41 @@ B<-V> print version
 
 Test i2c communication 
 
-B<pipic> B<-a> 38 B<-c> 2 B<-d> 1375211866W B<-r> W
+B<pipic> B<-a> 0x26 B<-c> 0x02 B<-d> 1375211866W B<-r> W
 
 Set GPIO5 output to "1", chip address 0x26 (or 38) and command 0x25 (or 37)
 
-B<pipic> B<-a> 38 B<-c> 37 
+B<pipic> B<-a> 0x26 B<-c> 0x25 
 
 This assumes that GP5 has been configured as digital output.
 
 Read status register at address 0x03 from PIC12f675, chip address 0x26 (or 38)
 
-B<pipic> B<-a> 38 B<-c> 1 B<-d> 3b B<-r> b
+B<pipic> B<-a> 26 B<-c> 1 B<-d> 3b B<-r> b
 
 Read analog voltage from AN0
 
-B<pipic> B<-a> 38 B<-c> 64 B<-r> w
+B<pipic> B<-a> 26 B<-c> 40 B<-r> w
 
 This assumes that GP0 has been configured as analog input.
+
+Read internal timer
+
+B<pipic> B<-a> 26 B<-c> 51 B<-r> W
+
+=head1 FILES
+
+I</etc/modprobe.d/i2c.conf>
+
+This file should have a line like 
+
+options i2c_bcm2708 baudrate=20000
+
+which sets the SCL clock to 20 kHz.
+
+I</etc/modprobe.d/raspi-blacklist.conf>
+
+Check that I<i2c_bcm2708> is commented out in this file.
 
 =head1 WARNING
 

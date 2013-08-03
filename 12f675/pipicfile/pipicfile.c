@@ -20,7 +20,7 @@
 ****************************************************************************
 *
 * Thu Aug  1 23:55:08 CEST 2013
-* Edit: Sat Aug  3 09:33:52 CEST 2013
+* Edit: Sat Aug  3 18:07:39 CEST 2013
 * 
 * Jaakko Koivuniemi
 **/
@@ -59,6 +59,7 @@ int main(int argc, char **argv)
   unsigned char buf[10];
   int i=0,j=0;
   int byte1=0,byte2=0;
+  char lascii[17];
 
   const char *reg0[32]={"","TMR0","PCL","STATUS","FSR","GPIO","","","","","PCLATH","INTCON","PIR1","","TMR1L","TMR1H","T1CON","","","","","","","","","CMCON","","","","","ADRESH","ADCON0"};
 
@@ -341,9 +342,12 @@ int main(int argc, char **argv)
          else 
          {
            printf(" %02X",buf[0]);
+           if((buf[0]>=32)&&(buf[0]<=126)) lascii[i]=buf[0];
+           else lascii[i]='.';
          }
       }
-      printf("\n");
+      lascii[16]='\00';
+      printf(" %16s\n",lascii);
     }
   }
  
