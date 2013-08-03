@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPICFILE 1"
-.TH PIPICFILE 1 "2013-08-02" "version 20130802" "Raspberry Pi"
+.TH PIPICFILE 1 "2013-08-03" "version 20130803" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -133,7 +133,8 @@
 pipicfile \-  print files from PiPIC
 .SH "SYNOPSIS"
 .IX Header "SYNOPSIS"
-\&\fBpipicfile\fR \fB\-a\fR i2c address [\fB\-f\fR file address] [\fB\-h\fR] [\fB\-v\fR] [\fB\-V\fR]
+\&\fBpipicfile\fR \fB\-a\fR i2c address [\fB\-f\fR file address | \fB\-e\fR] [\fB\-h\fR] [\fB\-v\fR] 
+[\fB\-V\fR]
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
 The \fBpipicfile\fR is used to read files from a PiPIC processor on i2c bus 
@@ -145,11 +146,22 @@ are printed. Use \fB\-v\fR to see the register names.
 .PP
 \&\fB\-f\fR file address
 .PP
+\&\fB\-e\fR print \s-1EEPROM\s0 contest
+.PP
 \&\fB\-h\fR display a short help text
 .PP
 \&\fB\-v\fR verbose
 .PP
 \&\fB\-V\fR print version
+.SH "EXAMPLE"
+.IX Header "EXAMPLE"
+Read all file and register addresses from PiPIC with chip address 0x26
+.PP
+pipicfile \-a 26
+.PP
+Print register names with content
+.PP
+pipicfile \-a 26 \-v
 .SH "WARNING"
 .IX Header "WARNING"
 No checking is done where the query data is written. Could make some hardware 

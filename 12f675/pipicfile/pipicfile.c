@@ -20,7 +20,7 @@
 ****************************************************************************
 *
 * Thu Aug  1 23:55:08 CEST 2013
-* Edit: Fri Aug  2 21:09:27 CEST 2013
+* Edit: Sat Aug  3 09:33:52 CEST 2013
 * 
 * Jaakko Koivuniemi
 **/
@@ -39,18 +39,19 @@
 
 void printusage()
 {
-  printf("usage: pipicfile -a address [-f file address] [-h] [-v] [-V]\n");
+  printf("usage: pipicfile -a address [-f file address | -e] [-h] [-v] [-V]\n");
 }
 
 void printversion()
 {
-  printf("pipicfile v. 20130802, Jaakko Koivuniemi\n");
+  printf("pipicfile v. 20130803, Jaakko Koivuniemi\n");
 }
 
 
 int main(int argc, char **argv)
 {  
   int verb=0; // 1=verbosed output
+  int peeprom=0; // print EEPROM content
   int fd;
   char fileName[100]="/dev/i2c-1";
   int  address=0x00;
@@ -66,14 +67,18 @@ int main(int argc, char **argv)
   int optch=0;
   while(optch!=-1)
     {
-      optch=getopt(argc,argv,"a:f:hvV");
+      optch=getopt(argc,argv,"a:f:ehvV");
       if(optch=='a')
 	{
-	  address=atoi(optarg);
+	  sscanf(optarg,"%X",&address);
 	}
       if(optch=='f')
 	{
-          file=atoi(optarg);
+          sscanf(optarg,"%X",&file); 
+	}
+      if(optch=='e')
+	{
+          peeprom=1;
 	}
       if(optch=='v')
 	{
@@ -115,7 +120,7 @@ int main(int argc, char **argv)
   if((file>=0)&&(file<=255))
   {
      buf[0]=1;
-     buf[1]=3;
+     buf[1]=file;
      if((write(fd, buf, 2)) != 2) 
      {
         perror("Error writing to i2c slave");
@@ -134,7 +139,7 @@ int main(int argc, char **argv)
   }
   else
   {
-     if(verb==1)
+     if((verb==1)&&(peeprom==0))
      {
         for(i=0;i<32;i++)
         {
@@ -193,7 +198,7 @@ int main(int argc, char **argv)
            }
        }
     }
-    else
+    else if(peeprom==0)
     {
       printf("      0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F\n");
       for(j=0;j<=1;j++)
@@ -312,6 +317,35 @@ int main(int argc, char **argv)
 
     }
   }       
-  
+
+  if(peeprom==1)
+  {
+    printf("      0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F\n"); 
+    for(j=0;j<=7;j++)
+    {
+      printf("%1X0: ",j);
+      for(i=0;i<=15;i++)
+      {
+         buf[0]=3;
+         buf[1]=i+j*16;
+         if((write(fd, buf, 2)) != 2) 
+         {
+           perror("Error writing to i2c slave");
+           return -1;
+         }
+         if(read(fd, buf,1)!=1) 
+         {
+           perror("Unable to read from slave");
+           return -1;
+         }
+         else 
+         {
+           printf(" %02X",buf[0]);
+         }
+      }
+      printf("\n");
+    }
+  }
+ 
   return 0;
 }
