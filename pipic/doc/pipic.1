@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPIC 1"
-.TH PIPIC 1 "2013-08-03" "version 20130803" "Raspberry Pi"
+.TH PIPIC 1 "2013-08-04" "version 20130804" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -211,13 +211,15 @@ by specifying the length of data 'b' for byte, 'w' for 16\-bit word and
 .PP
 0x51 read timer
 .PP
-0x60 stop and remove timer command
+0x60 stop timed task
 .PP
-0x61 start timer command
+0x61 start timed task
 .PP
-0x62 0xNNNNNNNN set counting down time and mode
+0x62 0x00NNNNNN set task counting down time
 .PP
-0x63 0xNNNNNNNN set timer command and up to three parameter bytes
+0x63 0xNNNN set task command and one parameter byte
+.PP
+0x64 0xNN set how many times task is repeated
 .SH "EXAMPLE"
 .IX Header "EXAMPLE"
 Test i2c communication

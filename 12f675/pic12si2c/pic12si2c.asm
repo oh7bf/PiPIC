@@ -27,7 +27,7 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Wed Jul 31 22:32:01 CEST 2013
+; Sun Aug  4 21:48:33 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 pic12si2c.asm
@@ -228,13 +228,13 @@ I2DATA          equ     6
 I2ADDR          equ     7
 
 ; task1
-; 7         6      5       4       3       2       1       0
-; TACTIVE | TRPT | TCNT5 | TCNT4 | TCNT3 | TCNT2 | TCNT1 | TCNT0
-; 0         0      0       0       0       0       0       0
+; 7         6       5       4       3       2       1       0
+; TACTIVE | TCNT6 | TCNT5 | TCNT4 | TCNT3 | TCNT2 | TCNT1 | TCNT0
+; 0         0       0       0       0       0       0       0
 ; - TACTIVE=1 task is active
-; - TRPT=1 repeate task, otherwise do it only once 
-; - TCNT0:5 number of times to repeate
+; - TCNT0:6 number of times to repeate
 ;
+TACTIVE         equ     7
 
 i2cstate        equ     H'20'    ; state of bit transfer
 i2cdata         equ     H'21'    ; received data byte
@@ -258,9 +258,9 @@ task1cnt2       equ     H'2E'   ; task1 down counter
 task1cnt3       equ     H'2F'   ; task1 down counter
 
 ; temporary files
-w_temp          equ     H'55'    ; temperorary W storage in interrupt service
-w_temp2         equ     H'D5'    ; reserve also W storage from bank 1
-status_temp     equ     H'56'    ; temperorary storage in interrupt service
+w_temp          equ     H'54'    ; temperorary W storage in interrupt service
+status_temp     equ     H'55'    ; temperorary storage in interrupt service
+fsr_temp        equ     H'56'    ; temporary FSR storage
 
 ; four byte buffer for data to transmit
 i2ctx1          equ     H'57'
@@ -317,11 +317,13 @@ i2crec5         equ     H'5F'    ; fifth received byte
 ; to reflect input at the time of execution. This will then be the output
 ; when pin is changed from input to output. 
 
-; save W and STATUS
+; save W, STATUS and FSR, total 6 us
                 movwf   w_temp          ; could be bank 0 or 1     1 us
                 swapf   STATUS, W       ;                          1 us
                 bcf     STATUS, RP0     ; bank 0                   1 us
                 movwf   status_temp     ;                          1 us
+                movf    FSR, W          ;                          1 us
+                movwf   fsr_temp        ;                          1 us
 
 ; I2C SDA or GP2/INT down edge, takes 2+2+1+2= 7 us to reach 'sdaint'
                 btfss   GPIO, SCL       ; check that SCL=1         1-2 us
@@ -331,8 +333,10 @@ i2crec5         equ     H'5F'    ; fifth received byte
                 btfsc   INTCON, INTF    ;                          1-2 us
                 call    sdaint          ;                          2 us 
 
-; recover W and STATUS
-endint          bcf     STATUS, RP0     ; bank 0                   1 us
+; recover W, STATUS and FSR, total 7 us
+endint          movf    fsr_temp, W     ;                          1 us
+                movwf   FSR             ;                          1 us
+                bcf     STATUS, RP0     ; bank 0                   1 us
                 swapf   status_temp, W  ;                          1 us
                 movwf   STATUS          ; bank to original state   1 us
                 swapf   w_temp, F       ;                          1 us
@@ -673,84 +677,95 @@ cmd4            movf    i2crec1, W
                 bcf     STATUS, RP0         ; bank 0
                 goto    loop
 
-; command 0x10 clear GPIO0=0 output 
+; command 0x05 read TMR1 
 cmd5            movf    i2crec1, W
-                sublw   H'10'
+                sublw   H'05'              
                 btfss   STATUS, Z
                 goto    cmd6
+                movf    TMR1H, W
+                movwf   i2ctx1
+                movf    TMR1L, W
+                movwf   i2ctx2
+                goto    loop
+
+; command 0x10 clear GPIO0=0 output 
+cmd6            movf    i2crec1, W
+                sublw   H'10'
+                btfss   STATUS, Z
+                goto    cmd7
                 bcf     GPIO, 0 
                 goto    loop
 
 ; command 0x20 set GPIO0=1 output 
-cmd6            movf    i2crec1, W
+cmd7            movf    i2crec1, W
                 sublw   H'20'
                 btfss   STATUS, Z
-                goto    cmd7
+                goto    cmd8
                 bsf     GPIO, 0 
                 goto    loop
 
 ; command 0x11 clear GPIO1=0 output 
-cmd7            movf    i2crec1, W
+cmd8            movf    i2crec1, W
                 sublw   H'11'
                 btfss   STATUS, Z
-                goto    cmd8
+                goto    cmd9
                 bcf     GPIO, 1 
                 goto    loop
 
 ; command 0x21 set GPIO1=1 output 
-cmd8            movf    i2crec1, W
+cmd9            movf    i2crec1, W
                 sublw   H'21'
                 btfss   STATUS, Z
-                goto    cmd9
+                goto    cmd10
                 bsf     GPIO, 1 
                 goto    loop
 
 ; command 0x14 clear GPIO4=0 output 
-cmd9            movf    i2crec1, W
+cmd10           movf    i2crec1, W
                 sublw   H'14'
                 btfss   STATUS, Z
-                goto    cmd10
+                goto    cmd11
                 bcf     GPIO, 4 
                 goto    loop
 
 ; command 0x24 set GPIO4=1 output 
-cmd10           movf    i2crec1, W
+cmd11           movf    i2crec1, W
                 sublw   H'24'
                 btfss   STATUS, Z
-                goto    cmd11
+                goto    cmd12
                 bsf     GPIO, 4 
                 goto    loop
 
 ; command 0x15 clear GPIO5=0 output 
-cmd11           movf    i2crec1, W
+cmd12           movf    i2crec1, W
                 sublw   H'15'
                 btfss   STATUS, Z
-                goto    cmd12
+                goto    cmd13
                 bcf     GPIO, 5 
                 goto    loop
 
 ; command 0x25 set GPIO5=1 output 
-cmd12           movf    i2crec1, W
+cmd13           movf    i2crec1, W
                 sublw   H'25'
                 btfss   STATUS, Z
-                goto    cmd13
+                goto    cmd14
                 bsf     GPIO, 5 
                 goto    loop
 
 ; command 0x30 write byte to GPIO 
-cmd13           movf    i2crec1, W
+cmd14           movf    i2crec1, W
                 sublw   H'30'
                 btfss   STATUS, Z
-                goto    cmd14
+                goto    cmd15
                 movf    i2crec2, W
                 movwf   GPIO 
                 goto    loop
 
 ; command 0x31 write byte to TRISIO 
-cmd14           movf    i2crec1, W
+cmd15           movf    i2crec1, W
                 sublw   H'31'
                 btfss   STATUS, Z
-                goto    cmd15
+                goto    cmd16
                 movf    i2crec2, W
                 bsf     STATUS, RP0         ; bank 1
                 movwf   TRISIO
@@ -758,37 +773,37 @@ cmd14           movf    i2crec1, W
                 goto    loop
 
 ; command 0x32 AND byte with GPIO 
-cmd15           movf    i2crec1, W
+cmd16           movf    i2crec1, W
                 sublw   H'32'
                 btfss   STATUS, Z
-                goto    cmd16
+                goto    cmd17
                 movf    i2crec2, W
                 andwf   GPIO, F 
                 goto    loop
 
 ; command 0x33 OR byte with GPIO 
-cmd16           movf    i2crec1, W
+cmd17           movf    i2crec1, W
                 sublw   H'33'
                 btfss   STATUS, Z
-                goto    cmd17
+                goto    cmd18
                 movf    i2crec2, W
                 iorwf   GPIO, F 
                 goto    loop
 
 ; command 0x34 XOR byte with GPIO 
-cmd17           movf    i2crec1, W
+cmd18           movf    i2crec1, W
                 sublw   H'34'
                 btfss   STATUS, Z
-                goto    cmd18
+                goto    cmd19
                 movf    i2crec2, W
                 xorwf   GPIO, F 
                 goto    loop
 
 ; command 0x40 read AN0 analog input voltage
-cmd18           movf    i2crec1, W
+cmd19           movf    i2crec1, W
                 sublw   H'40'
                 btfss   STATUS, Z
-                goto    cmd19
+                goto    cmd20
                 movlw   B'10000001' ; switch on A/D, VREF=VDD, AN0
                 movwf   ADCON0
                 bsf     ADCON0, GO  ; start conversion
@@ -803,10 +818,10 @@ wadc0           btfss   ADCON0, NOT_DONE
                 goto    loop
 
 ; command 0x41 read AN1 analog input voltage
-cmd19           movf    i2crec1, W
+cmd20           movf    i2crec1, W
                 sublw   H'41'
                 btfss   STATUS, Z
-                goto    cmd20
+                goto    cmd21
                 movlw   B'10000101' ; switch on A/D, VREF=VDD, AN1
                 movwf   ADCON0
                 bsf     ADCON0, GO  ; start conversion
@@ -821,10 +836,10 @@ wadc1           btfss   ADCON0, NOT_DONE
                 goto    loop
 
 ; command 0x43 read AN3 analog input voltage
-cmd20           movf    i2crec1, W
+cmd21           movf    i2crec1, W
                 sublw   H'43'
                 btfss   STATUS, Z
-                goto    cmd21
+                goto    cmd22
                 movlw   B'10001101' ; switch on A/D, VREF=VDD, AN3
                 movwf   ADCON0
                 bsf     ADCON0, GO  ; start conversion
@@ -839,10 +854,10 @@ wadc3           btfss   ADCON0, NOT_DONE
                 goto    loop
 
 ; command 0x50 reset internal timer
-cmd21           movf    i2crec1, W
+cmd22           movf    i2crec1, W
                 sublw   H'50'
                 btfss   STATUS, Z
-                goto    cmd22
+                goto    cmd23
                 clrf    time1
                 clrf    time2
                 clrf    time3
@@ -850,10 +865,10 @@ cmd21           movf    i2crec1, W
                 goto    loop 
 
 ; command 0x51 read internal timer
-cmd22           movf    i2crec1, W
+cmd23           movf    i2crec1, W
                 sublw   H'51'
                 btfss   STATUS, Z
-                goto    cmd23
+                goto    cmd24
                 movf    time1, W
                 movwf   i2ctx1
                 movf    time2, W
@@ -864,7 +879,63 @@ cmd22           movf    i2crec1, W
                 movwf   i2ctx4
                 goto    loop 
 
-cmd23           nop
+; command 0x60 stop timer task1
+cmd24           movf    i2crec1, W
+                sublw   H'60'
+                btfss   STATUS, Z
+                goto    cmd25
+                bcf     task1, TACTIVE 
+                goto    loop 
+
+; command 0x61 start timer task1
+cmd25           movf    i2crec1, W
+                sublw   H'61'
+                btfss   STATUS, Z
+                goto    cmd26
+                bsf     task1, TACTIVE 
+                movf    task1tm1, W
+                movwf   task1cnt1
+                movf    task1tm2, W
+                movwf   task1cnt2
+                movf    task1tm3, W
+                movwf   task1cnt3
+                goto    loop 
+
+; command 0x62 set task1 counting down time 
+cmd26           movf    i2crec1, W
+                sublw   H'62'              
+                btfss   STATUS, Z
+                goto    cmd27
+                movf    i2crec3, W
+                movwf   task1tm1 
+                movf    i2crec4, W
+                movwf   task1tm2 
+                movf    i2crec5, W
+                movwf   task1tm3 
+                goto    loop
+
+; command 0x63 set task1 command 
+cmd27           movf    i2crec1, W
+                sublw   H'63'              
+                btfss   STATUS, Z
+                goto    cmd28
+                movf    i2crec2, W
+                movwf   task1cmd1 
+                movf    i2crec3, W
+                movwf   task1cmd2 
+                goto    loop
+
+; command 0x64 set how many times task1 is repeated (maximum 127) 
+cmd28           movf    i2crec1, W
+                sublw   H'64'              
+                btfss   STATUS, Z
+                goto    cmd29
+                movf    i2crec2, W
+                andlw   B'01111111'
+                iorwf   task1, F
+                goto    loop
+
+cmd29           nop
                 goto    loop
 
 ; increase internal timer every 0.524288 seconds (assuming 1:8 prescaler) 
@@ -880,7 +951,141 @@ nxtime          bcf     PIR1, TMR1IF
                 goto    timedone
                 incf    time1, F            ; time1++
  
-timedone        nop       
+timedone        btfss   task1, TACTIVE
+                goto    loop
+                movlw   H'01'
+                subwf   task1cnt3, F        ; task1cnt3--
+                btfss   STATUS, DC 
+                goto    tcntdone
+                subwf   task1cnt2, F        ; task1cnt2--
+                btfss   STATUS, DC
+                goto    tcntdone 
+                subwf   task1cnt1, F        ; task1cnt1--
+                btfss   STATUS, DC
+                goto    tcntdone 
+
+; command 0x10 clear GPIO0=0 output 
+                movf    task1cmd1, W
+                sublw   H'10'
+                btfss   STATUS, Z
+                goto    tsk2 
+                bcf     GPIO, 0 
+                goto    tskdone 
+
+; command 0x20 set GPIO0=1 output
+tsk2            movf    task1cmd1, W
+                sublw   H'20'
+                btfss   STATUS, Z
+                goto    tsk3
+                bsf     GPIO, 0 
+                goto    tskdone
+
+; command 0x11 clear GPIO1=0 output 
+tsk3            movf    task1cmd1, W
+                sublw   H'11'
+                btfss   STATUS, Z
+                goto    tsk4
+                bcf     GPIO, 1 
+                goto    tskdone
+
+; command 0x21 set GPIO1=1 output 
+tsk4            movf    task1cmd1, W
+                sublw   H'21'
+                btfss   STATUS, Z
+                goto    tsk5
+                bsf     GPIO, 1 
+                goto    tskdone
+
+; command 0x14 clear GPIO4=0 output 
+tsk5            movf    task1cmd1, W
+                sublw   H'14'
+                btfss   STATUS, Z
+                goto    tsk6
+                bcf     GPIO, 4 
+                goto    tskdone
+
+; command 0x24 set GPIO4=1 output 
+tsk6            movf    task1cmd1, W
+                sublw   H'24'
+                btfss   STATUS, Z
+                goto    tsk7
+                bsf     GPIO, 4 
+                goto    tskdone
+
+; command 0x15 clear GPIO5=0 output 
+tsk7            movf    task1cmd1, W
+                sublw   H'15'
+                btfss   STATUS, Z
+                goto    tsk8
+                bcf     GPIO, 5 
+                goto    tskdone
+
+; command 0x25 set GPIO5=1 output
+tsk8            movf    task1cmd1, W
+                sublw   H'25'
+                btfss   STATUS, Z
+                goto    tsk9
+                bsf     GPIO, 5 
+                goto    tskdone
+
+; command 0x30 write byte to GPIO 
+tsk9            movf    task1cmd1, W
+                sublw   H'30'
+                btfss   STATUS, Z
+                goto    tsk10
+                movf    task1cmd2, W
+                movwf   GPIO 
+                goto    tskdone
+
+; command 0x31 write byte to TRISIO 
+tsk10           movf    task1cmd1, W
+                sublw   H'31'
+                btfss   STATUS, Z
+                goto    tsk11
+                movf    task1cmd2, W
+                bsf     STATUS, RP0         ; bank 1
+                movwf   TRISIO
+                bcf     STATUS, RP0         ; bank 0
+                goto    tskdone
+
+; command 0x32 AND byte with GPIO 
+tsk11           movf    task1cmd1, W
+                sublw   H'32'
+                btfss   STATUS, Z
+                goto    tsk12
+                movf    task1cmd2, W
+                andwf   GPIO, F 
+                goto    tskdone
+
+; command 0x33 OR byte with GPIO 
+tsk12           movf    task1cmd1, W
+                sublw   H'33'
+                btfss   STATUS, Z
+                goto    tsk13
+                movf    task1cmd2, W
+                iorwf   GPIO, F 
+                goto    tskdone
+
+; command 0x34 XOR byte with GPIO 
+tsk13           movf    task1cmd1, W
+                sublw   H'34'
+                btfss   STATUS, Z
+                goto    tsk14
+                movf    task1cmd2, W
+                xorwf   GPIO, F 
+                goto    tskdone
+
+tsk14           nop
+
+tskdone         movf    task1tm1, W
+                movwf   task1cnt1
+                movf    task1tm2, W
+                movwf   task1cnt2
+                movf    task1tm3, W
+                movwf   task1cnt3
+                decf    task1, F              ; task1--
+
+tcntdone        nop
                 goto    loop
 
                 end
