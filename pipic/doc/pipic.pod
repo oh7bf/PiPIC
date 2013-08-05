@@ -105,11 +105,11 @@ Set GPIO5 output to "1", chip address 0x26 (or 38) and command 0x25 (or 37)
 
 B<pipic> B<-a> 0x26 B<-c> 0x25 
 
-This assumes that GP5 has been configured as digital output.
+This assumes that GP5 has been configured as digital output. 
 
 Read status register at address 0x03 from PIC12f675, chip address 0x26 (or 38)
 
-B<pipic> B<-a> 26 B<-c> 1 B<-d> 3b B<-r> b
+B<pipic> B<-a> 26 B<-c> 1 B<-d> 3b B<-r> b B<-v>
 
 Read analog voltage from AN0
 
@@ -117,9 +117,38 @@ B<pipic> B<-a> 26 B<-c> 40 B<-r> w
 
 This assumes that GP0 has been configured as analog input.
 
+Reset internal timer
+
+B<pipic> B<-a> 26 B<-c> 50 
+
 Read internal timer
 
 B<pipic> B<-a> 26 B<-c> 51 B<-r> W
+
+Write 'Pi' to EEPROM. First 'P' to memory location 0x00
+
+B<pipic> B<-a> 26 B<-c> 04 B<-d> 80w
+
+then 'i' to memory location 0x01 (1*256+105=361)
+
+B<pipic> B<-a> 26 B<-c> 04 B<-d> 361w 
+
+Blink LED connected to GP4 three times. First set delay to 2 timer
+cycles (usually one timer cycle is 0.524288 s).
+
+B<pipic> B<-a> 26 B<-c> 62 B<-d> 2W
+
+The XOR command 0x34 together with 0x10 for GPIO4 gives 13328 in decimal.
+
+B<pipic> B<-a> 26 B<-c> 63 B<-d> 13328w
+
+Repeate XOR command on GPIO4 five times
+
+B<pipic> B<-a> 26 B<-c> 64 B<-d> 5b
+
+Start task
+
+B<pipic> B<-a> 26 B<-c> 61 
 
 =head1 FILES
 

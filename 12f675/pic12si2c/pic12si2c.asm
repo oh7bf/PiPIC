@@ -27,7 +27,7 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Sun Aug  4 21:48:33 CEST 2013
+; Mon Aug  5 21:26:40 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 pic12si2c.asm
@@ -925,14 +925,15 @@ cmd27           movf    i2crec1, W
                 movwf   task1cmd2 
                 goto    loop
 
-; command 0x64 set how many times task1 is repeated (maximum 127) 
+; command 0x64 set how many times task1 is repeated (maximum 128) 
 cmd28           movf    i2crec1, W
                 sublw   H'64'              
                 btfss   STATUS, Z
                 goto    cmd29
-                movf    i2crec2, W
-                andlw   B'01111111'
-                iorwf   task1, F
+                movf    task1, W
+                andlw   B'10000000'
+                iorwf   i2crec2, W
+                movwf   task1
                 goto    loop
 
 cmd29           nop
@@ -955,13 +956,13 @@ timedone        btfss   task1, TACTIVE
                 goto    loop
                 movlw   H'01'
                 subwf   task1cnt3, F        ; task1cnt3--
-                btfss   STATUS, DC 
+                btfsc   STATUS, C 
                 goto    tcntdone
                 subwf   task1cnt2, F        ; task1cnt2--
-                btfss   STATUS, DC
+                btfsc   STATUS, C
                 goto    tcntdone 
                 subwf   task1cnt1, F        ; task1cnt1--
-                btfss   STATUS, DC
+                btfsc   STATUS, C
                 goto    tcntdone 
 
 ; command 0x10 clear GPIO0=0 output 
