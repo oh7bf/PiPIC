@@ -85,15 +85,25 @@ B<-V> print version
 
 0x51 read timer
 
-0x60 stop timed task
+0x60 stop timed task1
 
-0x61 start timed task 
+0x61 start timed task1 
 
-0x62 0x00NNNNNN set task counting down time
+0x62 0x00NNNNNN set task1 counting down time
 
-0x63 0xNNNN set task command and one parameter byte
+0x63 0xNNNN set task1 command and one parameter byte
 
-0x64 0xNN set how many times task is repeated
+0x64 0xNN set how many times task1 is repeated
+
+0x70 stop timed task2
+
+0x71 start timed task2 
+
+0x72 0x00NNNNNN set task2 counting down time
+
+0x73 0xNNNN set task2 command and one parameter byte
+
+0x74 0xNN set how many times task2 is repeated
 
 =head1 EXAMPLE
 

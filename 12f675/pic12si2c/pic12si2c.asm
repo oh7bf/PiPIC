@@ -27,7 +27,7 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Mon Aug  5 21:26:40 CEST 2013
+; Tue Aug  6 21:14:43 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 pic12si2c.asm
@@ -236,6 +236,24 @@ I2ADDR          equ     7
 ;
 TACTIVE         equ     7
 
+; event
+; 7         6   5   4      3      2      1      0
+; TRIGGER | - | - | TRGC | TRG5 | TRG4 | TRG1 | TRG0 
+; 0         0   0   0      0      0      0      0
+; - TRIGGER=1 event has taken place
+; - TRGC comparator event happened
+; - TRG5 GP5 input went to zero
+; - TRG4 GP4 input went to zero
+; - TRG1 GP1 input went to zero
+; - TRG0 GP0 input went to zero
+
+TRIGGER         equ     7
+TRGC            equ     4
+TRG5            equ     3
+TRG4            equ     2
+TRG1            equ     1
+TRG0            equ     0
+
 i2cstate        equ     H'20'    ; state of bit transfer
 i2cdata         equ     H'21'    ; received data byte
 i2ctxdata       equ     H'22'    ; data byte to transmit
@@ -246,7 +264,7 @@ time2           equ     H'24'
 time3           equ     H'25'
 time4           equ     H'26'
 
-; timed task in future;
+; timed task1 in future
 task1           equ     H'27'   ; task1 state
 task1tm1        equ     H'28'   ; task1 initial count down values
 task1tm2        equ     H'29'
@@ -256,6 +274,24 @@ task1cmd2       equ     H'2C'   ; optional task1 command parameter
 task1cnt1       equ     H'2D'   ; task1 down counter
 task1cnt2       equ     H'2E'   ; task1 down counter
 task1cnt3       equ     H'2F'   ; task1 down counter
+
+; timed task2 in future
+task2           equ     H'30'   ; task2 state
+task2tm1        equ     H'31'   ; task2 initial count down values
+task2tm2        equ     H'32'
+task2tm3        equ     H'33'
+task2cmd1       equ     H'34'   ; task2 command byte
+task2cmd2       equ     H'35'   ; optional task2 command parameter
+task2cnt1       equ     H'36'   ; task2 down counter
+task2cnt2       equ     H'37'   ; task2 down counter
+task2cnt3       equ     H'38'   ; task2 down counter
+
+; command for timed or event triggered task
+taskcmd1        equ     H'39'
+taskcmd2        equ     H'3A'
+
+; happened events
+event           equ     H'3B' 
 
 ; temporary files
 w_temp          equ     H'54'    ; temperorary W storage in interrupt service
@@ -579,6 +615,13 @@ setup		bcf     STATUS, RP0     ; bank 0
                 movwf   i2ctx1 
                 movlw   H'5C'
                 movwf   i2ctx2 
+
+; clear task1 and task2
+                clrf    task1
+                clrf    task2
+
+; clear event register
+                clrf    event
 
 ; if no prescaler for WDT typical reset after 128x18 ms (10-30 ms)=2.3 s 
                 clrwdt
@@ -936,7 +979,64 @@ cmd28           movf    i2crec1, W
                 movwf   task1
                 goto    loop
 
-cmd29           nop
+; command 0x70 stop timer task2
+cmd29           movf    i2crec1, W
+                sublw   H'70'
+                btfss   STATUS, Z
+                goto    cmd30
+                bcf     task2, TACTIVE 
+                goto    loop 
+
+; command 0x71 start timer task2
+cmd30           movf    i2crec1, W
+                sublw   H'71'
+                btfss   STATUS, Z
+                goto    cmd31
+                bsf     task2, TACTIVE 
+                movf    task2tm1, W
+                movwf   task2cnt1
+                movf    task2tm2, W
+                movwf   task2cnt2
+                movf    task2tm3, W
+                movwf   task2cnt3
+                goto    loop 
+
+; command 0x72 set task2 counting down time 
+cmd31           movf    i2crec1, W
+                sublw   H'72'              
+                btfss   STATUS, Z
+                goto    cmd32
+                movf    i2crec3, W
+                movwf   task2tm1 
+                movf    i2crec4, W
+                movwf   task2tm2 
+                movf    i2crec5, W
+                movwf   task2tm3 
+                goto    loop
+
+; command 0x73 set task2 command 
+cmd32           movf    i2crec1, W
+                sublw   H'73'              
+                btfss   STATUS, Z
+                goto    cmd33
+                movf    i2crec2, W
+                movwf   task2cmd1 
+                movf    i2crec3, W
+                movwf   task2cmd2 
+                goto    loop
+
+; command 0x74 set how many times task2 is repeated (maximum 128) 
+cmd33           movf    i2crec1, W
+                sublw   H'74'              
+                btfss   STATUS, Z
+                goto    cmd34
+                movf    task2, W
+                andlw   B'10000000'
+                iorwf   i2crec2, W
+                movwf   task2
+                goto    loop
+
+cmd34           nop
                 goto    loop
 
 ; increase internal timer every 0.524288 seconds (assuming 1:8 prescaler) 
@@ -953,132 +1053,27 @@ nxtime          bcf     PIR1, TMR1IF
                 incf    time1, F            ; time1++
  
 timedone        btfss   task1, TACTIVE
-                goto    loop
+                goto    nxtask 
                 movlw   H'01'
                 subwf   task1cnt3, F        ; task1cnt3--
                 btfsc   STATUS, C 
-                goto    tcntdone
+                goto    nxtask 
                 subwf   task1cnt2, F        ; task1cnt2--
                 btfsc   STATUS, C
-                goto    tcntdone 
+                goto    nxtask 
                 subwf   task1cnt1, F        ; task1cnt1--
                 btfsc   STATUS, C
-                goto    tcntdone 
+                goto    nxtask 
 
-; command 0x10 clear GPIO0=0 output 
+; copy task1 command to task command and execute
                 movf    task1cmd1, W
-                sublw   H'10'
-                btfss   STATUS, Z
-                goto    tsk2 
-                bcf     GPIO, 0 
-                goto    tskdone 
-
-; command 0x20 set GPIO0=1 output
-tsk2            movf    task1cmd1, W
-                sublw   H'20'
-                btfss   STATUS, Z
-                goto    tsk3
-                bsf     GPIO, 0 
-                goto    tskdone
-
-; command 0x11 clear GPIO1=0 output 
-tsk3            movf    task1cmd1, W
-                sublw   H'11'
-                btfss   STATUS, Z
-                goto    tsk4
-                bcf     GPIO, 1 
-                goto    tskdone
-
-; command 0x21 set GPIO1=1 output 
-tsk4            movf    task1cmd1, W
-                sublw   H'21'
-                btfss   STATUS, Z
-                goto    tsk5
-                bsf     GPIO, 1 
-                goto    tskdone
-
-; command 0x14 clear GPIO4=0 output 
-tsk5            movf    task1cmd1, W
-                sublw   H'14'
-                btfss   STATUS, Z
-                goto    tsk6
-                bcf     GPIO, 4 
-                goto    tskdone
-
-; command 0x24 set GPIO4=1 output 
-tsk6            movf    task1cmd1, W
-                sublw   H'24'
-                btfss   STATUS, Z
-                goto    tsk7
-                bsf     GPIO, 4 
-                goto    tskdone
-
-; command 0x15 clear GPIO5=0 output 
-tsk7            movf    task1cmd1, W
-                sublw   H'15'
-                btfss   STATUS, Z
-                goto    tsk8
-                bcf     GPIO, 5 
-                goto    tskdone
-
-; command 0x25 set GPIO5=1 output
-tsk8            movf    task1cmd1, W
-                sublw   H'25'
-                btfss   STATUS, Z
-                goto    tsk9
-                bsf     GPIO, 5 
-                goto    tskdone
-
-; command 0x30 write byte to GPIO 
-tsk9            movf    task1cmd1, W
-                sublw   H'30'
-                btfss   STATUS, Z
-                goto    tsk10
+                movwf   taskcmd1
                 movf    task1cmd2, W
-                movwf   GPIO 
-                goto    tskdone
+                movwf   taskcmd2
+                call    dotask
 
-; command 0x31 write byte to TRISIO 
-tsk10           movf    task1cmd1, W
-                sublw   H'31'
-                btfss   STATUS, Z
-                goto    tsk11
-                movf    task1cmd2, W
-                bsf     STATUS, RP0         ; bank 1
-                movwf   TRISIO
-                bcf     STATUS, RP0         ; bank 0
-                goto    tskdone
-
-; command 0x32 AND byte with GPIO 
-tsk11           movf    task1cmd1, W
-                sublw   H'32'
-                btfss   STATUS, Z
-                goto    tsk12
-                movf    task1cmd2, W
-                andwf   GPIO, F 
-                goto    tskdone
-
-; command 0x33 OR byte with GPIO 
-tsk12           movf    task1cmd1, W
-                sublw   H'33'
-                btfss   STATUS, Z
-                goto    tsk13
-                movf    task1cmd2, W
-                iorwf   GPIO, F 
-                goto    tskdone
-
-; command 0x34 XOR byte with GPIO 
-tsk13           movf    task1cmd1, W
-                sublw   H'34'
-                btfss   STATUS, Z
-                goto    tsk14
-                movf    task1cmd2, W
-                xorwf   GPIO, F 
-                goto    tskdone
-
-tsk14           nop
-
-tskdone         movf    task1tm1, W
+; reinitialize counting down time and decrease counter by one
+                movf    task1tm1, W
                 movwf   task1cnt1
                 movf    task1tm2, W
                 movwf   task1cnt2
@@ -1086,7 +1081,151 @@ tskdone         movf    task1tm1, W
                 movwf   task1cnt3
                 decf    task1, F              ; task1--
 
-tcntdone        nop
+nxtask          btfss   task2, TACTIVE
+                goto    nxtask2 
+                movlw   H'01'
+                subwf   task2cnt3, F        ; task2cnt3--
+                btfsc   STATUS, C 
+                goto    nxtask2 
+                subwf   task2cnt2, F        ; task2cnt2--
+                btfsc   STATUS, C
+                goto    nxtask2 
+                subwf   task2cnt1, F        ; task2cnt1--
+                btfsc   STATUS, C
+                goto    nxtask2 
+
+; copy task1 command to task command and execute
+                movf    task2cmd1, W
+                movwf   taskcmd1
+                movf    task2cmd2, W
+                movwf   taskcmd2
+                call    dotask
+
+; reinitialize counting down time and decrease counter by one
+                movf    task2tm1, W
+                movwf   task2cnt1
+                movf    task2tm2, W
+                movwf   task2cnt2
+                movf    task2tm3, W
+                movwf   task2cnt3
+                decf    task2, F              ; task2--
+
+nxtask2         nop
                 goto    loop
+
+
+; command 0x10 clear GPIO0=0 output 
+dotask          movf    taskcmd1, W
+                sublw   H'10'
+                btfss   STATUS, Z
+                goto    tsk2 
+                bcf     GPIO, 0 
+                goto    tskdone 
+
+; command 0x20 set GPIO0=1 output
+tsk2            movf    taskcmd1, W
+                sublw   H'20'
+                btfss   STATUS, Z
+                goto    tsk3
+                bsf     GPIO, 0 
+                goto    tskdone
+
+; command 0x11 clear GPIO1=0 output 
+tsk3            movf    taskcmd1, W
+                sublw   H'11'
+                btfss   STATUS, Z
+                goto    tsk4
+                bcf     GPIO, 1 
+                goto    tskdone
+
+; command 0x21 set GPIO1=1 output 
+tsk4            movf    taskcmd1, W
+                sublw   H'21'
+                btfss   STATUS, Z
+                goto    tsk5
+                bsf     GPIO, 1 
+                goto    tskdone
+
+; command 0x14 clear GPIO4=0 output 
+tsk5            movf    taskcmd1, W
+                sublw   H'14'
+                btfss   STATUS, Z
+                goto    tsk6
+                bcf     GPIO, 4 
+                goto    tskdone
+
+; command 0x24 set GPIO4=1 output 
+tsk6            movf    taskcmd1, W
+                sublw   H'24'
+                btfss   STATUS, Z
+                goto    tsk7
+                bsf     GPIO, 4 
+                goto    tskdone
+
+; command 0x15 clear GPIO5=0 output 
+tsk7            movf    taskcmd1, W
+                sublw   H'15'
+                btfss   STATUS, Z
+                goto    tsk8
+                bcf     GPIO, 5 
+                goto    tskdone
+
+; command 0x25 set GPIO5=1 output
+tsk8            movf    taskcmd1, W
+                sublw   H'25'
+                btfss   STATUS, Z
+                goto    tsk9
+                bsf     GPIO, 5 
+                goto    tskdone
+
+; command 0x30 write byte to GPIO 
+tsk9            movf    taskcmd1, W
+                sublw   H'30'
+                btfss   STATUS, Z
+                goto    tsk10
+                movf    taskcmd2, W
+                movwf   GPIO 
+                goto    tskdone
+
+; command 0x31 write byte to TRISIO 
+tsk10           movf    taskcmd1, W
+                sublw   H'31'
+                btfss   STATUS, Z
+                goto    tsk11
+                movf    taskcmd2, W
+                bsf     STATUS, RP0         ; bank 1
+                movwf   TRISIO
+                bcf     STATUS, RP0         ; bank 0
+                goto    tskdone
+
+; command 0x32 AND byte with GPIO 
+tsk11           movf    taskcmd1, W
+                sublw   H'32'
+                btfss   STATUS, Z
+                goto    tsk12
+                movf    taskcmd2, W
+                andwf   GPIO, F 
+                goto    tskdone
+
+; command 0x33 OR byte with GPIO 
+tsk12           movf    taskcmd1, W
+                sublw   H'33'
+                btfss   STATUS, Z
+                goto    tsk13
+                movf    taskcmd2, W
+                iorwf   GPIO, F 
+                goto    tskdone
+
+; command 0x34 XOR byte with GPIO 
+tsk13           movf    taskcmd1, W
+                sublw   H'34'
+                btfss   STATUS, Z
+                goto    tsk14
+                movf    taskcmd2, W
+                xorwf   GPIO, F 
+                goto    tskdone
+
+tsk14           nop
+tskdone         return
 
                 end
