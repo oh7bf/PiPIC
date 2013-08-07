@@ -27,7 +27,7 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Tue Aug  6 21:14:43 CEST 2013
+; Wed Aug  7 22:54:42 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 pic12si2c.asm
@@ -37,8 +37,8 @@
 ; GP1      AN1 analog in
 ; GP2/INT--SDA
 ; GP3------SCL
-; GP4      I/O
-; GP5      I/O
+; GP4      digi out
+; GP5      digi in 
 ;
 ; Configuration:
 ; - data code protection disabled
@@ -236,21 +236,21 @@ I2ADDR          equ     7
 ;
 TACTIVE         equ     7
 
-; event
-; 7         6   5   4      3      2      1      0
-; TRIGGER | - | - | TRGC | TRG5 | TRG4 | TRG1 | TRG0 
-; 0         0   0   0      0      0      0      0
-; - TRIGGER=1 event has taken place
+; eventreg
+; 7          6      5      4      3   2   1      0
+; TRENABLE | TRGC | TRG5 | TRG4 | - | - | TRG1 | TRG0 
+; 0          0      0      0      0   0   0      0
+; - TRENABLE=1 event triggered tasks are enabled
 ; - TRGC comparator event happened
 ; - TRG5 GP5 input went to zero
 ; - TRG4 GP4 input went to zero
 ; - TRG1 GP1 input went to zero
 ; - TRG0 GP0 input went to zero
 
-TRIGGER         equ     7
-TRGC            equ     4
-TRG5            equ     3
-TRG4            equ     2
+TRENABLE        equ     7
+TRGC            equ     6
+TRG5            equ     5
+TRG4            equ     4
 TRG1            equ     1
 TRG0            equ     0
 
@@ -290,8 +290,21 @@ task2cnt3       equ     H'38'   ; task2 down counter
 taskcmd1        equ     H'39'
 taskcmd2        equ     H'3A'
 
-; happened events
-event           equ     H'3B' 
+; happened events and commands to execute
+event           equ     H'3B'   ; event status 
+eventreg        equ     H'3C'   ; event register for reading with i2c 
+event0cmd1      equ     H'3D'   ; event0 command byte
+event0cmd2      equ     H'3E'   ; event0 parameter byte
+event1cmd1      equ     H'3F'
+event1cmd2      equ     H'40'
+event4cmd1      equ     H'41'
+event4cmd2      equ     H'42'
+event5cmd1      equ     H'43'
+event5cmd2      equ     H'44'
+eventccmd1      equ     H'45'
+eventccmd2      equ     H'46'
+trigdelay1      equ     H'47'   ; debouncing delay
+trigdelay2      equ     H'48'
 
 ; temporary files
 w_temp          equ     H'54'    ; temperorary W storage in interrupt service
@@ -586,8 +599,8 @@ setup		bcf     STATUS, RP0     ; bank 0
                 movlw   B'00010011'
                 movwf   ANSEL
 
-; GP4, GP5 digital output, GP0, GP1 analog inputs, GP2, GP3 digital inputs 
-		movlw   B'00001111'	
+; GP4 digital output, GP0, GP1 analog inputs, GP2, GP3, GP5 digital inputs 
+		movlw   B'00101111'	
 		movwf	TRISIO
 
 ; clear TMR1H:TTMR1L register pair 
@@ -620,8 +633,28 @@ setup		bcf     STATUS, RP0     ; bank 0
                 clrf    task1
                 clrf    task2
 
-; clear event register
+; clear event register and commands
                 clrf    event
+                clrf    eventreg 
+                clrf    event0cmd1
+                clrf    event1cmd1
+                clrf    event4cmd1
+                clrf    event5cmd1
+                clrf    eventccmd1
+
+; debouncing delay ~0.5 s
+                movlw   40
+                movwf   trigdelay1
+                clrf    trigdelay2
+
+; activate GP0, GP1, GP4 or GP5 change detection w/o interrupt here
+                bsf     STATUS, RP0         ; bank 1
+;                bsf     IOC, IOC0           ; activate change int on GP0
+;                bsf     IOC, IOC1           ; activate change int on GP1
+;                bsf     IOC, IOC4           ; activate change int on GP4
+                bsf     IOC, IOC5           ; activate change int on GP5
+                bcf     INTCON, GPIF
+                bcf     STATUS, RP0         ; bank 0
 
 ; if no prescaler for WDT typical reset after 128x18 ms (10-30 ms)=2.3 s 
                 clrwdt
@@ -652,6 +685,89 @@ loop            clrwdt
                 goto    i2cmd
                 btfsc   PIR1, TMR1IF 
                 goto    nxtime
+                btfss   INTCON, GPIF
+                goto    noioc
+
+; GPIF=1 debounce delay
+                decfsz  trigdelay2, F    ; trigdelay2--
+                goto    noioc
+                decfsz  trigdelay1, F    ; trigdelay1--
+                goto    noioc
+
+; read GP0, GP1, GP4 and GP5
+                movlw   B'00110011'
+                andwf   GPIO, W
+                xorlw   B'00110011'
+                iorwf   event, F         ; TRG0=1 if GP0 was at 0 etc
+                movlw   B'01111111'
+                andwf   event, W
+                iorwf   eventreg, F      ; store events to event register
+
+                btfss   eventreg, TRENABLE
+                goto    noioc
+; execute event triggered tasks
+                btfss   event, TRG0      ; TRG0=1
+                goto    evtrg2
+                bcf     event, TRG0
+                movf    event0cmd1, W    ; copy command to task 
+                movwf   taskcmd1
+                movf    event0cmd2, W    
+                movwf   taskcmd2
+                call    dotask           ; execute task
+
+evtrg2          btfss   event, TRG1      ; TRG1=1
+                goto    evtrg3
+                bcf     event, TRG1
+                movf    event1cmd1, W    ; copy command to task 
+                movwf   taskcmd1
+                movf    event1cmd2, W    
+                movwf   taskcmd2
+                call    dotask           ; execute task
+
+evtrg3          btfss   event, TRG4      ; TRG4=1
+                goto    evtrg4
+                bcf     event, TRG4
+                movf    event4cmd1, W    ; copy command to task 
+                movwf   taskcmd1
+                movf    event4cmd2, W    
+                movwf   taskcmd2
+                call    dotask           ; execute task
+
+evtrg4          btfss   event, TRG5      ; TRG5=1
+                goto    evtrg5
+                bcf     event, TRG5
+                movf    event5cmd1, W    ; copy command to task 
+                movwf   taskcmd1
+                movf    event5cmd2, W    
+                movwf   taskcmd2
+                call    dotask           ; execute task
+
+evtrg5          nop
+
+                movlw   40               ;reinitialized debouncing delay
+                movwf   trigdelay1
+                clrf    trigdelay2
+                movf    GPIO, W          ; clear IOC condition
+                bcf     INTCON, GPIF 
+
+; check if comparator status has changed
+noioc           btfss   PIR1, CMIF
+                goto    loop
+                bsf     eventreg, TRGC   ; comparator changed set TRGC=1
+
+                btfss   eventreg, TRENABLE
+                goto    cmpdone
+; execute event triggered task
+                bcf     event, TRGC
+                movf    eventccmd1, W    ; copy command to task 
+                movwf   taskcmd1
+                movf    eventccmd2, W    
+                movwf   taskcmd2
+                call    dotask           ; execute task
+
+cmpdone         movf    CMCON, W         ; clear comparator change flag
+                bcf     PIR1, CMIF
+
                 goto    loop
 
 i2cmd           bcf     i2cstate, I2DATA
@@ -1036,7 +1152,96 @@ cmd33           movf    i2crec1, W
                 movwf   task2
                 goto    loop
 
-cmd34           nop
+; command 0xA0 disable event triggered tasks
+cmd34           movf    i2crec1, W
+                sublw   H'A0'
+                btfss   STATUS, Z
+                goto    cmd35
+                bcf     eventreg, TRENABLE
+                goto    loop 
+
+; command 0xA1 enable event triggered tasks
+cmd35           movf    i2crec1, W
+                sublw   H'A1'
+                btfss   STATUS, Z
+                goto    cmd36
+                bsf     eventreg, TRENABLE
+                goto    loop 
+
+; command 0xA2 read event register 
+cmd36           movf    i2crec1, W
+                sublw   H'A2'              
+                btfss   STATUS, Z
+                goto    cmd37
+                movf    eventreg, W
+                movwf   i2ctx1
+                goto    loop
+
+; command 0xA3 reset event register (except TRENABLE) 
+cmd37           movf    i2crec1, W
+                sublw   H'A3'              
+                btfss   STATUS, Z
+                goto    cmd38
+                movlw   B'10000000'
+                andwf   eventreg, F
+                goto    loop
+
+; command 0xA4 set gp0 event command 
+cmd38           movf    i2crec1, W
+                sublw   H'A4'              
+                btfss   STATUS, Z
+                goto    cmd39
+                movf    i2crec2, W
+                movwf   event0cmd1 
+                movf    i2crec3, W
+                movwf   event0cmd2 
+                goto    loop
+
+; command 0xA5 set gp1 event command 
+cmd39           movf    i2crec1, W
+                sublw   H'A5'              
+                btfss   STATUS, Z
+                goto    cmd40
+                movf    i2crec2, W
+                movwf   event1cmd1 
+                movf    i2crec3, W
+                movwf   event1cmd2 
+                goto    loop
+
+; command 0xA6 set gp4 event command 
+cmd40           movf    i2crec1, W
+                sublw   H'A6'              
+                btfss   STATUS, Z
+                goto    cmd41
+                movf    i2crec2, W
+                movwf   event4cmd1 
+                movf    i2crec3, W
+                movwf   event4cmd2 
+                goto    loop
+
+; command 0xA7 set gp5 event command 
+cmd41           movf    i2crec1, W
+                sublw   H'A7'              
+                btfss   STATUS, Z
+                goto    cmd42
+                movf    i2crec2, W
+                movwf   event5cmd1 
+                movf    i2crec3, W
+                movwf   event5cmd2 
+                goto    loop
+
+; command 0xA8 set comparator event command 
+cmd42           movf    i2crec1, W
+                sublw   H'A8'              
+                btfss   STATUS, Z
+                goto    cmd43
+                movf    i2crec2, W
+                movwf   eventccmd1 
+                movf    i2crec3, W
+                movwf   eventccmd2 
+                goto    loop
+
+cmd43           nop
                 goto    loop
 
 ; increase internal timer every 0.524288 seconds (assuming 1:8 prescaler) 

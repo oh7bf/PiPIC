@@ -4,7 +4,7 @@ pipic -  send commands and read data from PiPIC
 
 =head1 SYNOPSIS
 
-B<pipic> B<-a> i2c address [B<-c> command [B<-d> data] | B<-r> b|w|W] 
+B<pipic> B<-a> i2c address [B<-c> command [B<-d> data]] [B<-r> b|w|W] 
 [B<-h>] [B<-v>] [B<-V>]
 
 =head1 DESCRIPTION
@@ -105,6 +105,24 @@ B<-V> print version
 
 0x74 0xNN set how many times task2 is repeated
 
+0xA0 disable event triggered tasks
+
+0xA1 enable event triggered tasks
+
+0xA2 read event register
+
+0xA3 reset event register
+
+0xA4 0xNNNN GP0 input at zero triggered task command and parameter byte
+
+0xA5 0xNNNN GP1 input at zero triggered task command and parameter byte
+
+0xA6 0xNNNN GP4 input at zero triggered task command and parameter byte
+
+0xA7 0xNNNN GP5 input at zero triggered task command and parameter byte
+
+0xA8 0xNNNN comparator triggered task command and parameter byte
+
 =head1 EXAMPLE
 
 Test i2c communication 
@@ -152,7 +170,7 @@ The XOR command 0x34 together with 0x10 for GPIO4 gives 13328 in decimal.
 
 B<pipic> B<-a> 26 B<-c> 63 B<-d> 13328w
 
-Repeate XOR command on GPIO4 five times
+Repeate XOR command on GPIO4 six times (programmed as minus one)
 
 B<pipic> B<-a> 26 B<-c> 64 B<-d> 5b
 

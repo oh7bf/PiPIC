@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPIC 1"
-.TH PIPIC 1 "2013-08-06" "version 20130806" "Raspberry Pi"
+.TH PIPIC 1 "2013-08-07" "version 20130807" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -133,7 +133,7 @@
 pipic \-  send commands and read data from PiPIC
 .SH "SYNOPSIS"
 .IX Header "SYNOPSIS"
-\&\fBpipic\fR \fB\-a\fR i2c address [\fB\-c\fR command [\fB\-d\fR data] | \fB\-r\fR b|w|W] 
+\&\fBpipic\fR \fB\-a\fR i2c address [\fB\-c\fR command [\fB\-d\fR data]] [\fB\-r\fR b|w|W] 
 [\fB\-h\fR] [\fB\-v\fR] [\fB\-V\fR]
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
@@ -230,6 +230,24 @@ by specifying the length of data 'b' for byte, 'w' for 16\-bit word and
 0x73 0xNNNN set task2 command and one parameter byte
 .PP
 0x74 0xNN set how many times task2 is repeated
+.PP
+0xA0 disable event triggered tasks
+.PP
+0xA1 enable event triggered tasks
+.PP
+0xA2 read event register
+.PP
+0xA3 reset event register
+.PP
+0xA4 0xNNNN \s-1GP0\s0 input at zero triggered task command and parameter byte
+.PP
+0xA5 0xNNNN \s-1GP1\s0 input at zero triggered task command and parameter byte
+.PP
+0xA6 0xNNNN \s-1GP4\s0 input at zero triggered task command and parameter byte
+.PP
+0xA7 0xNNNN \s-1GP5\s0 input at zero triggered task command and parameter byte
+.PP
+0xA8 0xNNNN comparator triggered task command and parameter byte
 .SH "EXAMPLE"
 .IX Header "EXAMPLE"
 Test i2c communication
@@ -277,7 +295,7 @@ The \s-1XOR\s0 command 0x34 together with 0x10 for \s-1GPIO4\s0 gives 13328 in d
 .PP
 \&\fBpipic\fR \fB\-a\fR 26 \fB\-c\fR 63 \fB\-d\fR 13328w
 .PP
-Repeate \s-1XOR\s0 command on \s-1GPIO4\s0 five times
+Repeate \s-1XOR\s0 command on \s-1GPIO4\s0 six times (programmed as minus one)
 .PP
 \&\fBpipic\fR \fB\-a\fR 26 \fB\-c\fR 64 \fB\-d\fR 5b
 .PP
