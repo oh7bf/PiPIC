@@ -695,12 +695,12 @@ loop            clrwdt
                 goto    noioc
 
 ; read GP0, GP1, GP4 and GP5
-                movlw   B'00110011'
-                andwf   GPIO, W
-                xorlw   B'00110011'
-                iorwf   event, F         ; TRG0=1 if GP0 was at 0 etc
-                movlw   B'01111111'
-                andwf   event, W
+                movf    GPIO, W
+                bsf     STATUS, RP0      ; bank 1
+                andwf   IOC, W           ; mask unused inputs
+                xorwf   IOC, W           ; TRG0=1 if GP0 was at 0 etc 
+                bcf     STATUS, RP0      ; bank 0
+                iorwf   event, F         
                 iorwf   eventreg, F      ; store events to event register
 
                 btfss   eventreg, TRENABLE

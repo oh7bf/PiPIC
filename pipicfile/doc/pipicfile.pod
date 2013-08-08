@@ -10,7 +10,7 @@ B<pipicfile> B<-a> i2c address [B<-f> file address | B<-e>] [B<-h>] [B<-v>]
 =head1 DESCRIPTION
 
 The B<pipicfile> is used to read files from a PiPIC processor on i2c bus 
-connected to Raspberry Pi. If not file address is give, all the addresses
+connected to Raspberry Pi. If no file address is give, all the addresses
 are printed. Use B<-v> to see the register names.
 
 =head1 OPTIONS
@@ -19,7 +19,7 @@ B<-a> chip address on i2c bus
 
 B<-f> file address 
 
-B<-e> print EEPROM contest
+B<-e> print EEPROM content
 
 B<-h> display a short help text
 

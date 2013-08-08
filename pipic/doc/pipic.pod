@@ -168,7 +168,7 @@ B<pipic> B<-a> 26 B<-c> 62 B<-d> 2W
 
 The XOR command 0x34 together with 0x10 for GPIO4 gives 13328 in decimal.
 
-B<pipic> B<-a> 26 B<-c> 63 B<-d> 13328w
+B<pipic> B<-a> 26 B<-c> 63 B<-d> 13328w 
 
 Repeate XOR command on GPIO4 six times (programmed as minus one)
 
@@ -178,6 +178,23 @@ Start task
 
 B<pipic> B<-a> 26 B<-c> 61 
 
+Read event register
+
+B<pipic> B<-a> 26 B<-c> A2 B<-r> b B<-v>
+
+Reset event register
+
+B<pipic> B<-a> 26 B<-c> A3 
+
+Switch on/off LED connected to GP4. The XOR command 0x34 together with 0x10 
+for GPIO4 gives 13328 in decimal. The switch connected to GP5. 
+
+B<pipic> B<-a> 26 B<-c> A7 B<-d> 13328w 
+
+Enable event triggered tasks
+
+B<pipic> B<-a> 26 B<-c> A1
+ 
 =head1 FILES
 
 I</etc/modprobe.d/i2c.conf>

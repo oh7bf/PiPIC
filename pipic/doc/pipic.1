@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPIC 1"
-.TH PIPIC 1 "2013-08-07" "version 20130807" "Raspberry Pi"
+.TH PIPIC 1 "2013-08-08" "version 20130808" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -302,6 +302,23 @@ Repeate \s-1XOR\s0 command on \s-1GPIO4\s0 six times (programmed as minus one)
 Start task
 .PP
 \&\fBpipic\fR \fB\-a\fR 26 \fB\-c\fR 61
+.PP
+Read event register
+.PP
+\&\fBpipic\fR \fB\-a\fR 26 \fB\-c\fR A2 \fB\-r\fR b \fB\-v\fR
+.PP
+Reset event register
+.PP
+\&\fBpipic\fR \fB\-a\fR 26 \fB\-c\fR A3
+.PP
+Switch on/off \s-1LED\s0 connected to \s-1GP4\s0. The \s-1XOR\s0 command 0x34 together with 0x10 
+for \s-1GPIO4\s0 gives 13328 in decimal. The switch connected to \s-1GP5\s0.
+.PP
+\&\fBpipic\fR \fB\-a\fR 26 \fB\-c\fR A7 \fB\-d\fR 13328w
+.PP
+Enable event triggered tasks
+.PP
+\&\fBpipic\fR \fB\-a\fR 26 \fB\-c\fR A1
 .SH "FILES"
 .IX Header "FILES"
 \&\fI/etc/modprobe.d/i2c.conf\fR
