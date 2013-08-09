@@ -673,6 +673,7 @@ setup		bcf     STATUS, RP0     ; bank 0
 ; enable SDA or GP2/INT interrupt on falling edge 
                 bsf     STATUS, RP0         ; bank 1
                 bcf     OPTION_REG, INTEDG  ; 1->0 edge
+                bcf     STATUS, RP0         ; bank 0
                 bcf     INTCON, INTF        ; clear INT flag
                 bsf     INTCON, INTE        ; enable INT
 
