@@ -127,7 +127,7 @@ B<-V> print version
 
 =head1 CONFIGURATION
 
-Configuration with AN0 on GP0 for A/D, GP4 and digital output, GP5 digital 
+Configuration with AN0 on GP0 for A/D, GP4 as digital output, GP5 digital 
 input, and timer counting every 0.52 s. First initial value for CMCON 
 register is 0x07 or 0xF8 with bits inverted. The 0x10 is the EEPROM memory 
 address.

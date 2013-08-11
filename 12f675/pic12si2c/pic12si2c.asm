@@ -701,12 +701,100 @@ setup	        movlw   ini_CMCON
 
 ; clear event register and commands
                 clrf    event
+;                clrf    event0cmd1  
+;                clrf    event1cmd1
+;                clrf    event4cmd1
+;                clrf    event5cmd1
+;                clrf    eventccmd1
+
+; initialize event register and commands from EEPROM
                 clrf    eventreg 
-                clrf    event0cmd1
-                clrf    event1cmd1
-                clrf    event4cmd1
-                clrf    event5cmd1
-                clrf    eventccmd1
+                movlw   inievent 
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                movf    EEDATA, W
+                bcf     STATUS, RP0         ; bank 0
+                sublw   H'80'               ; test if 0x80 
+                btfss   STATUS, Z
+                goto    inievents 
+                movlw   H'80'               ; enable event triggered tasks 
+                movwf   eventreg
+
+inievents       movlw   inie0cmd1 
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                movf    EEDATA, W
+                bcf     STATUS, RP0         ; bank 0
+                movwf   event0cmd1  
+                movlw   inie0cmd2 
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                movf    EEDATA, W
+                bcf     STATUS, RP0         ; bank 0
+                movwf   event0cmd2  
+
+                movlw   inie1cmd1 
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                movf    EEDATA, W
+                bcf     STATUS, RP0         ; bank 0
+                movwf   event1cmd1  
+                movlw   inie1cmd2 
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                movf    EEDATA, W
+                bcf     STATUS, RP0         ; bank 0
+                movwf   event1cmd2  
+
+                movlw   inie4cmd1 
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                movf    EEDATA, W
+                bcf     STATUS, RP0         ; bank 0
+                movwf   event4cmd1  
+                movlw   inie4cmd2 
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                movf    EEDATA, W
+                bcf     STATUS, RP0         ; bank 0
+                movwf   event4cmd2  
+
+                movlw   inie5cmd1 
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                movf    EEDATA, W
+                bcf     STATUS, RP0         ; bank 0
+                movwf   event5cmd1  
+                movlw   inie5cmd2 
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                movf    EEDATA, W
+                bcf     STATUS, RP0         ; bank 0
+                movwf   event5cmd2  
+
+                movlw   inieccmd1 
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                movf    EEDATA, W
+                bcf     STATUS, RP0         ; bank 0
+                movwf   eventccmd1  
+                movlw   inieccmd2 
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                movf    EEDATA, W
+                bcf     STATUS, RP0         ; bank 0
+                movwf   eventccmd2  
 
 ; debouncing delay ~0.5 s
                 movlw   40
