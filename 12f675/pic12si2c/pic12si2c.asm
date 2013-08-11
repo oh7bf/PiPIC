@@ -7,8 +7,7 @@
 ; Falling edge on SDA generates interrupt and the interrupt service
 ; routine takes care of the serial bit transfer. Command bytes can be send
 ; to the PIC with parameter data. The result data can be read from the PIC.
-; There is a separate command line utility pipic(1) for this. The i2c chip
-; address can be modified from line "sublw   H'4C'" below. 
+; There is a separate command line utility pipic(1) for this. 
 ;
 ; Copyright (C) 2013 Jaakko Koivuniemi.
 ;
@@ -27,7 +26,7 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Wed Aug  7 22:54:42 CEST 2013
+; Sun Aug 11 16:23:36 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 pic12si2c.asm
@@ -39,6 +38,7 @@
 ; GP3------SCL
 ; GP4      digi out
 ; GP5      digi in 
+;
 ;
 ; Configuration:
 ; - data code protection disabled
@@ -200,6 +200,31 @@
 ; - write cycle to the data eeprom is complete
 ; - eeprom read is not initiated
 
+; EEPROM configuration bytes. Most of these are stored in the EEPROM as bits
+; inversed. This is practical since after erasing the EEPROM the content is
+; 0xFF and this bits inverted is 0x00, which is a good default value.
+; Exception is TRISIO where the bits are not inverted.
+;
+ini_CMCON       equ     H'10'   ; default H'00'
+ini_GPIO        equ     H'11'   ; default H'00'
+ini_ADCON0      equ     H'12'   ; default H'00'
+ini_ANSEL       equ     H'13'   ; default H'00'
+ini_VRCON       equ     H'14'   ; default H'00'
+ini_TRISIO      equ     H'15'   ; default H'FF'
+ini_T1CON       equ     H'16'   ; default H'00'
+ini_IOC         equ     H'17'   ; default H'00'
+i2caddr         equ     H'20'   ; 0xFF use 0x26 instead
+inievent        equ     H'21'   ; 0xFF=event tasks disabled
+inie0cmd1       equ     H'22'   ; event0 command byte
+inie0cmd2       equ     H'23'   ; event0 parameter byte
+inie1cmd1       equ     H'24'
+inie1cmd2       equ     H'25'
+inie4cmd1       equ     H'26'
+inie4cmd2       equ     H'27'
+inie5cmd1       equ     H'28'
+inie5cmd2       equ     H'29'
+inieccmd1       equ     H'2A'
+inieccmd2       equ     H'2B'
 
 ; constants
 SDA             equ     2    ; slave SDA=GPIO2
@@ -305,6 +330,9 @@ eventccmd1      equ     H'45'
 eventccmd2      equ     H'46'
 trigdelay1      equ     H'47'   ; debouncing delay
 trigdelay2      equ     H'48'
+
+; i2c address stored in RAM for faster access than EEPROM
+i2caddram       equ     H'49'
 
 ; temporary files
 w_temp          equ     H'54'    ; temperorary W storage in interrupt service
@@ -418,7 +446,8 @@ sclhigh         btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 movlw   B'11111110'        ;                     1 us
                 andwf   i2cdata, W         ;                     1 us
 ; address 38 or 0x26 shifted one bit left  
-                sublw   H'4C'              ;                     1 us
+;                sublw   H'4C'              ;                     1 us
+                subwf   i2caddram, W       ;                     1 us
                 btfss   STATUS, Z          ;                     1-2 us
                 goto    noack              ;                     2 us
 
@@ -576,32 +605,65 @@ noackhigh       btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
 ;                return
 
 
+; set comparator configuration from EEPROM, data bits are inverted
+setup	        movlw   ini_CMCON
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                comf    EEDATA, W           ; complemet data, 0xFF->0x00
+                bcf     STATUS, RP0         ; bank 0
+                movwf   CMCON	
 
-; turn comparators off and enable pins for I/O functions
-setup		bcf     STATUS, RP0     ; bank 0
-                movlw	H'07'		
-		movwf	CMCON		
-
-; initial data on GP0=0, GP1=0, GP4=0, GP5=0, GP2=0, GP3=1
-		movlw   B'00001000'	
-		movwf   GPIO	
+; initial data on GPIO
+                movlw   ini_GPIO
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                comf    EEDATA, W           ; complemet data, 0xFF->0x00
+                bcf     STATUS, RP0         ; bank 0
+                movwf   GPIO
 
 ; LED2 on if WDT reset
 ;                btfss   STATUS, NOT_TO
 ;                bsf     GPIO, LED2         
 
-; right justified, ref VDD, A/D on
-                movlw   B'10000001'
+; A/D control initialization
+                movlw   ini_ADCON0
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                comf    EEDATA, W           ; complemet data, 0xFF->0x00
+                bcf     STATUS, RP0         ; bank 0
                 movwf   ADCON0
 
-; AN0-AN1 enabled, AN2-AN3 disabled and used for digital I/O, FOSC/8
-		bsf	STATUS, RP0     ; bank 1
-                movlw   B'00010011'
+; A/D selection initialization 
+                movlw   ini_ANSEL
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                comf    EEDATA, W           ; complemet data, 0xFF->0x00
                 movwf   ANSEL
+                bcf     STATUS, RP0         ; bank 0
 
-; GP4 digital output, GP0, GP1 analog inputs, GP2, GP3, GP5 digital inputs 
-		movlw   B'00101111'	
-		movwf	TRISIO
+; voltage reference initialization 
+                movlw   ini_VRCON
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                comf    EEDATA, W           ; complemet data, 0xFF->0x00
+                movwf   VRCON 
+                bcf     STATUS, RP0         ; bank 0
+
+; TRISIO initialization
+                movlw   ini_TRISIO
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                movf    EEDATA, W           ; copy data
+                iorlw   B'00001100'         ; force GP2 and GP3 inputs
+                andlw   B'00111111'
+                movwf   TRISIO 
+                bcf     STATUS, RP0         ; bank 0
 
 ; clear TMR1H:TTMR1L register pair 
                 bcf     STATUS, RP0  ; bank 0
@@ -609,10 +671,14 @@ setup		bcf     STATUS, RP0     ; bank 0
                 clrf    TMR1L 
 ; clear TMR1IF flag 
                 bcf    PIR1, TMR1IF 
-; timer1 on, prescaler 1:8, internal clock 1MHz, time1 enabled
-                movlw   B'00110001'
+; T1CON timer 1 control initialization
+                movlw   ini_T1CON
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                comf    EEDATA, W           ; complemet data, 0xFF->0x00
+                bcf     STATUS, RP0         ; bank 0
                 movwf   T1CON
-
 ; weak pull up on GP1
 ;                bsf     WPU, MSDA
 ;                bcf     OPTION_REG, NOT_GPPU
@@ -647,14 +713,31 @@ setup		bcf     STATUS, RP0     ; bank 0
                 movwf   trigdelay1
                 clrf    trigdelay2
 
-; activate GP0, GP1, GP4 or GP5 change detection w/o interrupt here
+; copy i2c address from EEPROM
+                movlw   i2caddr 
                 bsf     STATUS, RP0         ; bank 1
-;                bsf     IOC, IOC0           ; activate change int on GP0
-;                bsf     IOC, IOC1           ; activate change int on GP1
-;                bsf     IOC, IOC4           ; activate change int on GP4
-                bsf     IOC, IOC5           ; activate change int on GP5
-                bcf     INTCON, GPIF
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                movf    EEDATA, W
                 bcf     STATUS, RP0         ; bank 0
+                movwf   i2caddram  
+                addlw   H'00'               ; clear carry C=0
+                rlf     i2caddram, F
+                btfss   STATUS, C
+                goto    addrok
+                movlw   H'4C'               ; default address 0x26 if first
+                movwf   i2caddram           ; bit in EEPROM was one
+addrok          bcf     INTCON, GPIF
+
+; IOC initialization 
+                movlw   ini_IOC
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                comf    EEDATA, W           ; complemet data, 0xFF->0x00
+                movwf   IOC 
+                bcf     STATUS, RP0         ; bank 0
+                bcf     INTCON, GPIF
 
 ; if no prescaler for WDT typical reset after 128x18 ms (10-30 ms)=2.3 s 
                 clrwdt
@@ -848,84 +931,95 @@ cmd5            movf    i2crec1, W
                 movwf   i2ctx2
                 goto    loop
 
-; command 0x10 clear GPIO0=0 output 
+; command 0x06C5 reinitialize 
 cmd6            movf    i2crec1, W
-                sublw   H'10'
+                sublw   H'06'              
                 btfss   STATUS, Z
                 goto    cmd7
+                movf    i2crec2, W
+                sublw   H'C5'
+                btfss   STATUS, Z
+                goto    loop
+                goto    setup
+
+; command 0x10 clear GPIO0=0 output 
+cmd7            movf    i2crec1, W
+                sublw   H'10'
+                btfss   STATUS, Z
+                goto    cmd8
                 bcf     GPIO, 0 
                 goto    loop
 
 ; command 0x20 set GPIO0=1 output 
-cmd7            movf    i2crec1, W
+cmd8            movf    i2crec1, W
                 sublw   H'20'
                 btfss   STATUS, Z
-                goto    cmd8
+                goto    cmd9
                 bsf     GPIO, 0 
                 goto    loop
 
 ; command 0x11 clear GPIO1=0 output 
-cmd8            movf    i2crec1, W
+cmd9            movf    i2crec1, W
                 sublw   H'11'
                 btfss   STATUS, Z
-                goto    cmd9
+                goto    cmd10
                 bcf     GPIO, 1 
                 goto    loop
 
 ; command 0x21 set GPIO1=1 output 
-cmd9            movf    i2crec1, W
+cmd10           movf    i2crec1, W
                 sublw   H'21'
                 btfss   STATUS, Z
-                goto    cmd10
+                goto    cmd11
                 bsf     GPIO, 1 
                 goto    loop
 
 ; command 0x14 clear GPIO4=0 output 
-cmd10           movf    i2crec1, W
+cmd11           movf    i2crec1, W
                 sublw   H'14'
                 btfss   STATUS, Z
-                goto    cmd11
+                goto    cmd12
                 bcf     GPIO, 4 
                 goto    loop
 
 ; command 0x24 set GPIO4=1 output 
-cmd11           movf    i2crec1, W
+cmd12           movf    i2crec1, W
                 sublw   H'24'
                 btfss   STATUS, Z
-                goto    cmd12
+                goto    cmd13
                 bsf     GPIO, 4 
                 goto    loop
 
 ; command 0x15 clear GPIO5=0 output 
-cmd12           movf    i2crec1, W
+cmd13           movf    i2crec1, W
                 sublw   H'15'
                 btfss   STATUS, Z
-                goto    cmd13
+                goto    cmd14
                 bcf     GPIO, 5 
                 goto    loop
 
 ; command 0x25 set GPIO5=1 output 
-cmd13           movf    i2crec1, W
+cmd14           movf    i2crec1, W
                 sublw   H'25'
                 btfss   STATUS, Z
-                goto    cmd14
+                goto    cmd15
                 bsf     GPIO, 5 
                 goto    loop
 
 ; command 0x30 write byte to GPIO 
-cmd14           movf    i2crec1, W
+cmd15           movf    i2crec1, W
                 sublw   H'30'
                 btfss   STATUS, Z
-                goto    cmd15
+                goto    cmd16
                 movf    i2crec2, W
                 movwf   GPIO 
                 goto    loop
 
 ; command 0x31 write byte to TRISIO 
-cmd15           movf    i2crec1, W
+cmd16           movf    i2crec1, W
                 sublw   H'31'
                 btfss   STATUS, Z
-                goto    cmd16
+                goto    cmd17
                 movf    i2crec2, W
                 bsf     STATUS, RP0         ; bank 1
                 movwf   TRISIO
@@ -933,37 +1027,37 @@ cmd15           movf    i2crec1, W
                 goto    loop
 
 ; command 0x32 AND byte with GPIO 
-cmd16           movf    i2crec1, W
+cmd17           movf    i2crec1, W
                 sublw   H'32'
                 btfss   STATUS, Z
-                goto    cmd17
+                goto    cmd18
                 movf    i2crec2, W
                 andwf   GPIO, F 
                 goto    loop
 
 ; command 0x33 OR byte with GPIO 
-cmd17           movf    i2crec1, W
+cmd18           movf    i2crec1, W
                 sublw   H'33'
                 btfss   STATUS, Z
-                goto    cmd18
+                goto    cmd19
                 movf    i2crec2, W
                 iorwf   GPIO, F 
                 goto    loop
 
 ; command 0x34 XOR byte with GPIO 
-cmd18           movf    i2crec1, W
+cmd19           movf    i2crec1, W
                 sublw   H'34'
                 btfss   STATUS, Z
-                goto    cmd19
+                goto    cmd20
                 movf    i2crec2, W
                 xorwf   GPIO, F 
                 goto    loop
 
 ; command 0x40 read AN0 analog input voltage
-cmd19           movf    i2crec1, W
+cmd20           movf    i2crec1, W
                 sublw   H'40'
                 btfss   STATUS, Z
-                goto    cmd20
+                goto    cmd21
                 movlw   B'10000001' ; switch on A/D, VREF=VDD, AN0
                 movwf   ADCON0
                 bsf     ADCON0, GO  ; start conversion
@@ -978,10 +1072,10 @@ wadc0           btfss   ADCON0, NOT_DONE
                 goto    loop
 
 ; command 0x41 read AN1 analog input voltage
-cmd20           movf    i2crec1, W
+cmd21           movf    i2crec1, W
                 sublw   H'41'
                 btfss   STATUS, Z
-                goto    cmd21
+                goto    cmd22
                 movlw   B'10000101' ; switch on A/D, VREF=VDD, AN1
                 movwf   ADCON0
                 bsf     ADCON0, GO  ; start conversion
@@ -996,10 +1090,10 @@ wadc1           btfss   ADCON0, NOT_DONE
                 goto    loop
 
 ; command 0x43 read AN3 analog input voltage
-cmd21           movf    i2crec1, W
+cmd22           movf    i2crec1, W
                 sublw   H'43'
                 btfss   STATUS, Z
-                goto    cmd22
+                goto    cmd23
                 movlw   B'10001101' ; switch on A/D, VREF=VDD, AN3
                 movwf   ADCON0
                 bsf     ADCON0, GO  ; start conversion
@@ -1014,10 +1108,10 @@ wadc3           btfss   ADCON0, NOT_DONE
                 goto    loop
 
 ; command 0x50 reset internal timer
-cmd22           movf    i2crec1, W
+cmd23           movf    i2crec1, W
                 sublw   H'50'
                 btfss   STATUS, Z
-                goto    cmd23
+                goto    cmd24
                 clrf    time1
                 clrf    time2
                 clrf    time3
@@ -1025,10 +1119,10 @@ cmd22           movf    i2crec1, W
                 goto    loop 
 
 ; command 0x51 read internal timer
-cmd23           movf    i2crec1, W
+cmd24           movf    i2crec1, W
                 sublw   H'51'
                 btfss   STATUS, Z
-                goto    cmd24
+                goto    cmd25
                 movf    time1, W
                 movwf   i2ctx1
                 movf    time2, W
@@ -1040,18 +1134,18 @@ cmd23           movf    i2crec1, W
                 goto    loop 
 
 ; command 0x60 stop timer task1
-cmd24           movf    i2crec1, W
+cmd25           movf    i2crec1, W
                 sublw   H'60'
                 btfss   STATUS, Z
-                goto    cmd25
+                goto    cmd26
                 bcf     task1, TACTIVE 
                 goto    loop 
 
 ; command 0x61 start timer task1
-cmd25           movf    i2crec1, W
+cmd26           movf    i2crec1, W
                 sublw   H'61'
                 btfss   STATUS, Z
-                goto    cmd26
+                goto    cmd27
                 bsf     task1, TACTIVE 
                 movf    task1tm1, W
                 movwf   task1cnt1
@@ -1062,10 +1156,10 @@ cmd25           movf    i2crec1, W
                 goto    loop 
 
 ; command 0x62 set task1 counting down time 
-cmd26           movf    i2crec1, W
+cmd27           movf    i2crec1, W
                 sublw   H'62'              
                 btfss   STATUS, Z
-                goto    cmd27
+                goto    cmd28
                 movf    i2crec3, W
                 movwf   task1tm1 
                 movf    i2crec4, W
@@ -1075,10 +1169,10 @@ cmd26           movf    i2crec1, W
                 goto    loop
 
 ; command 0x63 set task1 command 
-cmd27           movf    i2crec1, W
+cmd28           movf    i2crec1, W
                 sublw   H'63'              
                 btfss   STATUS, Z
-                goto    cmd28
+                goto    cmd29
                 movf    i2crec2, W
                 movwf   task1cmd1 
                 movf    i2crec3, W
@@ -1086,10 +1180,10 @@ cmd27           movf    i2crec1, W
                 goto    loop
 
 ; command 0x64 set how many times task1 is repeated (maximum 128) 
-cmd28           movf    i2crec1, W
+cmd29           movf    i2crec1, W
                 sublw   H'64'              
                 btfss   STATUS, Z
-                goto    cmd29
+                goto    cmd30
                 movf    task1, W
                 andlw   B'10000000'
                 iorwf   i2crec2, W
@@ -1097,18 +1191,18 @@ cmd28           movf    i2crec1, W
                 goto    loop
 
 ; command 0x70 stop timer task2
-cmd29           movf    i2crec1, W
+cmd30           movf    i2crec1, W
                 sublw   H'70'
                 btfss   STATUS, Z
-                goto    cmd30
+                goto    cmd31
                 bcf     task2, TACTIVE 
                 goto    loop 
 
 ; command 0x71 start timer task2
-cmd30           movf    i2crec1, W
+cmd31           movf    i2crec1, W
                 sublw   H'71'
                 btfss   STATUS, Z
-                goto    cmd31
+                goto    cmd32
                 bsf     task2, TACTIVE 
                 movf    task2tm1, W
                 movwf   task2cnt1
@@ -1119,10 +1213,10 @@ cmd30           movf    i2crec1, W
                 goto    loop 
 
 ; command 0x72 set task2 counting down time 
-cmd31           movf    i2crec1, W
+cmd32           movf    i2crec1, W
                 sublw   H'72'              
                 btfss   STATUS, Z
-                goto    cmd32
+                goto    cmd33
                 movf    i2crec3, W
                 movwf   task2tm1 
                 movf    i2crec4, W
@@ -1132,10 +1226,10 @@ cmd31           movf    i2crec1, W
                 goto    loop
 
 ; command 0x73 set task2 command 
-cmd32           movf    i2crec1, W
+cmd33           movf    i2crec1, W
                 sublw   H'73'              
                 btfss   STATUS, Z
-                goto    cmd33
+                goto    cmd34
                 movf    i2crec2, W
                 movwf   task2cmd1 
                 movf    i2crec3, W
@@ -1143,10 +1237,10 @@ cmd32           movf    i2crec1, W
                 goto    loop
 
 ; command 0x74 set how many times task2 is repeated (maximum 128) 
-cmd33           movf    i2crec1, W
+cmd34           movf    i2crec1, W
                 sublw   H'74'              
                 btfss   STATUS, Z
-                goto    cmd34
+                goto    cmd35
                 movf    task2, W
                 andlw   B'10000000'
                 iorwf   i2crec2, W
@@ -1154,44 +1248,44 @@ cmd33           movf    i2crec1, W
                 goto    loop
 
 ; command 0xA0 disable event triggered tasks
-cmd34           movf    i2crec1, W
+cmd35           movf    i2crec1, W
                 sublw   H'A0'
                 btfss   STATUS, Z
-                goto    cmd35
+                goto    cmd36
                 bcf     eventreg, TRENABLE
                 goto    loop 
 
 ; command 0xA1 enable event triggered tasks
-cmd35           movf    i2crec1, W
+cmd36           movf    i2crec1, W
                 sublw   H'A1'
                 btfss   STATUS, Z
-                goto    cmd36
+                goto    cmd37
                 bsf     eventreg, TRENABLE
                 goto    loop 
 
 ; command 0xA2 read event register 
-cmd36           movf    i2crec1, W
+cmd37           movf    i2crec1, W
                 sublw   H'A2'              
                 btfss   STATUS, Z
-                goto    cmd37
+                goto    cmd38
                 movf    eventreg, W
                 movwf   i2ctx1
                 goto    loop
 
 ; command 0xA3 reset event register (except TRENABLE) 
-cmd37           movf    i2crec1, W
+cmd38           movf    i2crec1, W
                 sublw   H'A3'              
                 btfss   STATUS, Z
-                goto    cmd38
+                goto    cmd39
                 movlw   B'10000000'
                 andwf   eventreg, F
                 goto    loop
 
 ; command 0xA4 set gp0 event command 
-cmd38           movf    i2crec1, W
+cmd39           movf    i2crec1, W
                 sublw   H'A4'              
                 btfss   STATUS, Z
-                goto    cmd39
+                goto    cmd40
                 movf    i2crec2, W
                 movwf   event0cmd1 
                 movf    i2crec3, W
@@ -1199,10 +1293,10 @@ cmd38           movf    i2crec1, W
                 goto    loop
 
 ; command 0xA5 set gp1 event command 
-cmd39           movf    i2crec1, W
+cmd40           movf    i2crec1, W
                 sublw   H'A5'              
                 btfss   STATUS, Z
-                goto    cmd40
+                goto    cmd41
                 movf    i2crec2, W
                 movwf   event1cmd1 
                 movf    i2crec3, W
@@ -1210,10 +1304,10 @@ cmd39           movf    i2crec1, W
                 goto    loop
 
 ; command 0xA6 set gp4 event command 
-cmd40           movf    i2crec1, W
+cmd41           movf    i2crec1, W
                 sublw   H'A6'              
                 btfss   STATUS, Z
-                goto    cmd41
+                goto    cmd42
                 movf    i2crec2, W
                 movwf   event4cmd1 
                 movf    i2crec3, W
@@ -1221,10 +1315,10 @@ cmd40           movf    i2crec1, W
                 goto    loop
 
 ; command 0xA7 set gp5 event command 
-cmd41           movf    i2crec1, W
+cmd42           movf    i2crec1, W
                 sublw   H'A7'              
                 btfss   STATUS, Z
-                goto    cmd42
+                goto    cmd43
                 movf    i2crec2, W
                 movwf   event5cmd1 
                 movf    i2crec3, W
@@ -1232,17 +1326,17 @@ cmd41           movf    i2crec1, W
                 goto    loop
 
 ; command 0xA8 set comparator event command 
-cmd42           movf    i2crec1, W
+cmd43           movf    i2crec1, W
                 sublw   H'A8'              
                 btfss   STATUS, Z
-                goto    cmd43
+                goto    cmd44
                 movf    i2crec2, W
                 movwf   eventccmd1 
                 movf    i2crec3, W
                 movwf   eventccmd2 
                 goto    loop
 
-cmd43           nop
+cmd44           nop
                 goto    loop
 
 ; increase internal timer every 0.524288 seconds (assuming 1:8 prescaler) 

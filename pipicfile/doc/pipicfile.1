@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPICFILE 1"
-.TH PIPICFILE 1 "2013-08-08" "version 20130808" "Raspberry Pi"
+.TH PIPICFILE 1 "2013-08-11" "version 20130811" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -133,8 +133,8 @@
 pipicfile \-  print files from PiPIC
 .SH "SYNOPSIS"
 .IX Header "SYNOPSIS"
-\&\fBpipicfile\fR \fB\-a\fR i2c address [\fB\-f\fR file address | \fB\-e\fR] [\fB\-h\fR] [\fB\-v\fR] 
-[\fB\-V\fR]
+\&\fBpipicfile\fR \fB\-a\fR i2c address [\fB\-f\fR file address | \fB\-e\fR] [\fB\-w\fR data] 
+[\fB\-h\fR] [\fB\-v\fR] [\fB\-V\fR]
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
 The \fBpipicfile\fR is used to read files from a PiPIC processor on i2c bus 
@@ -147,6 +147,8 @@ are printed. Use \fB\-v\fR to see the register names.
 \&\fB\-f\fR file address
 .PP
 \&\fB\-e\fR print \s-1EEPROM\s0 content
+.PP
+\&\fB\-w\fR write data to \s-1EEPROM\s0, first address followed by byte
 .PP
 \&\fB\-h\fR display a short help text
 .PP
@@ -162,6 +164,10 @@ pipicfile \-a 26
 Print register names with content
 .PP
 pipicfile \-a 26 \-v
+.PP
+Write 0xF8 to \s-1EEPROM\s0 address 0x10
+.PP
+pipicfile \-a 26 \-w 10F8
 .SH "WARNING"
 .IX Header "WARNING"
 No checking is done where the query data is written. Could make some hardware 

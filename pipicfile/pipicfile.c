@@ -20,8 +20,8 @@
 ****************************************************************************
 *
 * Thu Aug  1 23:55:08 CEST 2013
-* Edit: Sat Aug  3 18:07:39 CEST 2013
-* 
+* Edit: Sun Aug 11 14:44:17 CEST 2013
+*
 * Jaakko Koivuniemi
 **/
 
@@ -39,12 +39,12 @@
 
 void printusage()
 {
-  printf("usage: pipicfile -a address [-f file address | -e] [-h] [-v] [-V]\n");
+  printf("usage: pipicfile -a address [-f file address | -e] [-w data] [-h] [-v] [-V]\n");
 }
 
 void printversion()
 {
-  printf("pipicfile v. 20130803, Jaakko Koivuniemi\n");
+  printf("pipicfile v. 20130811, Jaakko Koivuniemi\n");
 }
 
 
@@ -52,6 +52,7 @@ int main(int argc, char **argv)
 {  
   int verb=0; // 1=verbosed output
   int peeprom=0; // print EEPROM content
+  int weeprom=0; // write EEPROM
   int fd;
   char fileName[100]="/dev/i2c-1";
   int  address=0x00;
@@ -60,6 +61,7 @@ int main(int argc, char **argv)
   int i=0,j=0;
   int byte1=0,byte2=0;
   char lascii[17];
+  int waddr=0,wbyte=0;
 
   const char *reg0[32]={"","TMR0","PCL","STATUS","FSR","GPIO","","","","","PCLATH","INTCON","PIR1","","TMR1L","TMR1H","T1CON","","","","","","","","","CMCON","","","","","ADRESH","ADCON0"};
 
@@ -68,7 +70,7 @@ int main(int argc, char **argv)
   int optch=0;
   while(optch!=-1)
     {
-      optch=getopt(argc,argv,"a:f:ehvV");
+      optch=getopt(argc,argv,"a:f:ew:hvV");
       if(optch=='a')
 	{
 	  sscanf(optarg,"%X",&address);
@@ -77,6 +79,12 @@ int main(int argc, char **argv)
 	{
           sscanf(optarg,"%X",&file); 
 	}
+      if(optch=='w')
+	{
+          sscanf(optarg,"%2X%2X",&waddr,&wbyte);
+          weeprom=1; 
+	}
+
       if(optch=='e')
 	{
           peeprom=1;
@@ -96,6 +104,7 @@ int main(int argc, char **argv)
 	  return 0;
 	}
     }
+
 
   if((address<0x03)||(address>0x77))
     {
@@ -140,7 +149,7 @@ int main(int argc, char **argv)
   }
   else
   {
-     if((verb==1)&&(peeprom==0))
+     if((verb==1)&&(peeprom==0)&&(weeprom==0))
      {
         for(i=0;i<32;i++)
         {
@@ -199,7 +208,7 @@ int main(int argc, char **argv)
            }
        }
     }
-    else if(peeprom==0)
+    else if((peeprom==0)&&(weeprom==0))
     {
       printf("      0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F\n");
       for(j=0;j<=1;j++)
@@ -319,6 +328,19 @@ int main(int argc, char **argv)
     }
   }       
 
+  if(weeprom==1)
+  {
+    if(verb==1) printf("write EEPROM at 0x%02x byte 0x%02x\n",waddr,wbyte); 
+    buf[0]=4;
+    buf[1]=waddr;
+    buf[2]=wbyte;
+    if((write(fd, buf, 3)) != 3) 
+    {
+      perror("Error writing to i2c slave");
+      return -1;
+    }
+  }
+
   if(peeprom==1)
   {
     printf("      0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F\n"); 
@@ -353,3 +375,4 @@ int main(int argc, char **argv)
  
   return 0;
 }
+

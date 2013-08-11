@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPIC 1"
-.TH PIPIC 1 "2013-08-08" "version 20130808" "Raspberry Pi"
+.TH PIPIC 1 "2013-08-11" "version 20130811" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -174,6 +174,8 @@ by specifying the length of data 'b' for byte, 'w' for 16\-bit word and
 0x04 0xNNNN write to \s-1EEPROM\s0 address
 .PP
 0x05 read \s-1TMR1\s0 as 16\-bit word
+.PP
+0x06 0xC5 reinitialize
 .PP
 0x10 clear GPIO0=0 output
 .PP
@@ -248,17 +250,44 @@ by specifying the length of data 'b' for byte, 'w' for 16\-bit word and
 0xA7 0xNNNN \s-1GP5\s0 input at zero triggered task command and parameter byte
 .PP
 0xA8 0xNNNN comparator triggered task command and parameter byte
+.SH "CONFIGURATION"
+.IX Header "CONFIGURATION"
+Configuration with \s-1AN0\s0 on \s-1GP0\s0 for A/D, \s-1GP4\s0 and digital output, \s-1GP5\s0 digital 
+input, and timer counting every 0.52 s. First initial value for \s-1CMCON\s0 
+register is 0x07 or 0xF8 with bits inverted. The 0x10 is the \s-1EEPROM\s0 memory 
+address.
+.PP
+\&\fBpipicfile\fR \fB\-a\fR 26 \fB\-w\fR 10F8
+.PP
+The initial value for \s-1GPIO\s0 is 0x00 and this gives 0x11FF.
+.PP
+Initial value for \s-1ADCON0\s0 is 0x81. This gives 0x127E.
+.PP
+The \s-1ANSEL\s0 initially is 0x13. This gives 0x13EC.
+.PP
+The \s-1VRCOB\s0 initially is 0x00. This gives 0x14FF.
+.PP
+The \s-1TRISIO\s0 bits are not inverted. Thus 0x152F.
+.PP
+For T1CON initial value 0x31 gives 0x16CE.
+.PP
+The \s-1IOC\s0 initially 0x20 which gives 0x17DF.
+.PP
+The PiPIC needs to be power cycled before the new configuration is set.
+The other possibility is to send reinitialize command
+.PP
+\&\fBpipic\fR \fB\-a\fR 0x26 \fB\-c\fR 0x06 \fB\-d\fR 197b
 .SH "EXAMPLE"
 .IX Header "EXAMPLE"
 Test i2c communication
 .PP
-\&\fBpipic\fR \fB\-a\fR 0x26 \fB\-c\fR 0x02 \fB\-d\fR 1375211866W \fB\-r\fR W
+\&\fBpipic\fR \fB\-a\fR 0x26 \fB\-c\fR 0x02 \fB\-d\fR 1375211866W \fB\-r\fR W \fB\-v\fR
 .PP
-Set \s-1GPIO5\s0 output to \*(L"1\*(R", chip address 0x26 (or 38) and command 0x25 (or 37)
+Set \s-1GPIO4\s0 output to \*(L"1\*(R", chip address 0x26 (or 38) and command 0x24 (or 36)
 .PP
-\&\fBpipic\fR \fB\-a\fR 0x26 \fB\-c\fR 0x25
+\&\fBpipic\fR \fB\-a\fR 0x26 \fB\-c\fR 0x24
 .PP
-This assumes that \s-1GP5\s0 has been configured as digital output.
+This assumes that \s-1GP4\s0 has been configured as digital output.
 .PP
 Read status register at address 0x03 from PIC12f675, chip address 0x26 (or 38)
 .PP

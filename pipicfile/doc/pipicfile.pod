@@ -4,8 +4,8 @@ pipicfile -  print files from PiPIC
 
 =head1 SYNOPSIS
 
-B<pipicfile> B<-a> i2c address [B<-f> file address | B<-e>] [B<-h>] [B<-v>] 
-[B<-V>]
+B<pipicfile> B<-a> i2c address [B<-f> file address | B<-e>] [B<-w> data] 
+[B<-h>] [B<-v>] [B<-V>]
 
 =head1 DESCRIPTION
 
@@ -20,6 +20,8 @@ B<-a> chip address on i2c bus
 B<-f> file address 
 
 B<-e> print EEPROM content
+
+B<-w> write data to EEPROM, first address followed by byte
 
 B<-h> display a short help text
 
@@ -36,6 +38,10 @@ pipicfile -a 26
 Print register names with content
 
 pipicfile -a 26 -v
+
+Write 0xF8 to EEPROM address 0x10
+
+pipicfile -a 26 -w 10F8
 
 =head1 WARNING
 

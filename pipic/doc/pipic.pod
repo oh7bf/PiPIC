@@ -49,6 +49,8 @@ B<-V> print version
 
 0x05 read TMR1 as 16-bit word
 
+0x06 0xC5 reinitialize
+
 0x10 clear GPIO0=0 output
 
 0x11 clear GPIO1=0 output
@@ -123,17 +125,45 @@ B<-V> print version
 
 0xA8 0xNNNN comparator triggered task command and parameter byte
 
+=head1 CONFIGURATION
+
+Configuration with AN0 on GP0 for A/D, GP4 and digital output, GP5 digital 
+input, and timer counting every 0.52 s. First initial value for CMCON 
+register is 0x07 or 0xF8 with bits inverted. The 0x10 is the EEPROM memory 
+address.
+
+B<pipicfile> B<-a> 26 B<-w> 10F8  
+
+The initial value for GPIO is 0x00 and this gives 0x11FF.
+
+Initial value for ADCON0 is 0x81. This gives 0x127E.
+
+The ANSEL initially is 0x13. This gives 0x13EC.
+
+The VRCOB initially is 0x00. This gives 0x14FF. 
+
+The TRISIO bits are not inverted. Thus 0x152F. 
+
+For T1CON initial value 0x31 gives 0x16CE. 
+
+The IOC initially 0x20 which gives 0x17DF.
+
+The PiPIC needs to be power cycled before the new configuration is set.
+The other possibility is to send reinitialize command
+
+B<pipic> B<-a> 0x26 B<-c> 0x06 B<-d> 197b 
+
 =head1 EXAMPLE
 
 Test i2c communication 
 
-B<pipic> B<-a> 0x26 B<-c> 0x02 B<-d> 1375211866W B<-r> W
+B<pipic> B<-a> 0x26 B<-c> 0x02 B<-d> 1375211866W B<-r> W B<-v>
 
-Set GPIO5 output to "1", chip address 0x26 (or 38) and command 0x25 (or 37)
+Set GPIO4 output to "1", chip address 0x26 (or 38) and command 0x24 (or 36)
 
-B<pipic> B<-a> 0x26 B<-c> 0x25 
+B<pipic> B<-a> 0x26 B<-c> 0x24 
 
-This assumes that GP5 has been configured as digital output. 
+This assumes that GP4 has been configured as digital output. 
 
 Read status register at address 0x03 from PIC12f675, chip address 0x26 (or 38)
 
