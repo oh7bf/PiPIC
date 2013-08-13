@@ -21,7 +21,7 @@
 ****************************************************************************
 *
 * Fri Jul 26 20:28:06 CEST 2013
-* Edit: Sat Aug  3 17:28:22 CEST 2013
+* Edit: Tue Aug 13 19:47:55 CEST 2013
 *
 * Jaakko Koivuniemi
 **/
@@ -40,12 +40,12 @@
 
 void printusage()
 {
-  printf("usage: pipic -a address [-c command [-d data] | -r b|w|W] [-h] [-v] [-V]\n");
+  printf("usage: pipic -a address [-c command [-d data]] [-r b|w|W] [-h] [-v] [-V]\n");
 }
 
 void printversion()
 {
-  printf("pipic v. 20130803, Jaakko Koivuniemi\n");
+  printf("pipic v. 20130813, Jaakko Koivuniemi\n");
 }
 
 

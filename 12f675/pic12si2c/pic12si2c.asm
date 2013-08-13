@@ -26,7 +26,7 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Sun Aug 11 16:23:36 CEST 2013
+; Tue Aug 13 19:44:59 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 pic12si2c.asm
@@ -1349,6 +1349,7 @@ cmd36           movf    i2crec1, W
                 btfss   STATUS, Z
                 goto    cmd37
                 bsf     eventreg, TRENABLE
+                clrf    event
                 goto    loop 
 
 ; command 0xA2 read event register 
