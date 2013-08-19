@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPICTEST 1"
-.TH PIPICTEST 1 "2013-08-14" "version 20130814" "Raspberry Pi"
+.TH PIPICTEST 1 "2013-08-19" "version 20130819" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -133,7 +133,8 @@
 pipictest \-  send and read test data from PiPIC
 .SH "SYNOPSIS"
 .IX Header "SYNOPSIS"
-\&\fBpipictest\fR \fB\-a\fR i2c address [\fB\-n\fR times] [\fB\-i\fR] [\fB\-h\fR] [\fB\-v\fR] [\fB\-V\fR]
+\&\fBpipictest\fR \fB\-a\fR i2c address [\fB\-n\fR times] [\fB\-i\fR] [\fB\-c\fR] [\fB\-0\fR] [\fB\-1\fR] 
+[\fB\-3\fR] [\fB\-h\fR] [\fB\-v\fR] [\fB\-V\fR]
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
 The \fBpipictest\fR is used to test PiPIC processor on i2c bus connected to 
@@ -145,6 +146,14 @@ Raspberry Pi.
 \&\fB\-n\fR number of times to repeate the test
 .PP
 \&\fB\-i\fR test i2c data flow
+.PP
+\&\fB\-c\fR count clock cycles
+.PP
+\&\fB\-0\fR test reading analog input \s-1AN0\s0
+.PP
+\&\fB\-1\fR test reading analog input \s-1AN1\s0
+.PP
+\&\fB\-3\fR test reading analog input \s-1AN3\s0
 .PP
 \&\fB\-h\fR display a short help text
 .PP

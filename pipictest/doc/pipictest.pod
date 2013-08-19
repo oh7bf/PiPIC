@@ -4,7 +4,8 @@ pipictest -  send and read test data from PiPIC
 
 =head1 SYNOPSIS
 
-B<pipictest> B<-a> i2c address [B<-n> times] [B<-i>] [B<-h>] [B<-v>] [B<-V>]
+B<pipictest> B<-a> i2c address [B<-n> times] [B<-i>] [B<-c>] [B<-0>] [B<-1>] 
+[B<-3>] [B<-h>] [B<-v>] [B<-V>]
 
 =head1 DESCRIPTION
 
@@ -19,6 +20,14 @@ B<-n> number of times to repeate the test
 
 B<-i> test i2c data flow 
 
+B<-c> count clock cycles
+
+B<-0> test reading analog input AN0
+
+B<-1> test reading analog input AN1 
+
+B<-3> test reading analog input AN3
+ 
 B<-h> display a short help text
 
 B<-v> verbose
