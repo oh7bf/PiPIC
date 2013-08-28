@@ -26,3 +26,6 @@ http://holdenc.altervista.org/rpp/
 
 http://www.volny.cz/tlc/rpp/
 
+See the RaspiPICprog directory on how the programming interface could be build
+on PCB.
+
