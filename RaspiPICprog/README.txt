@@ -46,3 +46,4 @@ raspipicprog.png
 raspipicprog.sch
 README.txt             - this file
 
+Note: two jumper wires need to be soldered on this one sided board. 

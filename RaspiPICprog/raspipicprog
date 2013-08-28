@@ -1,0 +1,4 @@
+schematics raspipicprog.sch 
+output-name board
+elements-dir ~/gaf/pcb-elements
+
