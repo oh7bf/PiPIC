@@ -140,7 +140,7 @@ Initial value for ADCON0 is 0x81. This gives 0x127E.
 
 The ANSEL initially is 0x13. This gives 0x13EC.
 
-The VRCOB initially is 0x00. This gives 0x14FF. 
+The VRCON initially is 0x00. This gives 0x14FF. 
 
 The TRISIO bits are not inverted. Thus 0x152F. 
 

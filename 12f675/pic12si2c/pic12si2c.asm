@@ -26,7 +26,7 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Tue Aug 13 19:44:59 CEST 2013
+; Sun Sep 15 19:28:55 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 pic12si2c.asm
@@ -604,15 +604,9 @@ noackhigh       btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
 ;                bcf     GPIO, GPIO4        ;                     1 us
 ;                return
 
-
-; set comparator configuration from EEPROM, data bits are inverted
-setup	        movlw   ini_CMCON
-                bsf     STATUS, RP0         ; bank 1
-                movwf   EEADR
-                bsf     EECON1, RD          ; read EEPROM byte  
-                comf    EEDATA, W           ; complemet data, 0xFF->0x00
-                bcf     STATUS, RP0         ; bank 0
-                movwf   CMCON	
+; skip following initialization if WDT reset
+setup           btfss   STATUS, NOT_TO
+                goto    wdtreset 
 
 ; initial data on GPIO
                 movlw   ini_GPIO
@@ -623,9 +617,46 @@ setup	        movlw   ini_CMCON
                 bcf     STATUS, RP0         ; bank 0
                 movwf   GPIO
 
-; LED2 on if WDT reset
-;                btfss   STATUS, NOT_TO
-;                bsf     GPIO, LED2         
+; clear TMR1H:TTMR1L register pair 
+                bcf     STATUS, RP0  ; bank 0
+                clrf    TMR1H
+                clrf    TMR1L 
+; clear TMR1IF flag 
+                bcf     PIR1, TMR1IF 
+; T1CON timer 1 control initialization
+                movlw   ini_T1CON
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                comf    EEDATA, W           ; complemet data, 0xFF->0x00
+                bcf     STATUS, RP0         ; bank 0
+                movwf   T1CON
+
+; weak pull up on GP0
+                bsf     STATUS, RP0         ; bank 1
+                bsf     WPU, GP0 
+                bcf     OPTION_REG, NOT_GPPU
+                bcf     STATUS, RP0         ; bank 0
+
+; TRISIO initialization
+wdtreset        movlw   ini_TRISIO
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                movf    EEDATA, W           ; copy data
+                iorlw   B'00001100'         ; force GP2 and GP3 inputs
+                andlw   B'00111111'
+                movwf   TRISIO 
+                bcf     STATUS, RP0         ; bank 0
+
+; set comparator configuration from EEPROM, data bits are inverted
+                movlw   ini_CMCON
+                bsf     STATUS, RP0         ; bank 1
+                movwf   EEADR
+                bsf     EECON1, RD          ; read EEPROM byte  
+                comf    EEDATA, W           ; complemet data, 0xFF->0x00
+                bcf     STATUS, RP0         ; bank 0
+                movwf   CMCON	
 
 ; A/D control initialization
                 movlw   ini_ADCON0
@@ -653,35 +684,6 @@ setup	        movlw   ini_CMCON
                 comf    EEDATA, W           ; complemet data, 0xFF->0x00
                 movwf   VRCON 
                 bcf     STATUS, RP0         ; bank 0
-
-; TRISIO initialization
-                movlw   ini_TRISIO
-                bsf     STATUS, RP0         ; bank 1
-                movwf   EEADR
-                bsf     EECON1, RD          ; read EEPROM byte  
-                movf    EEDATA, W           ; copy data
-                iorlw   B'00001100'         ; force GP2 and GP3 inputs
-                andlw   B'00111111'
-                movwf   TRISIO 
-                bcf     STATUS, RP0         ; bank 0
-
-; clear TMR1H:TTMR1L register pair 
-                bcf     STATUS, RP0  ; bank 0
-                clrf    TMR1H
-                clrf    TMR1L 
-; clear TMR1IF flag 
-                bcf    PIR1, TMR1IF 
-; T1CON timer 1 control initialization
-                movlw   ini_T1CON
-                bsf     STATUS, RP0         ; bank 1
-                movwf   EEADR
-                bsf     EECON1, RD          ; read EEPROM byte  
-                comf    EEDATA, W           ; complemet data, 0xFF->0x00
-                bcf     STATUS, RP0         ; bank 0
-                movwf   T1CON
-; weak pull up on GP1
-;                bsf     WPU, MSDA
-;                bcf     OPTION_REG, NOT_GPPU
 
 ; clear i2cstate bits and received data buffer i2rec1:3
                 clrf    i2cstate
@@ -1502,7 +1504,6 @@ nxtask          btfss   task2, TACTIVE
 nxtask2         nop
                 goto    loop
 
-
 ; command 0x10 clear GPIO0=0 output 
 dotask          movf    taskcmd1, W
                 sublw   H'10'
@@ -1615,6 +1616,7 @@ tsk13           movf    taskcmd1, W
                 goto    tskdone
 
 tsk14           nop
+
 tskdone         return
 
                 end
