@@ -26,7 +26,7 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Sun Sep 15 19:28:55 CEST 2013
+; Fri Sep 20 19:23:33 CEST 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 pic12si2c.asm
@@ -333,6 +333,10 @@ trigdelay2      equ     H'48'
 
 ; i2c address stored in RAM for faster access than EEPROM
 i2caddram       equ     H'49'
+
+; LED blinking delay and frequency
+ledelay         equ     H'4A'
+ledfreq         equ     H'4B'
 
 ; temporary files
 w_temp          equ     H'54'    ; temperorary W storage in interrupt service
@@ -855,7 +859,17 @@ addrok          bcf     INTCON, GPIF
 
 ; main command loop 
 loop            clrwdt
-                btfsc   i2cstate, I2DATA
+                btfss   time1, 7         ; running in timer mode?
+                goto    nosleep
+; sleep mode for power saving 
+                bcf     INTCON, GIE      ; disable interrupts
+                bsf     INTCON, GPIE     ; "enable" temporarily GPx change int
+                sleep
+                nop
+                bcf     INTCON, GPIE 
+                bsf     INTCON, GIE      ; re-enable interrupts
+
+nosleep         btfsc   i2cstate, I2DATA
                 goto    i2cmd
                 btfsc   PIR1, TMR1IF 
                 goto    nxtime
@@ -1445,6 +1459,7 @@ nxtime          bcf     PIR1, TMR1IF
  
 timedone        btfss   task1, TACTIVE
                 goto    nxtask 
+                call    blink               ; blink LED once
                 movlw   H'01'
                 subwf   task1cnt3, F        ; task1cnt3--
                 btfsc   STATUS, C 
@@ -1474,6 +1489,7 @@ timedone        btfss   task1, TACTIVE
 
 nxtask          btfss   task2, TACTIVE
                 goto    nxtask2 
+                call    blink
                 movlw   H'01'
                 subwf   task2cnt3, F        ; task2cnt3--
                 btfsc   STATUS, C 
@@ -1618,5 +1634,20 @@ tsk13           movf    taskcmd1, W
 tsk14           nop
 
 tskdone         return
+
+; blink LED on GP5
+blink           decfsz  ledfreq, F
+                goto    blinkdone
+                movlw   10
+                movwf   ledfreq
+                bcf     STATUS, RP0      ; bank 0
+                bsf     GPIO, GP5        ; LED on
+                clrf    ledelay
+waitled         nop
+                decfsz  ledelay, F
+                goto    waitled
+                bcf     GPIO, GP5        ; LED off
+ 
+blinkdone       return
 
                 end
