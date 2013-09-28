@@ -701,12 +701,16 @@ wdtreset        movlw   ini_TRISIO
                 movlw   H'5C'
                 movwf   i2ctx2 
 
+; skip task initialization if WDT reset
+                btfss   STATUS, NOT_TO
+                goto    wdtreset2 
+
 ; clear task1 and task2
                 clrf    task1
                 clrf    task2
 
 ; clear event register and commands
-                clrf    event
+wdtreset2        clrf    event
 ;                clrf    event0cmd1  
 ;                clrf    event1cmd1
 ;                clrf    event4cmd1
@@ -1636,7 +1640,8 @@ tsk14           nop
 tskdone         return
 
 ; blink LED on GP5
-blink           decfsz  ledfreq, F
+blink           clrwdt
+                decfsz  ledfreq, F
                 goto    blinkdone
                 movlw   10
                 movwf   ledfreq
