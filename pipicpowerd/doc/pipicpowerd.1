@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPICPOWERD 1"
-.TH PIPICPOWERD 1 "2013-10-02" "version 20131002" "Raspberry Pi"
+.TH PIPICPOWERD 1 "2013-10-03" "version 20131003" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -133,23 +133,18 @@
 pipicpowerd \-  monitor and control Raspberry Pi power supply with i2c
 .SH "SYNOPSIS"
 .IX Header "SYNOPSIS"
-\&\fBpipicpowerd\fR [\fB\-h\fR] [\fB\-v\fR] [\fB\-V\fR]
+\&\fBpipicpowerd\fR
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
 The \fBpipicpowerd\fR is used to monitor and control Raspberry Pi power supply
 with i2c bus.
-.SH "OPTIONS"
-.IX Header "OPTIONS"
-\&\fB\-h\fR display a short help text
-.PP
-\&\fB\-v\fR verbose
-.PP
-\&\fB\-V\fR print version
 .SH "FILES"
 .IX Header "FILES"
 \&\fI/etc/logrotate.d/pipicpowerd\fR    Log rotation configuration file.
 .PP
 \&\fI/etc/init.d/pipicpowerd\fR         Init script.
+.PP
+\&\fI/var/lib/pipicpowerd/updelay\fR    Delay to power up after power down.
 .PP
 \&\fI/var/log/pipicpowerd.log\fR        Log file.
 .SH "WARNING"

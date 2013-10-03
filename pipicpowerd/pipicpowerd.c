@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Wed Oct  2 22:19:59 CEST 2013
+ * Edit: Thu Oct  3 18:46:17 CEST 2013
  *
  * Jaakko Koivuniemi
  **/
@@ -39,29 +39,22 @@
 #include <errno.h>
 #include <time.h>
 #include <signal.h>
+#include <syslog.h>
 
+const int version=20131003; // program version
 const int voltint=300; // battery voltage reading interval [s]
-const int buttonint=10; // button reading interval
-const int confdelay=10; // delay to wait for confirmation
-const int pwrdown=200; // delay to power down in PIC counter cycles/s
+const int buttonint=10; // button reading interval [s]
+const int confdelay=10; // delay to wait for confirmation [s]
+const int pwrdown=200; // delay to power down in PIC counter cycles
+const int pwrup=0; // delay to switch power up in PIC counter cycles
 const int minvolts=600; // power down if read voltage exceeds this value
 
 char i2cdev[100]="/dev/i2c-1";
 int  address=0x26;
 
 const int loglev=2;
-const char logfile[200]="/tmp/pipicpowerd.log";
+const char logfile[200]="/var/log/pipicpowerd.log";
 char message[200]="";
-
-void printusage()
-{
-  printf("usage: pipicpowerd [-h] [-v] [-V]\n");
-}
-
-void printversion()
-{
-  printf("pipicpowerd v. 20131002, Jaakko Koivuniemi\n");
-}
 
 void logmessage(const char logfile[200], const char message[200], int loglev, int msglev)
 {
@@ -366,35 +359,15 @@ void stop(int sig)
 }
 
 
-int main(int argc, char **argv)
+int main()
 {  
-  int verb=0; // 1=verbosed output
+
   int volts=-1; // voltage reading
   int button=0; // button pressed
   int timer=0; // PIC internal timer
   int ok=0;
 
-  int optch=0;
-  while(optch!=-1)
-    {
-      optch=getopt(argc,argv,"hvV");
-      if(optch=='v')
-	{
-	  verb=1;
-	}
-      if(optch=='h')
-	{
-	  printusage();
-	  return 0;
-	}
-      if(optch=='V')
-	{
-	  printversion();
-	  return 0;
-	}
-    }
-
-  strcpy(message,"pipicpowerd started"); 
+  sprintf(message,"pipicpowerd v. %d started",version); 
   logmessage(logfile,message,loglev,4);
 
   signal(SIGINT,&stop); /* todo TERM, QUIT, KILL, HUP */
@@ -417,21 +390,65 @@ int main(int argc, char **argv)
     logmessage(logfile,message,loglev,4); 
     cont=0;
   }
+  if(cont==1)
+  {
+    strcpy(message,"disable event triggered tasks");
+    logmessage(logfile,message,loglev,4); 
+    ok=event_task_disable();
+    strcpy(message,"reset event register");
+    logmessage(logfile,message,loglev,4);
+    ok=reset_event_register(); 
+    sleep(1);
+    ok=reset_event_register(); 
+    sleep(1);
+    timer=read_timer();
+    sprintf(message,"PIC timer at %d",timer);
+    logmessage(logfile,message,loglev,4);
+  }
+  else
+  {
+    printf("start failed\n");
+    exit(EXIT_FAILURE);
+  }
 
-  strcpy(message,"disable event triggered tasks");
-  logmessage(logfile,message,loglev,4); 
-  ok=event_task_disable();
 
-  strcpy(message,"reset event register");
-  logmessage(logfile,message,loglev,4);
-  ok=reset_event_register(); 
-  sleep(1);
-  ok=reset_event_register(); 
-  sleep(1);
+  pid_t pid, sid;
+        
+  pid=fork();
+  if(pid<0) 
+  {
+    exit(EXIT_FAILURE);
+  }
 
-  timer=read_timer();
-  sprintf(message,"PIC timer at %d",timer);
-  logmessage(logfile,message,loglev,4);
+  if(pid>0) 
+  {
+    exit(EXIT_SUCCESS);
+  }
+
+  umask(0);
+                
+  /* Create a new SID for the child process */
+  sid=setsid();
+  if(sid<0) 
+  {
+    strcpy(message,"failed to create child process"); 
+    logmessage(logfile,message,loglev,4);
+    exit(EXIT_FAILURE);
+  }
+        
+  if((chdir("/")) < 0) 
+  {
+    strcpy(message,"failed to change to root directory"); 
+    logmessage(logfile,message,loglev,4);
+    exit(EXIT_FAILURE);
+  }
+        
+  /* Close out the standard file descriptors */
+  close(STDIN_FILENO);
+  close(STDOUT_FILENO);
+  close(STDERR_FILENO);
+        
+  /* Daemon-specific initialization goes here */
 
   int wtime=0;
   while(cont==1)
@@ -450,7 +467,7 @@ int main(int argc, char **argv)
         sleep(1);
         ok=powerdown(pwrdown);
         sleep(1);
-        ok=system("/sbin/shutdown -h now");
+        ok=system("/sbin/shutdown -h +1 battery low");
       }
     }
     if(unxs>=nxtbutton)

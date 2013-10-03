@@ -4,26 +4,20 @@ pipicpowerd -  monitor and control Raspberry Pi power supply with i2c
 
 =head1 SYNOPSIS
 
-B<pipicpowerd> [B<-h>] [B<-v>] [B<-V>]
+B<pipicpowerd> 
 
 =head1 DESCRIPTION
 
 The B<pipicpowerd> is used to monitor and control Raspberry Pi power supply
 with i2c bus.
 
-=head1 OPTIONS
-
-B<-h> display a short help text
-
-B<-v> verbose
-
-B<-V> print version
-
 =head1 FILES
 
 I</etc/logrotate.d/pipicpowerd>    Log rotation configuration file.
 
 I</etc/init.d/pipicpowerd>         Init script.
+
+I</var/lib/pipicpowerd/updelay>    Delay to power up after power down.
 
 I</var/log/pipicpowerd.log>        Log file.
 
