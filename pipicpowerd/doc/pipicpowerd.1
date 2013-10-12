@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPICPOWERD 1"
-.TH PIPICPOWERD 1 "2013-10-03" "version 20131003" "Raspberry Pi"
+.TH PIPICPOWERD 1 "2013-10-11" "version 20131003" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -137,14 +137,44 @@ pipicpowerd \-  monitor and control Raspberry Pi power supply with i2c
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
 The \fBpipicpowerd\fR is used to monitor and control Raspberry Pi power supply
-with i2c bus.
+with i2c bus. Initially the power is applied to the Raspberry Pi by pushing
+the red button on the power supply. The daemon is started with command
+.PP
+\&\fBservice\fR \fIpipicpowerd\fR \fIstart\fR
+.PP
+and can be stopped any time with
+.PP
+\&\fBservice\fR \fIpipicpowerd\fR \fIstop\fR
+.PP
+The operation of the daemon can be checked from the log file.
+At the start four test bytes are written to the power supply and read back.
+If this data flow test fails the daemon exits. One reason for this
+failure could be that the internal counter of \s-1PIC\s0 was not yet reset with
+command \fBpipic\fR \fB\-a\fR 26 \fB\-c\fR 50.
+Otherwise the event triggered
+tasks on the \s-1PIC\s0 are disabled and the internal timer is read. In the main
+loop the battery voltage is read at predetermined intervals. During the 
+reading the red \s-1LED\s0 on the power supply is turned on. If the battery
+voltage is too low the power supply is programmed to a delayed power down and 
+the \fIshutdown\fR\|(8) command is called to put the Raspberry Pi into a halt state.
+Note that high value read from \s-1PIC\s0 means low battery voltage because of
+the inverting transistor circuit.
+.PP
+The event register from the \s-1PIC\s0 is read at programmed intervals to see if
+the power button has been pressed. If this is the case the red \s-1LED\s0 is turned
+on and if the button is pressed again the shut down and delayed power down is 
+initiated. If the file \fI/var/lib/pipicpowerd/wakeup\fR exits the \s-1PIC\s0 is 
+programmed to wake up later in future at the given time. The time delay
+depends on how accurately the \s-1PIC\s0 internal counter cycle length is known.
+This can be determined for example with command 
+\&\fBpipictest\fR \fB\-a\fR 26 \fB\-c\fR \fB\-n\fR 10000.
 .SH "FILES"
 .IX Header "FILES"
 \&\fI/etc/logrotate.d/pipicpowerd\fR    Log rotation configuration file.
 .PP
 \&\fI/etc/init.d/pipicpowerd\fR         Init script.
 .PP
-\&\fI/var/lib/pipicpowerd/updelay\fR    Delay to power up after power down.
+\&\fI/var/lib/pipicpowerd/wakeup\fR     Next wakeup time hh:mm.
 .PP
 \&\fI/var/log/pipicpowerd.log\fR        Log file.
 .SH "WARNING"

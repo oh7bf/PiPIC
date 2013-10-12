@@ -9,7 +9,37 @@ B<pipicpowerd>
 =head1 DESCRIPTION
 
 The B<pipicpowerd> is used to monitor and control Raspberry Pi power supply
-with i2c bus.
+with i2c bus. Initially the power is applied to the Raspberry Pi by pushing
+the red button on the power supply. The daemon is started with command
+
+B<service> I<pipicpowerd> I<start>
+
+and can be stopped any time with
+
+B<service> I<pipicpowerd> I<stop>
+
+The operation of the daemon can be checked from the log file.
+At the start four test bytes are written to the power supply and read back.
+If this data flow test fails the daemon exits. One reason for this
+failure could be that the internal counter of PIC was not yet reset with
+command B<pipic> B<-a> 26 B<-c> 50.
+Otherwise the event triggered
+tasks on the PIC are disabled and the internal timer is read. In the main
+loop the battery voltage is read at predetermined intervals. During the 
+reading the red LED on the power supply is turned on. If the battery
+voltage is too low the power supply is programmed to a delayed power down and 
+the shutdown(8) command is called to put the Raspberry Pi into a halt state.
+Note that high value read from PIC means low battery voltage because of
+the inverting transistor circuit.
+
+The event register from the PIC is read at programmed intervals to see if
+the power button has been pressed. If this is the case the red LED is turned
+on and if the button is pressed again the shut down and delayed power down is 
+initiated. If the file I</var/lib/pipicpowerd/wakeup> exits the PIC is 
+programmed to wake up later in future at the given time. The time delay
+depends on how accurately the PIC internal counter cycle length is known.
+This can be determined for example with command 
+B<pipictest> B<-a> 26 B<-c> B<-n> 10000. 
 
 =head1 FILES
 
@@ -17,7 +47,7 @@ I</etc/logrotate.d/pipicpowerd>    Log rotation configuration file.
 
 I</etc/init.d/pipicpowerd>         Init script.
 
-I</var/lib/pipicpowerd/updelay>    Delay to power up after power down.
+I</var/lib/pipicpowerd/wakeup>     Next wakeup time hh:mm. 
 
 I</var/log/pipicpowerd.log>        Log file.
 

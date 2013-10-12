@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Thu Oct  3 18:46:17 CEST 2013
+ * Edit: Sat Oct 12 10:28:47 CEST 2013
  *
  * Jaakko Koivuniemi
  **/
@@ -41,16 +41,18 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20131003; // program version
+const int version=20131012; // program version
 const int voltint=300; // battery voltage reading interval [s]
 const int buttonint=10; // button reading interval [s]
 const int confdelay=10; // delay to wait for confirmation [s]
 const int pwrdown=200; // delay to power down in PIC counter cycles
-const int pwrup=0; // delay to switch power up in PIC counter cycles
+const float picycle=0.462; // length of PIC counter cycles [s]
 const int minvolts=600; // power down if read voltage exceeds this value
 
-char i2cdev[100]="/dev/i2c-1";
-int  address=0x26;
+const char i2cdev[100]="/dev/i2c-1";
+const int  address=0x26;
+
+const char wakefile[200]="var/lib/pipicpowerd/wakeup";
 
 const int loglev=2;
 const char logfile[200]="/var/log/pipicpowerd.log";
@@ -80,6 +82,39 @@ void logmessage(const char logfile[200], const char message[200], int loglev, in
       fclose(log);
     }
   }
+}
+
+// read wake-up time from file and calculate how many seconds in future
+int read_wakeup()
+{
+  int wtime=0;
+  int hh=0,mm=0;
+  FILE *wfile;
+
+  time_t now;
+  struct tm* tm_info;
+  time(&now);
+  tm_info=localtime(&now);
+  int hour=tm_info->tm_hour;
+  int minute=tm_info->tm_min; 
+
+  wfile=fopen(wakefile, "r");
+  if(NULL!=wfile)
+  {
+    if(fscanf(wfile,"%d:%d",&hh,&mm)!=EOF)
+    {
+      if(mm<minute)
+      {
+        mm+=60;
+        hh--;
+      }
+      if(hh<hour) hh+=24;
+      wtime=3600*(hh-hour)+60*(mm-minute);
+    }
+    fclose(wfile);
+  }
+
+  return wtime;
 }
 
 // write i2c command to PIC optionally followed by data, length is the number 
@@ -300,6 +335,16 @@ int event_task_disable()
   return ok;
 }
 
+// re-enable event tasks to detect push button
+int button_powerup()
+{
+  int ok=-1;
+
+  ok=write_cmd(0xA1,0,0);
+
+  return ok;
+}
+
 // reset event register
 int reset_event_register()  
 {
@@ -321,16 +366,39 @@ int read_button()
   return pressed;
 }
 
-// power down after delay
-int powerdown(int delay)  
+// power down after delay, optionally power up in future
+int powerdown(int delay, int pwrup)  
 {
   int ok;
+  int wdelay=0;
+  int updelay=0;
+
+  sprintf(message,"power down after %d counts",delay);
+  logmessage(logfile,message,loglev,4);
 
 // timed task1
   ok=write_cmd(0x62,delay,4);
   ok=write_cmd(0x63,4607,2);
   ok=write_cmd(0x64,0,1);
-  ok=write_cmd(0x61,0,0);
+
+// optional timed task2 if '/var/lib/pipicpowerd/wakeup' exists
+  if(pwrup==1)
+  {
+    wdelay=read_wakeup();
+    if(wdelay>0)
+    {
+      updelay=(int)(wdelay/picycle);
+      sprintf(message,"power up after %d counts",updelay);
+      logmessage(logfile,message,loglev,4);
+
+      ok=write_cmd(0x72,updelay,4);
+      ok=write_cmd(0x73,8703,2);
+      ok=write_cmd(0x74,0,1);
+      ok=write_cmd(0x71,0,0); // start task2
+    }
+  }
+  ok=button_powerup();
+  ok=write_cmd(0x61,0,0); // start task1
 
   return ok;
 }
@@ -448,8 +516,6 @@ int main()
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
         
-  /* Daemon-specific initialization goes here */
-
   int wtime=0;
   while(cont==1)
   {
@@ -465,9 +531,9 @@ int main()
         strcpy(message,"battery voltage low, shut down and power off");
         logmessage(logfile,message,loglev,4);
         sleep(1);
-        ok=powerdown(pwrdown);
+        ok=powerdown(pwrdown,0);
         sleep(1);
-        ok=system("/sbin/shutdown -h +1 battery low");
+        ok=system("/sbin/shutdown -h battery low");
       }
     }
     if(unxs>=nxtbutton)
@@ -496,7 +562,7 @@ int main()
             strcpy(message,"shutdown confirmed");
             logmessage(logfile,message,loglev,4);
             sleep(1);
-            ok=powerdown(pwrdown);
+            ok=powerdown(pwrdown,1);
             sleep(1);
             ok=system("/sbin/shutdown -h now");
 
