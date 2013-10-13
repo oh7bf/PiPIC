@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Sat Oct 12 10:28:47 CEST 2013
+ * Edit: Sun Oct 13 20:48:27 CEST 2013
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20131012; // program version
+const int version=20131013; // program version
 const int voltint=300; // battery voltage reading interval [s]
 const int buttonint=10; // button reading interval [s]
 const int confdelay=10; // delay to wait for confirmation [s]
@@ -53,8 +53,11 @@ const char i2cdev[100]="/dev/i2c-1";
 const int  address=0x26;
 
 const char wakefile[200]="var/lib/pipicpowerd/wakeup";
+const char pdownfile[200]="var/lib/pipicpowerd/pwrdown";
+const char resetfile[200]="var/lib/pipicpowerd/resetime";
+const char upfile[200]="var/lib/pipicpowerd/waketime";
 
-const int loglev=2;
+const int loglev=3;
 const char logfile[200]="/var/log/pipicpowerd.log";
 char message[200]="";
 
@@ -130,14 +133,16 @@ int write_cmd(int cmd, int data, int length)
   {
     if((fd=open(i2cdev, O_RDWR)) < 0) 
     {
-       perror("Failed to open i2c port");
-       return -1;
+      sprintf(message,"Failed to open i2c port");
+      logmessage(logfile,message,loglev,4);
+      return -1;
     }
 
     if(ioctl(fd, I2C_SLAVE, address) < 0) 
     {
-       perror("Unable to get bus access to talk to slave");
-       return -1;
+      sprintf(message,"Unable to get bus access to talk to slave");
+      logmessage(logfile,message,loglev,4);
+      return -1;
     }
 
     buf[0]=cmd;
@@ -148,7 +153,8 @@ int write_cmd(int cmd, int data, int length)
       logmessage(logfile,message,loglev,1);
       if((write(fd, buf, 2)) != 2) 
       {
-        perror("Error writing to i2c slave");
+        sprintf(message,"Error writing to i2c slave");
+        logmessage(logfile,message,loglev,4);
         return -1;
       }
    }
@@ -160,7 +166,8 @@ int write_cmd(int cmd, int data, int length)
       logmessage(logfile,message,loglev,1); 
       if((write(fd, buf, 3)) != 3) 
       {
-        perror("Error writing to i2c slave");
+        sprintf(message,"Error writing to i2c slave");
+        logmessage(logfile,message,loglev,4);
         return -1;
       }
    }
@@ -176,7 +183,8 @@ int write_cmd(int cmd, int data, int length)
       logmessage(logfile,message,loglev,1); 
       if((write(fd, buf, 5)) != 5) 
       {
-        perror("Error writing to i2c slave");
+        sprintf(message,"Error writing to i2c slave");
+        logmessage(logfile,message,loglev,4);
         return -1;
       }
    }
@@ -186,7 +194,8 @@ int write_cmd(int cmd, int data, int length)
       logmessage(logfile,message,loglev,1); 
       if((write(fd, buf, 1)) != 1) 
       {
-        perror("Error writing to i2c slave");
+        sprintf(message,"Error writing to i2c slave");
+        logmessage(logfile,message,loglev,4);
         return -1;
       }
    }
@@ -206,13 +215,15 @@ int read_data(int length)
 
   if((fd=open(i2cdev, O_RDWR)) < 0) 
   {
-    perror("Failed to open i2c port");
+    sprintf(message,"Failed to open i2c port");
+    logmessage(logfile,message,loglev,4);
     return -1;
   }
 
   if(ioctl(fd, I2C_SLAVE, address) < 0) 
   {
-    perror("Unable to get bus access to talk to slave");
+    sprintf(message,"Unable to get bus access to talk to slave");
+    logmessage(logfile,message,loglev,4);
     return -1;
   }
 
@@ -220,36 +231,39 @@ int read_data(int length)
   {
      if(read(fd, buf,1)!=1) 
      {
-        perror("Unable to read from slave");
-        return -1;
+       sprintf(message,"Unable to read from slave");
+       logmessage(logfile,message,loglev,4);
+       return -1;
      }
      else 
      {
-        sprintf(message,"Receive 0x%02x",buf[0]);
-        logmessage(logfile,message,loglev,1); 
-        rdata=buf[0];
+       sprintf(message,"Receive 0x%02x",buf[0]);
+       logmessage(logfile,message,loglev,1); 
+       rdata=buf[0];
      }
   } 
   else if(length==2)
   {
      if(read(fd, buf,2)!=2) 
      {
-        perror("Unable to read from slave");
-        return -1;
+       sprintf(message,"Unable to read from slave");
+       logmessage(logfile,message,loglev,4);
+       return -1;
      }
      else 
      {
-        sprintf(message,"Receive 0x%02x%02x",buf[0],buf[1]);
-        logmessage(logfile,message,loglev,1);  
-        rdata=256*buf[0]+buf[1];
+       sprintf(message,"Receive 0x%02x%02x",buf[0],buf[1]);
+       logmessage(logfile,message,loglev,1);  
+       rdata=256*buf[0]+buf[1];
      }
   }
   else if(length==4)
   {
      if(read(fd, buf,4)!=4) 
      {
-        perror("Unable to read from slave");
-        return -1;
+       sprintf(message,"Unable to read from slave");
+       logmessage(logfile,message,loglev,4);
+       return -1;
      }
      else 
      {
@@ -260,6 +274,7 @@ int read_data(int length)
   }
 
   close(fd);
+
   return rdata;
 }
 
@@ -409,21 +424,87 @@ int read_timer()
   int ok=-1;
   int timer=-1;
 
-// read event register
   ok=write_cmd(0x51,0,0);
   timer=read_data(4);
 
   return timer;
 }
 
+// reset timer
+int resetimer()
+{
+  int ok=-1;
+  time_t now;
+  char tstr[25];
+  struct tm* tm_info;
+  FILE *timefile;
+
+  ok=write_cmd(0x50,0,0);
+
+  time(&now);
+  tm_info=localtime(&now);
+  strftime(tstr,25,"%H:%M:%S",tm_info);
+
+  timefile=fopen(resetfile, "w");
+  if(NULL==timefile)
+  {
+    sprintf(message,"could not write to file: %s",resetfile);
+    logmessage(logfile,message,loglev,4);
+  }
+  else
+  { 
+    fprintf(timefile,"%s",tstr);
+    fclose(timefile);
+  }
+
+  return ok;
+}
+
+// write calculated wakeup time calculated from PIC internal timer
+int writeuptime(int timer)
+{
+  int ok=0;
+  int s=(int)(timer/picycle);
+  int h=(int)(s/3600);
+  int m=(int)((s%3600)/60);
+
+  FILE *ufile;
+
+
+  return ok;
+}
 
 int cont=1; /* main loop flag */
 
 void stop(int sig)
 {
-  sprintf(message,"signal %d catched",sig);
+  sprintf(message,"signal %d catched, stop",sig);
   logmessage(logfile,message,loglev,4);
   cont=0;
+}
+
+// shut down and power off if '/var/lib/pipicpowerd/pwrdown' exists
+void hup(int sig)
+{
+  int ok=0;
+
+  sprintf(message,"signal %d catched",sig);
+  logmessage(logfile,message,loglev,4);
+
+  if(access(pdownfile,F_OK)!=-1)
+  {
+    sprintf(message,"shut down and power off");
+    logmessage(logfile,message,loglev,4);
+    sleep(1);
+    ok=powerdown(pwrdown,1);
+    sleep(1);
+    strcpy(message,"reset PIC timer");
+    logmessage(logfile,message,loglev,4);
+    ok=resetimer();
+    sleep(1);
+    cont=0;
+    ok=system("/sbin/shutdown -h now");
+  }
 }
 
 
@@ -438,11 +519,15 @@ int main()
   sprintf(message,"pipicpowerd v. %d started",version); 
   logmessage(logfile,message,loglev,4);
 
-  signal(SIGINT,&stop); /* todo TERM, QUIT, KILL, HUP */
+  signal(SIGINT,&stop); 
+  signal(SIGKILL,&stop); 
+  signal(SIGTERM,&stop); 
+  signal(SIGQUIT,&stop); 
+  signal(SIGHUP,&hup); 
 
   int unxs=(int)time(NULL); // unix seconds
   int nxtvolts=unxs; // next time to read battery voltage
-  int nxtbutton=unxs; // next time to check button
+  int nxtbutton=20+unxs; // next time to check button
 
   int i2cok=testi2c(); // test i2c data flow to PIC 
   if(i2cok==1)
@@ -469,9 +554,16 @@ int main()
     sleep(1);
     ok=reset_event_register(); 
     sleep(1);
+    strcpy(message,"disable timed task 1 and 2");
+    logmessage(logfile,message,loglev,4); 
+    ok=write_cmd(0x60,0,0); // disable timed task 1
+    sleep(1);
+    ok=write_cmd(0x70,0,0); // disable timed task 2
+    sleep(1);
     timer=read_timer();
     sprintf(message,"PIC timer at %d",timer);
     logmessage(logfile,message,loglev,4);
+    ok=writeuptime(timer); 
   }
   else
   {
@@ -522,7 +614,7 @@ int main()
     unxs=(int)time(NULL); 
     if(unxs>=nxtvolts)
     {
-      nxtvolts+=voltint;
+      nxtvolts=voltint+unxs;
       volts=readvolts();
       sprintf(message,"read voltage %d",volts);
       logmessage(logfile,message,loglev,4);
@@ -533,13 +625,21 @@ int main()
         sleep(1);
         ok=powerdown(pwrdown,0);
         sleep(1);
-        ok=system("/sbin/shutdown -h battery low");
+        strcpy(message,"reset PIC timer");
+        logmessage(logfile,message,loglev,4);
+        ok=resetimer();
+        sleep(1);
+        cont=0;
+        ok=system("/sbin/shutdown -h now battery low");
       }
+      sprintf(message,"unxs=%d nxtvolts=%d",unxs,nxtvolts);
+      logmessage(logfile,message,loglev,2);
     }
+
     if(unxs>=nxtbutton)
     {
       button=read_button();
-      nxtbutton+=buttonint;
+      nxtbutton=buttonint+unxs;
       if(button==1)
       {
         strcpy(message,"button pressed");
@@ -564,13 +664,19 @@ int main()
             sleep(1);
             ok=powerdown(pwrdown,1);
             sleep(1);
+            strcpy(message,"reset PIC timer");
+            logmessage(logfile,message,loglev,4);
+            ok=resetimer();
+            sleep(1);
+            cont=0;
             ok=system("/sbin/shutdown -h now");
-
           }
         }
         sleep(1); 
         ok=write_cmd(0x15,0,0);
       }
+      sprintf(message,"unxs=%d nxtbutton=%d",unxs,nxtbutton);
+      logmessage(logfile,message,loglev,2);
     }
 
     sleep(1);
