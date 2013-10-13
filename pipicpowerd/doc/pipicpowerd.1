@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPICPOWERD 1"
-.TH PIPICPOWERD 1 "2013-10-11" "version 20131003" "Raspberry Pi"
+.TH PIPICPOWERD 1 "2013-10-13" "version 20131003" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -168,6 +168,11 @@ programmed to wake up later in future at the given time. The time delay
 depends on how accurately the \s-1PIC\s0 internal counter cycle length is known.
 This can be determined for example with command 
 \&\fBpipictest\fR \fB\-a\fR 26 \fB\-c\fR \fB\-n\fR 10000.
+.PP
+The shut down and power down can be initiated by sending \s-1HUP\s0 signal to 
+the daemon with \fBkill\fR \fB\-s\fR \fI\s-1SIGHUP\s0\fR. 
+The file \fI/var/lib/pipicpowerd/pwrdown\fR has to exists for \s-1HUP\s0 signal power
+down to be executed.
 .SH "FILES"
 .IX Header "FILES"
 \&\fI/etc/logrotate.d/pipicpowerd\fR    Log rotation configuration file.

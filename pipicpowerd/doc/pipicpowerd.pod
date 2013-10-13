@@ -41,6 +41,11 @@ depends on how accurately the PIC internal counter cycle length is known.
 This can be determined for example with command 
 B<pipictest> B<-a> 26 B<-c> B<-n> 10000. 
 
+The shut down and power down can be initiated by sending HUP signal to 
+the daemon with B<kill> B<-s> I<SIGHUP>. 
+The file I</var/lib/pipicpowerd/pwrdown> has to exists for HUP signal power
+down to be executed.
+
 =head1 FILES
 
 I</etc/logrotate.d/pipicpowerd>    Log rotation configuration file.
