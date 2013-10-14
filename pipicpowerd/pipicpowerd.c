@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Sun Oct 13 20:48:27 CEST 2013
+ * Edit: Mon Oct 14 20:00:21 CEST 2013
  *
  * Jaakko Koivuniemi
  **/
@@ -34,6 +34,7 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/file.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <errno.h>
@@ -41,7 +42,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20131013; // program version
+const int version=20131014; // program version
 const int voltint=300; // battery voltage reading interval [s]
 const int buttonint=10; // button reading interval [s]
 const int confdelay=10; // delay to wait for confirmation [s]
@@ -56,6 +57,8 @@ const char wakefile[200]="var/lib/pipicpowerd/wakeup";
 const char pdownfile[200]="var/lib/pipicpowerd/pwrdown";
 const char resetfile[200]="var/lib/pipicpowerd/resetime";
 const char upfile[200]="var/lib/pipicpowerd/waketime";
+
+const char pidfile[200]="/var/run/pipicpowerd.pid";
 
 const int loglev=3;
 const char logfile[200]="/var/log/pipicpowerd.log";
@@ -571,7 +574,6 @@ int main()
     exit(EXIT_FAILURE);
   }
 
-
   pid_t pid, sid;
         
   pid=fork();
@@ -607,7 +609,27 @@ int main()
   close(STDIN_FILENO);
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
-        
+
+  FILE *pidf;
+  pidf=fopen(pidfile,"w");
+
+  if(pidf==NULL)
+  {
+    sprintf(message,"Could not open PID lock file %s, exiting", pidfile);
+    logmessage(logfile,message,loglev,4);
+    exit(EXIT_FAILURE);
+  }
+
+  if(flock(fileno(pidf),LOCK_EX||LOCK_NB)==-1)
+  {
+    sprintf(message,"Could not lock PID lock file %s, exiting", pidfile);
+    logmessage(logfile,message,loglev,4);
+    exit(EXIT_FAILURE);
+  }
+
+  fprintf(pidf,"%d\n",getpid());
+  fclose(pidf);
+
   int wtime=0;
   while(cont==1)
   {
@@ -682,5 +704,9 @@ int main()
     sleep(1);
   }
 
-  return 0;
+  strcpy(message,"remove PID file");
+  logmessage(logfile,message,loglev,4);
+  ok=remove(pidfile);
+
+  return ok;
 }
