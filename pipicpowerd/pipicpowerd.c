@@ -53,10 +53,11 @@ const int minvolts=600; // power down if read voltage exceeds this value
 const char i2cdev[100]="/dev/i2c-1";
 const int  address=0x26;
 
-const char wakefile[200]="var/lib/pipicpowerd/wakeup";
-const char pdownfile[200]="var/lib/pipicpowerd/pwrdown";
-const char resetfile[200]="var/lib/pipicpowerd/resetime";
-const char upfile[200]="var/lib/pipicpowerd/waketime";
+const char wakefile[200]="/var/lib/pipicpowerd/wakeup";
+const char pdownfile[200]="/var/lib/pipicpowerd/pwrdown";
+const char resetfile[200]="/var/lib/pipicpowerd/resetime";
+const char upfile[200]="/var/lib/pipicpowerd/waketime";
+const char pwrupfile[200]="/var/lib/pipicpowerd/pwrup";
 
 const char pidfile[200]="/var/run/pipicpowerd.pid";
 
@@ -456,7 +457,7 @@ int resetimer()
   }
   else
   { 
-    fprintf(timefile,"%s",tstr);
+    fprintf(timefile,"%s\n",tstr);
     fclose(timefile);
   }
 
@@ -467,12 +468,43 @@ int resetimer()
 int writeuptime(int timer)
 {
   int ok=0;
-  int s=(int)(timer/picycle);
+  int s=(int)(timer*picycle);
   int h=(int)(s/3600);
   int m=(int)((s%3600)/60);
+  char str[250];
 
-  FILE *ufile;
+  sprintf(str,"date --date='%d hours %d minutes' > /var/lib/pipicpowerd/waketime",h,m);
+  logmessage(logfile,str,loglev,4);
+  ok=system(str);
 
+  return ok;
+}
+
+// create '/var/lib/pipicpowerd/pwrup'
+int pwrupfile_create()
+{
+  int ok=0;
+  FILE *pwrup;
+  pwrup=fopen(pwrupfile, "w");
+  if(NULL==pwrup)
+  {
+    sprintf(message,"could not create file: %s",pwrupfile);
+    logmessage(logfile,message,loglev,4);
+  }
+  else
+  { 
+    fclose(pwrup);
+  }
+
+  return ok;
+}
+
+// remove '/var/lib/pipicpowerd/pwrup'
+int pwrupfile_delete()
+{
+  int ok=0;
+
+  ok=remove(pwrupfile);
 
   return ok;
 }
@@ -518,6 +550,8 @@ int main()
   int button=0; // button pressed
   int timer=0; // PIC internal timer
   int ok=0;
+  char s[100],wstr[100];
+  FILE *wakef;
 
   sprintf(message,"pipicpowerd v. %d started",version); 
   logmessage(logfile,message,loglev,4);
@@ -566,7 +600,27 @@ int main()
     timer=read_timer();
     sprintf(message,"PIC timer at %d",timer);
     logmessage(logfile,message,loglev,4);
-    ok=writeuptime(timer); 
+
+    if(access(pwrupfile,F_OK)!=-1)
+    {
+      ok=writeuptime(timer);
+      wakef=fopen(wakefile,"r");
+      if(NULL==wakef)
+      {
+        sprintf(message,"could read file: %s",wakefile);
+        logmessage(logfile,message,loglev,4);
+      }
+      else
+      { 
+        if(fscanf(wakef,"%s",wstr)!=EOF)
+        {
+          sprintf(s,"/bin/date -s '%s'\n",wstr);
+          fclose(wakef);
+          ok=system(s);
+        }
+      } 
+      ok=pwrupfile_delete();
+    } 
   }
   else
   {
@@ -650,6 +704,7 @@ int main()
         strcpy(message,"reset PIC timer");
         logmessage(logfile,message,loglev,4);
         ok=resetimer();
+        ok=pwrupfile_create();
         sleep(1);
         cont=0;
         ok=system("/sbin/shutdown -h now battery low");
@@ -689,6 +744,7 @@ int main()
             strcpy(message,"reset PIC timer");
             logmessage(logfile,message,loglev,4);
             ok=resetimer();
+            ok=pwrupfile_create();
             sleep(1);
             cont=0;
             ok=system("/sbin/shutdown -h now");
