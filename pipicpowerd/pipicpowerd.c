@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Mon Oct 14 20:00:21 CEST 2013
+ * Edit: Wed Oct 16 23:10:43 CEST 2013
  *
  * Jaakko Koivuniemi
  **/
@@ -42,7 +42,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20131014; // program version
+const int version=20131016; // program version
 const int voltint=300; // battery voltage reading interval [s]
 const int buttonint=10; // button reading interval [s]
 const int confdelay=10; // delay to wait for confirmation [s]
@@ -550,7 +550,9 @@ int main()
   int button=0; // button pressed
   int timer=0; // PIC internal timer
   int ok=0;
-  char s[100],wstr[100];
+  char s[100];
+  char wd[25],mo[25],tzone[25];
+  int da,hh,mm,ss,yy;
   FILE *wakef;
 
   sprintf(message,"pipicpowerd v. %d started",version); 
@@ -604,17 +606,18 @@ int main()
     if(access(pwrupfile,F_OK)!=-1)
     {
       ok=writeuptime(timer);
-      wakef=fopen(wakefile,"r");
+      wakef=fopen(upfile,"r");
       if(NULL==wakef)
       {
-        sprintf(message,"could read file: %s",wakefile);
+        sprintf(message,"could read file: %s",upfile);
         logmessage(logfile,message,loglev,4);
       }
       else
       { 
-        if(fscanf(wakef,"%s",wstr)!=EOF)
+        if(fscanf(wakef,"%s %s %d %d:%d:%d %s %d",wd,mo,&da,&hh,&mm,&ss,tzone,&yy)!=EOF)
         {
-          sprintf(s,"/bin/date -s '%s'\n",wstr);
+          sprintf(s,"/bin/date -s '%s %s %d %2d:%2d:%2d %s %d'",wd,mo,da,hh,mm,ss,tzone,yy);
+          logmessage(logfile,s,loglev,4);
           fclose(wakef);
           ok=system(s);
         }

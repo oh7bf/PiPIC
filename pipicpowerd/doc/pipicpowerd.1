@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPICPOWERD 1"
-.TH PIPICPOWERD 1 "2013-10-13" "version 20131003" "Raspberry Pi"
+.TH PIPICPOWERD 1 "2013-10-16" "version 20131016" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -151,8 +151,12 @@ At the start four test bytes are written to the power supply and read back.
 If this data flow test fails the daemon exits. One reason for this
 failure could be that the internal counter of \s-1PIC\s0 was not yet reset with
 command \fBpipic\fR \fB\-a\fR 26 \fB\-c\fR 50.
-Otherwise the event triggered
-tasks on the \s-1PIC\s0 are disabled and the internal timer is read. In the main
+Otherwise the event triggered tasks on the \s-1PIC\s0 are disabled and the 
+internal timer is read. If the file \fI/var/lib/pipicpowerd/pwrup\fR exists
+the \s-1PIC\s0 internal timer is used to estimate time now and the system time is
+set accordingly.
+.PP
+In the main
 loop the battery voltage is read at predetermined intervals. During the 
 reading the red \s-1LED\s0 on the power supply is turned on. If the battery
 voltage is too low the power supply is programmed to a delayed power down and 
@@ -179,9 +183,19 @@ down to be executed.
 .PP
 \&\fI/etc/init.d/pipicpowerd\fR         Init script.
 .PP
+\&\fI/usr/sbin/pipicpowerd\fR           Daemon code.
+.PP
+\&\fI/var/lib/pipicpowerd/pwrup\fR      If this file exists approximative system time is set at power up.
+.PP
+\&\fI/var/lib/pipicpowerd/pwrdown\fR    If this file exists power down with \s-1SIGINT\s0.
+.PP
+\&\fI/var/lib/pipicpowerd/resetime\fR   Time of last \s-1PIC\s0 timer reset hh:mm.
+.PP
 \&\fI/var/lib/pipicpowerd/wakeup\fR     Next wakeup time hh:mm.
 .PP
 \&\fI/var/log/pipicpowerd.log\fR        Log file.
+.PP
+\&\fI/var/run/pipicpowerd.pid\fR        \s-1PID\s0 file.
 .SH "WARNING"
 .IX Header "WARNING"
 No check is done where the query data is written. Could make some hardware 
@@ -191,4 +205,4 @@ unusable.
 Jaakko Koivuniemi
 .SH "SEE ALSO"
 .IX Header "SEE ALSO"
-\&\fIpipic\fR\|(1), \fIpipicfile\fR\|(1), \fIi2cdetect\fR\|(8), \fIi2cset\fR\|(8), \fIi2cget\fR\|(8)
+\&\fIpipic\fR\|(1), \fIpipicfile\fR\|(1), \fIpipictest\fR\|(1), \fIi2cdetect\fR\|(8), \fIi2cset\fR\|(8), \fIi2cget\fR\|(8)
