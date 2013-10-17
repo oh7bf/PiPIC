@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Wed Oct 16 23:10:43 CEST 2013
+ * Edit: Thu Oct 17 18:35:20 CEST 2013
  *
  * Jaakko Koivuniemi
  **/
@@ -42,7 +42,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20131016; // program version
+const int version=20131017; // program version
 const int voltint=300; // battery voltage reading interval [s]
 const int buttonint=10; // button reading interval [s]
 const int confdelay=10; // delay to wait for confirmation [s]
@@ -321,24 +321,39 @@ int testi2c()
 int readvolts()
 {
   int volts=-1;
-  int ok=0;
 
 // set GP5=1
-  ok=write_cmd(0x25,0,0);
+  if(write_cmd(0x25,0,0)!=1)
+  {
+    strcpy(message,"failed to set GP5=1");
+    logmessage(logfile,message,loglev,4);
+  }
   sleep(1);
 
 // read AN3
-  ok=write_cmd(0x43,0,0);
-  volts=read_data(2);
+  if(write_cmd(0x43,0,0)!=1)
+  {
+    strcpy(message,"failed send read AN3 command");
+    logmessage(logfile,message,loglev,4);
+  }
+  else volts=read_data(2);
   sleep(1);
 
 // read again AN3
-  ok=write_cmd(0x43,0,0);
-  volts=read_data(2);
+  if(write_cmd(0x43,0,0)!=1)
+  {
+    strcpy(message,"failed send read AN3 command");
+    logmessage(logfile,message,loglev,4);
+  }
+  else volts=read_data(2);
   sleep(1);
 
 // reset GP5=0
-  ok=write_cmd(0x15,0,0);
+  if(write_cmd(0x15,0,0)!=1)
+  {
+    strcpy(message,"failed to clear GP5=0");
+    logmessage(logfile,message,loglev,4);
+  }
   sleep(1);
 
   return volts;
@@ -379,9 +394,10 @@ int read_button()
 {
   int ok=-1;
   int pressed=-1;
-// read event register
-  ok=write_cmd(0xA2,0,0);
-  pressed=read_data(1);
+
+  ok=write_cmd(0xA2,0,0); // read event register
+  if(ok==1) pressed=read_data(1);
+
   return pressed;
 }
 
@@ -425,11 +441,14 @@ int powerdown(int delay, int pwrup)
 // read internal timer 
 int read_timer()
 {
-  int ok=-1;
   int timer=-1;
 
-  ok=write_cmd(0x51,0,0);
-  timer=read_data(4);
+  if(write_cmd(0x51,0,0)!=1)
+  {
+    strcpy(message,"failed to send read timer command");
+    logmessage(logfile,message,loglev,4);
+  }
+  else timer=read_data(4);
 
   return timer;
 }
@@ -521,8 +540,6 @@ void stop(int sig)
 // shut down and power off if '/var/lib/pipicpowerd/pwrdown' exists
 void hup(int sig)
 {
-  int ok=0;
-
   sprintf(message,"signal %d catched",sig);
   logmessage(logfile,message,loglev,4);
 
@@ -531,21 +548,32 @@ void hup(int sig)
     sprintf(message,"shut down and power off");
     logmessage(logfile,message,loglev,4);
     sleep(1);
-    ok=powerdown(pwrdown,1);
+    if(powerdown(pwrdown,1)!=1)
+    {
+      sprintf(message,"sending timed power down command failed");
+      logmessage(logfile,message,loglev,4);
+    }
     sleep(1);
     strcpy(message,"reset PIC timer");
     logmessage(logfile,message,loglev,4);
-    ok=resetimer();
+    if(resetimer()!=1)
+    {
+      sprintf(message,"sending timer reset command failed");
+      logmessage(logfile,message,loglev,4);
+    }
     sleep(1);
     cont=0;
-    ok=system("/sbin/shutdown -h now");
+    if(system("/sbin/shutdown -h now")==-1)
+    {
+      sprintf(message,"system shutdown failed");
+      logmessage(logfile,message,loglev,4);
+    }
   }
 }
 
 
 int main()
 {  
-
   int volts=-1; // voltage reading
   int button=0; // button pressed
   int timer=0; // PIC internal timer
@@ -586,13 +614,29 @@ int main()
   {
     strcpy(message,"disable event triggered tasks");
     logmessage(logfile,message,loglev,4); 
-    ok=event_task_disable();
+    if(event_task_disable()!=1)
+    {
+      strcpy(message,"failed to disable event triggered tasks");
+      logmessage(logfile,message,loglev,4); 
+    }
+    sleep(1);
+
     strcpy(message,"reset event register");
     logmessage(logfile,message,loglev,4);
-    ok=reset_event_register(); 
+    if(reset_event_register()!=1)
+    {
+      strcpy(message,"failed to reset event register");
+      logmessage(logfile,message,loglev,4); 
+    }
     sleep(1);
-    ok=reset_event_register(); 
+
+    if(reset_event_register()!=1)
+    {
+      strcpy(message,"failed to reset event register");
+      logmessage(logfile,message,loglev,4); 
+    }
     sleep(1);
+
     strcpy(message,"disable timed task 1 and 2");
     logmessage(logfile,message,loglev,4); 
     ok=write_cmd(0x60,0,0); // disable timed task 1
@@ -609,14 +653,14 @@ int main()
       wakef=fopen(upfile,"r");
       if(NULL==wakef)
       {
-        sprintf(message,"could read file: %s",upfile);
+        sprintf(message,"could not read file: %s",upfile);
         logmessage(logfile,message,loglev,4);
       }
       else
       { 
         if(fscanf(wakef,"%s %s %d %d:%d:%d %s %d",wd,mo,&da,&hh,&mm,&ss,tzone,&yy)!=EOF)
         {
-          sprintf(s,"/bin/date -s '%s %s %d %2d:%2d:%2d %s %d'",wd,mo,da,hh,mm,ss,tzone,yy);
+          sprintf(s,"/bin/date -s '%s %s %d %02d:%02d:%02d %s %d'",wd,mo,da,hh,mm,ss,tzone,yy);
           logmessage(logfile,s,loglev,4);
           fclose(wakef);
           ok=system(s);
@@ -720,24 +764,35 @@ int main()
     {
       button=read_button();
       nxtbutton=buttonint+unxs;
-      if(button==1)
+      if((button==0x01)||(button==0x81))
       {
         strcpy(message,"button pressed");
         logmessage(logfile,message,loglev,4);
-        ok=write_cmd(0x25,0,0);
+        ok=write_cmd(0x25,0,0); // turn on red LED
         sleep(1);
-        ok=reset_event_register();
+
+        if(reset_event_register()!=1)
+        {
+          strcpy(message,"failed to reset event register");
+          logmessage(logfile,message,loglev,4); 
+         }
         sleep(1);
-        ok=reset_event_register();
+
+        if(reset_event_register()!=1)
+        {
+          strcpy(message,"failed to reset event register");
+          logmessage(logfile,message,loglev,4); 
+         }
         sleep(1);
+
         button=0;
         wtime=0;
-        while((wtime<=confdelay)&&(button==0))
+        while((wtime<=confdelay)&&((button==0x00)||(button==0x80)))
         {
           sleep(1);
           wtime++;
           button=read_button();
-          if(button==1)
+          if((button==0x01)||(button==0x81))
           {
             strcpy(message,"shutdown confirmed");
             logmessage(logfile,message,loglev,4);
@@ -754,7 +809,7 @@ int main()
           }
         }
         sleep(1); 
-        ok=write_cmd(0x15,0,0);
+        ok=write_cmd(0x15,0,0); // turn off red LED
       }
       sprintf(message,"unxs=%d nxtbutton=%d",unxs,nxtbutton);
       logmessage(logfile,message,loglev,2);
