@@ -1,4 +1,6 @@
 #! /bin/sh
+# /etc/init.d/pipicpowerd
+#
 ### BEGIN INIT INFO
 # Provides:          pipicpowerd
 # Required-Start:    $syslog $time $remote_fs
@@ -8,7 +10,7 @@
 # Short-Description: Control and monitor Raspberry Pi power supply 
 ### END INIT INFO
 #
-# Author:      Jaakko.Koivuniemi <oh7bf@sral.fi>	
+# Author:      Jaakko Koivuniemi <oh7bf@sral.fi>	
 #
 
 NAME=pipicpowerd
@@ -22,21 +24,21 @@ test -x $DAEMON || exit 0
 
 case "$1" in
   start)
-	echo -n "Starting daemon: " $NAME
-	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON
-	echo "."
-        ;;
+	log_daemon_msg "Starting daemon" $NAME
+        start_daemon -p $PIDFILE $DAEMON
+        log_end_msg $?     
+    ;;
   stop)
-	echo -n "Stopping daemon: " $NAME
-        start-stop-daemon --stop --quiet --pidfile $PIDFILE --exec $DAEMON
-	echo "."
-        ;;
+	log_daemon_msg "Stopping daemon" $NAME
+        killproc -p $PIDFILE $DAEMON
+        log_end_msg $?	
+    ;;
   force-reload|restart)
     $0 stop
     $0 start
     ;;
   status)
-    /bin/ps xa|grep "$DAEMON" | grep -v "grep"
+    status_of_proc -p $PIDFILE $DAEMON $NAME && exit 0 || exit $? 
     ;;
   *)
     echo "Usage: /etc/init.d/pipicpowerd {start|stop|restart|force-reload|status}"
