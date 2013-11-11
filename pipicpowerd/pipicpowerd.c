@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Thu Oct 17 18:35:20 CEST 2013
+ * Edit: Mon Nov 11 21:12:55 CET 2013
  *
  * Jaakko Koivuniemi
  **/
@@ -42,7 +42,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20131017; // program version
+const int version=20131111; // program version
 const int voltint=300; // battery voltage reading interval [s]
 const int buttonint=10; // button reading interval [s]
 const int confdelay=10; // delay to wait for confirmation [s]
@@ -735,7 +735,7 @@ int main()
   while(cont==1)
   {
     unxs=(int)time(NULL); 
-    if(unxs>=nxtvolts)
+    if((unxs>=nxtvolts)||((nxtvolts-unxs)>voltint))
     {
       nxtvolts=voltint+unxs;
       volts=readvolts();
@@ -760,7 +760,7 @@ int main()
       logmessage(logfile,message,loglev,2);
     }
 
-    if(unxs>=nxtbutton)
+    if((unxs>=nxtbutton)||((nxtbutton-unxs)>buttonint))
     {
       button=read_button();
       nxtbutton=buttonint+unxs;
