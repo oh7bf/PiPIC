@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Mon Nov 11 21:12:55 CET 2013
+ * Edit: Wed Nov 13 22:08:38 CET 2013
  *
  * Jaakko Koivuniemi
  **/
@@ -42,11 +42,11 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20131111; // program version
+const int version=20131113; // program version
 const int voltint=300; // battery voltage reading interval [s]
 const int buttonint=10; // button reading interval [s]
 const int confdelay=10; // delay to wait for confirmation [s]
-const int pwrdown=200; // delay to power down in PIC counter cycles
+const int pwrdown=100; // delay to power down in PIC counter cycles
 const float picycle=0.462; // length of PIC counter cycles [s]
 const int minvolts=600; // power down if read voltage exceeds this value
 
@@ -64,6 +64,8 @@ const char pidfile[200]="/var/run/pipicpowerd.pid";
 const int loglev=3;
 const char logfile[200]="/var/log/pipicpowerd.log";
 char message[200]="";
+
+int pwroff=0; // 1==SIGTERM causes power off 
 
 void logmessage(const char logfile[200], const char message[200], int loglev, int msglev)
 {
@@ -537,6 +539,38 @@ void stop(int sig)
   cont=0;
 }
 
+void terminate(int sig)
+{
+  int ok=0;
+
+  sprintf(message,"signal %d catched",sig);
+  logmessage(logfile,message,loglev,4);
+
+  if(pwroff==1)
+  {
+    ok=powerdown(pwrdown,1);
+    sleep(1);
+    strcpy(message,"reset PIC timer");
+    logmessage(logfile,message,loglev,4);
+    ok=resetimer();
+    ok=pwrupfile_create();
+  } 
+  else if(pwroff==2)
+  {
+    ok=powerdown(pwrdown,0);
+    sleep(1);
+    strcpy(message,"reset PIC timer");
+    logmessage(logfile,message,loglev,4);
+    ok=resetimer();
+    ok=pwrupfile_create();
+  }
+
+  sleep(1);
+  strcpy(message,"stop");
+  logmessage(logfile,message,loglev,4);
+  cont=0;
+}
+
 // shut down and power off if '/var/lib/pipicpowerd/pwrdown' exists
 void hup(int sig)
 {
@@ -588,7 +622,7 @@ int main()
 
   signal(SIGINT,&stop); 
   signal(SIGKILL,&stop); 
-  signal(SIGTERM,&stop); 
+  signal(SIGTERM,&terminate); 
   signal(SIGQUIT,&stop); 
   signal(SIGHUP,&hup); 
 
@@ -746,14 +780,7 @@ int main()
         strcpy(message,"battery voltage low, shut down and power off");
         logmessage(logfile,message,loglev,4);
         sleep(1);
-        ok=powerdown(pwrdown,0);
-        sleep(1);
-        strcpy(message,"reset PIC timer");
-        logmessage(logfile,message,loglev,4);
-        ok=resetimer();
-        ok=pwrupfile_create();
-        sleep(1);
-        cont=0;
+        pwroff=2;
         ok=system("/sbin/shutdown -h now battery low");
       }
       sprintf(message,"unxs=%d nxtvolts=%d",unxs,nxtvolts);
@@ -797,14 +824,7 @@ int main()
             strcpy(message,"shutdown confirmed");
             logmessage(logfile,message,loglev,4);
             sleep(1);
-            ok=powerdown(pwrdown,1);
-            sleep(1);
-            strcpy(message,"reset PIC timer");
-            logmessage(logfile,message,loglev,4);
-            ok=resetimer();
-            ok=pwrupfile_create();
-            sleep(1);
-            cont=0;
+            pwroff=1;
             ok=system("/sbin/shutdown -h now");
           }
         }
