@@ -26,18 +26,18 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Fri Sep 20 19:23:33 CEST 2013
+; Sat Nov 30 18:12:11 CET 2013
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 pic12si2c.asm
 ; program 12f675: sudo ./rpp-tlc -w -i pic12si2c.hex
 ; hardware: 
-; GPO      AN0 analog in 
-; GP1      AN1 analog in
+; GPO      AN0 analog in/digi in or out/comparator input 
+; GP1      AN1 analog in/digi in or out/comparator input/external Vref
 ; GP2/INT--SDA
 ; GP3------SCL
-; GP4      digi out
-; GP5      digi in 
+; GP4      AN3 analog in/digi in or out/TMR1 gate/fosc/4/crystal
+; GP5      digi in or out/TMR1 clock/clock in/crystal 
 ;
 ;
 ; Configuration:
@@ -515,6 +515,38 @@ tatlow3         btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
 
 noack           call    negack             ; negative acknowledgement
                 bcf     i2cstate, I2ADDR   ; clear I2ADDR=0
+
+                btfss   i2cdata, 0         ; if R/_W=0 go to receive byte 1 us
+                goto    breceive           ;                      2 us
+
+; follow byte transmit from an other chip here
+ftxloop         clrf    i2cstate           ; clear i2cstate=0    1 us
+ftathigh        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
+                goto    ftathigh           ;                     2 us
+
+ftatlow         btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
+                goto    ftatlow
+
+                incf    i2cstate, F        ; i2cstate++          1 us
+                btfss   i2cstate, I2RCVD   ; 8 bits transmitted? 1-2 us
+                goto    ftathigh           ;                     2 us
+
+ftathigh2       btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
+                goto    ftathigh2          ;                     2 us
+
+ftatlow2        btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
+                goto    ftatlow2
+
+                btfss   GPIO, SDA          ; if postive acknowledgement
+                goto    ftxloop            ; from master continue following 
+
+ftathigh3       btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
+                goto    ftathigh3          ;                     2 us
+
+ftatlow3        btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
+                goto    ftatlow3
+
+                goto    reinit             ;                     2 us
 
 ; wait for stop bit here and read first data bit
 breceive        movlw   i2crec1            ; intialize FSR 
@@ -1646,12 +1678,12 @@ blink           clrwdt
                 movlw   10
                 movwf   ledfreq
                 bcf     STATUS, RP0      ; bank 0
-                bsf     GPIO, GP5        ; LED on
+;                bsf     GPIO, GP5        ; LED on
                 clrf    ledelay
 waitled         nop
                 decfsz  ledelay, F
                 goto    waitled
-                bcf     GPIO, GP5        ; LED off
+;                bcf     GPIO, GP5        ; LED off
  
 blinkdone       return
 
