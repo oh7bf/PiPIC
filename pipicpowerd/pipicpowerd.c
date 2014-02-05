@@ -3,7 +3,7 @@
  * Monitor and control Raspberry Pi power supply using i2c bus. The power
  * supply has a PIC processor to interprete commands send by this daemon.  
  *       
- * Copyright (C) 2013 Jaakko Koivuniemi.
+ * Copyright (C) 2013 - 2014 Jaakko Koivuniemi.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Wed Nov 13 22:08:38 CET 2013
+ * Edit: Wed Feb  5 21:06:10 CET 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -42,7 +42,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20131113; // program version
+const int version=20140205; // program version
 const int voltint=300; // battery voltage reading interval [s]
 const int buttonint=10; // button reading interval [s]
 const int confdelay=10; // delay to wait for confirmation [s]
@@ -128,10 +128,12 @@ int read_wakeup()
 
 // write i2c command to PIC optionally followed by data, length is the number 
 // of bytes and can be 0, 1, 2 or 4 
+// return: 1=ok, -1=open failed, -2=lock failed, -3=bus access failed, 
+// -4=i2c slave writing failed
 int write_cmd(int cmd, int data, int length)
 {
   int ok=0;
-  int fd;
+  int fd,rd;
   int rnxt=0;
   unsigned char buf[10];
 
@@ -144,11 +146,19 @@ int write_cmd(int cmd, int data, int length)
       return -1;
     }
 
+    rd=flock(fd, LOCK_EX|LOCK_NB);
+    if(rd)
+    {
+      sprintf(message,"Failed to lock i2c port");
+      logmessage(logfile,message,loglev,4);
+      return -2;
+    }
+
     if(ioctl(fd, I2C_SLAVE, address) < 0) 
     {
       sprintf(message,"Unable to get bus access to talk to slave");
       logmessage(logfile,message,loglev,4);
-      return -1;
+      return -3;
     }
 
     buf[0]=cmd;
@@ -161,7 +171,7 @@ int write_cmd(int cmd, int data, int length)
       {
         sprintf(message,"Error writing to i2c slave");
         logmessage(logfile,message,loglev,4);
-        return -1;
+        return -4;
       }
    }
    else if(length==2)
@@ -174,7 +184,7 @@ int write_cmd(int cmd, int data, int length)
       {
         sprintf(message,"Error writing to i2c slave");
         logmessage(logfile,message,loglev,4);
-        return -1;
+        return -4;
       }
    }
    else if(length==4)
@@ -191,7 +201,7 @@ int write_cmd(int cmd, int data, int length)
       {
         sprintf(message,"Error writing to i2c slave");
         logmessage(logfile,message,loglev,4);
-        return -1;
+        return -4;
       }
    }
    else
@@ -202,7 +212,7 @@ int write_cmd(int cmd, int data, int length)
       {
         sprintf(message,"Error writing to i2c slave");
         logmessage(logfile,message,loglev,4);
-        return -1;
+        return -4;
       }
    }
    close(fd);
@@ -213,10 +223,12 @@ int write_cmd(int cmd, int data, int length)
 }
 
 // read data with i2c from PIC, length is the number of bytes to read 
+// return: -1=open failed, -2=lock failed, -3=bus access failed, 
+// -4=i2c slave reading failed
 int read_data(int length)
 {
   int rdata=0;
-  int fd;
+  int fd,rd;
   unsigned char buf[10];
 
   if((fd=open(i2cdev, O_RDWR)) < 0) 
@@ -226,11 +238,19 @@ int read_data(int length)
     return -1;
   }
 
+  rd=flock(fd, LOCK_EX|LOCK_NB);
+  if(rd)
+  {
+    sprintf(message,"Failed to lock i2c port");
+    logmessage(logfile,message,loglev,4);
+    return -2;
+  }
+
   if(ioctl(fd, I2C_SLAVE, address) < 0) 
   {
     sprintf(message,"Unable to get bus access to talk to slave");
     logmessage(logfile,message,loglev,4);
-    return -1;
+    return -3;
   }
 
   if(length==1)
@@ -239,7 +259,7 @@ int read_data(int length)
      {
        sprintf(message,"Unable to read from slave");
        logmessage(logfile,message,loglev,4);
-       return -1;
+       return -4;
      }
      else 
      {
@@ -254,7 +274,7 @@ int read_data(int length)
      {
        sprintf(message,"Unable to read from slave");
        logmessage(logfile,message,loglev,4);
-       return -1;
+       return -4;
      }
      else 
      {
@@ -269,7 +289,7 @@ int read_data(int length)
      {
        sprintf(message,"Unable to read from slave");
        logmessage(logfile,message,loglev,4);
-       return -1;
+       return -4;
      }
      else 
      {
@@ -291,12 +311,24 @@ int testi2c()
   int ok=-1;
   int testint=0;
   int testres=1;
+  int cnt=10; // maximum tries 
 
   srand((unsigned int)time(NULL));
 
   testint=rand();
+  while((testint==-1)||(testint==-2)||(testint==-3)||(testint==-4))
+  {
+    testint=rand();
+  }
 
   ok=write_cmd(0x02,testint,4);
+  while((ok==-2)&&(cnt>0)) // try again if port locking failed
+  {
+    sleep(1);
+    ok=write_cmd(0x02,testint,4);
+    cnt--;
+  }
+
   if(ok!=1)
   {
     strcpy(message,"failed to write 4 test bytes"); 
@@ -305,7 +337,15 @@ int testi2c()
   else
   {
     testres=read_data(4);
-    if(testres==-1)
+    cnt=10;
+    while((testres==-2)&&(cnt>0)) // try again if port locking failed
+    {
+      sleep(1);
+      testres=read_data(4);
+      cnt--;
+    }
+
+    if((testres==-1)||(testres==-2)||(testres==-3)||(testres==-4))
     {
       strcpy(message,"failed to read 4 test bytes"); 
       logmessage(logfile,message,loglev,4);
@@ -641,6 +681,8 @@ int main()
     strcpy(message,"i2c dataflow test failed, exit");
     logmessage(logfile,message,loglev,4); 
     strcpy(message,"try to reset timer with 'pipic -a 26 -c 50'");
+    logmessage(logfile,message,loglev,4); 
+    strcpy(message,"and restart with 'service pipicpowerd start'");
     logmessage(logfile,message,loglev,4); 
     cont=0;
   }
