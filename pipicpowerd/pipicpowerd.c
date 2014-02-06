@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Wed Feb  5 21:06:10 CET 2014
+ * Edit: Thu Feb  6 18:22:43 CET 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -42,7 +42,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140205; // program version
+const int version=20140206; // program version
 const int voltint=300; // battery voltage reading interval [s]
 const int buttonint=10; // button reading interval [s]
 const int confdelay=10; // delay to wait for confirmation [s]
@@ -52,6 +52,7 @@ const int minvolts=600; // power down if read voltage exceeds this value
 
 const char i2cdev[100]="/dev/i2c-1";
 const int  address=0x26;
+const int  i2lockmax=10; // maximum number of times to try lock i2c port  
 
 const char wakefile[200]="/var/lib/pipicpowerd/wakeup";
 const char pdownfile[200]="/var/lib/pipicpowerd/pwrdown";
@@ -135,6 +136,7 @@ int write_cmd(int cmd, int data, int length)
   int ok=0;
   int fd,rd;
   int rnxt=0;
+  int cnt=0;
   unsigned char buf[10];
 
   if((cmd>=0)&&(cmd<=255))
@@ -147,6 +149,15 @@ int write_cmd(int cmd, int data, int length)
     }
 
     rd=flock(fd, LOCK_EX|LOCK_NB);
+
+    cnt=i2lockmax;
+    while((rd==1)&&(cnt>0)) // try again if port locking failed
+    {
+      sleep(1);
+      rd=flock(fd, LOCK_EX|LOCK_NB);
+      cnt--;
+    }
+
     if(rd)
     {
       sprintf(message,"Failed to lock i2c port");
@@ -229,6 +240,7 @@ int read_data(int length)
 {
   int rdata=0;
   int fd,rd;
+  int cnt=0;
   unsigned char buf[10];
 
   if((fd=open(i2cdev, O_RDWR)) < 0) 
@@ -239,6 +251,15 @@ int read_data(int length)
   }
 
   rd=flock(fd, LOCK_EX|LOCK_NB);
+
+  cnt=i2lockmax;
+  while((rd==1)&&(cnt>0)) // try again if port locking failed
+  {
+    sleep(1);
+    rd=flock(fd, LOCK_EX|LOCK_NB);
+    cnt--;
+  }
+
   if(rd)
   {
     sprintf(message,"Failed to lock i2c port");
@@ -311,7 +332,6 @@ int testi2c()
   int ok=-1;
   int testint=0;
   int testres=1;
-  int cnt=10; // maximum tries 
 
   srand((unsigned int)time(NULL));
 
@@ -322,12 +342,6 @@ int testi2c()
   }
 
   ok=write_cmd(0x02,testint,4);
-  while((ok==-2)&&(cnt>0)) // try again if port locking failed
-  {
-    sleep(1);
-    ok=write_cmd(0x02,testint,4);
-    cnt--;
-  }
 
   if(ok!=1)
   {
@@ -337,13 +351,6 @@ int testi2c()
   else
   {
     testres=read_data(4);
-    cnt=10;
-    while((testres==-2)&&(cnt>0)) // try again if port locking failed
-    {
-      sleep(1);
-      testres=read_data(4);
-      cnt--;
-    }
 
     if((testres==-1)||(testres==-2)||(testres==-3)||(testres==-4))
     {
