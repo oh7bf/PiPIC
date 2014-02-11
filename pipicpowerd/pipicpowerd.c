@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Thu Feb  6 18:22:43 CET 2014
+ * Edit: Tue Feb 11 18:56:55 CET 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -42,12 +42,12 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140206; // program version
+const int version=20140211; // program version
 const int voltint=300; // battery voltage reading interval [s]
 const int buttonint=10; // button reading interval [s]
 const int confdelay=10; // delay to wait for confirmation [s]
 const int pwrdown=100; // delay to power down in PIC counter cycles
-const float picycle=0.462; // length of PIC counter cycles [s]
+const float picycle=0.445; // length of PIC counter cycles [s]
 const int minvolts=600; // power down if read voltage exceeds this value
 
 const char i2cdev[100]="/dev/i2c-1";
@@ -818,7 +818,7 @@ int main()
   while(cont==1)
   {
     unxs=(int)time(NULL); 
-    if((unxs>=nxtvolts)||((nxtvolts-unxs)>voltint))
+    if(((unxs>=nxtvolts)||((nxtvolts-unxs)>voltint))&&(pwroff==0))
     {
       nxtvolts=voltint+unxs;
       volts=readvolts();
@@ -836,7 +836,7 @@ int main()
       logmessage(logfile,message,loglev,2);
     }
 
-    if((unxs>=nxtbutton)||((nxtbutton-unxs)>buttonint))
+    if(((unxs>=nxtbutton)||((nxtbutton-unxs)>buttonint))&&(pwroff==0))
     {
       button=read_button();
       nxtbutton=buttonint+unxs;
