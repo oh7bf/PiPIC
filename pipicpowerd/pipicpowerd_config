@@ -1,0 +1,34 @@
+#
+# Example configuration file for pipicpowerd 
+# Fri Feb 14 21:06:59 CET 2014
+# Edit: 
+# Jaakko Koivuniemi
+
+# log level 0=debug messages, 1=system commands, 2=operation messages, 
+# 3=status messages, 4=errors/warnings
+LOGLEVEL 3
+
+# battery voltage reading interval [s]
+VOLTINT 300
+
+# low battery voltage level 0 - 1023, due to the inverting transistor 
+# circuit from battery to AN3 high value means low voltage at battery, 
+# reaching this level will initiate automatic shutdown
+LOWBATTERY 600
+
+# PIC internal timer cycle period in seconds, this can be checked with
+# 'pipictest -a 26 -c -n 10000' 
+PICYCLE 0.445
+
+# push button reading interval [s]
+BUTTONINT 10
+
+# waiting time for confirmation button press for shutdown [s]
+CONFDELAY 10
+
+# delay to power down in PIC counter cycles
+PWRDOWN 100
+
+# set system time from PIC counter
+SETTIME 1
+

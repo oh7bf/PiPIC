@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Tue Feb 11 18:56:55 CET 2014
+ * Edit: Fri Feb 14 20:17:10 CET 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -42,17 +42,20 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140211; // program version
-const int voltint=300; // battery voltage reading interval [s]
-const int buttonint=10; // button reading interval [s]
-const int confdelay=10; // delay to wait for confirmation [s]
-const int pwrdown=100; // delay to power down in PIC counter cycles
-const float picycle=0.445; // length of PIC counter cycles [s]
-const int minvolts=600; // power down if read voltage exceeds this value
+const int version=20140214; // program version
+
+int voltint=300; // battery voltage reading interval [s]
+int buttonint=10; // button reading interval [s]
+int confdelay=10; // delay to wait for confirmation [s]
+int pwrdown=100; // delay to power down in PIC counter cycles
+float picycle=0.445; // length of PIC counter cycles [s]
+int minvolts=600; // power down if read voltage exceeds this value
 
 const char i2cdev[100]="/dev/i2c-1";
 const int  address=0x26;
 const int  i2lockmax=10; // maximum number of times to try lock i2c port  
+
+const char confile[200]="/etc/pipicpowerd_config";
 
 const char wakefile[200]="/var/lib/pipicpowerd/wakeup";
 const char pdownfile[200]="/var/lib/pipicpowerd/pwrdown";
@@ -62,11 +65,12 @@ const char pwrupfile[200]="/var/lib/pipicpowerd/pwrup";
 
 const char pidfile[200]="/var/run/pipicpowerd.pid";
 
-const int loglev=3;
+int loglev=3;
 const char logfile[200]="/var/log/pipicpowerd.log";
 char message[200]="";
 
-int pwroff=0; // 1==SIGTERM causes power off 
+int pwroff=0; // 1==SIGTERM causes power off, 2==no power up in future 
+int settime=1; // 1==set system time from PIC counter
 
 void logmessage(const char logfile[200], const char message[200], int loglev, int msglev)
 {
@@ -91,6 +95,94 @@ void logmessage(const char logfile[200], const char message[200], int loglev, in
       fprintf(log,"%s\n",message);
       fclose(log);
     }
+  }
+}
+
+// read configuration file if it exists
+void read_config()
+{
+  FILE *cfile;
+  char *line=NULL;
+  char par[20];
+  float value;
+  size_t len;
+  ssize_t read;
+
+  cfile=fopen(confile, "r");
+  if(NULL!=cfile)
+  {
+    sprintf(message,"Read configuration file");
+    logmessage(logfile,message,loglev,4);
+
+    while((read=getline(&line,&len,cfile))!=-1)
+    {
+       if(sscanf(line,"%s %f",par,&value)!=EOF)
+       {
+          if(strncmp(par,"LOGLEVEL",8)==0)
+          {
+             loglev=(int)value;
+             sprintf(message,"Log level set to %d",(int)value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"VOLTINT",7)==0)
+          {
+             voltint=(int)value;
+             sprintf(message,"Voltage reading interval set to %d s",(int)value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"BUTTONINT",9)==0)
+          {
+             buttonint=(int)value;
+             sprintf(message,"Button reading interval set to %d s",(int)value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"CONFDELAY",9)==0)
+          {
+             confdelay=(int)value;
+             sprintf(message,"Confirmation delay set to %d s",(int)value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"PWRDOWN",7)==0)
+          {
+             pwrdown=(int)value;
+             sprintf(message,"Delay to power down set to %d cycles",(int)value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"PICYCLE",7)==0)
+          {
+             picycle=value;
+             sprintf(message,"PIC cycle %f s",value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"LOWBATTERY",10)==0)
+          {
+             minvolts=(int)value;
+             sprintf(message,"Minimum voltage set to %d [1023-0]",(int)value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"SETTIME",7)==0)
+          {
+             if(value==1)
+             {
+                settime=1;
+                sprintf(message,"Set system time from PIC counter in power up");
+                logmessage(logfile,message,loglev,4);
+             }
+             else
+             {
+                settime=0;
+                sprintf(message,"Do not set system time from PIC counter");
+                logmessage(logfile,message,loglev,4);
+             }
+          }
+       }
+    }
+    fclose(cfile);
+  }
+  else
+  {
+    sprintf(message, "Could not open %s", confile);
+    logmessage(logfile, message, loglev,4);
   }
 }
 
@@ -746,7 +838,15 @@ int main()
           sprintf(s,"/bin/date -s '%s %s %d %02d:%02d:%02d %s %d'",wd,mo,da,hh,mm,ss,tzone,yy);
           logmessage(logfile,s,loglev,4);
           fclose(wakef);
-          ok=system(s);
+          if(settime==1)
+          {
+             ok=system(s);
+          }
+          else
+          {
+             sprintf(message,"system time can be set with command above");
+             logmessage(logfile,s,loglev,4);
+          }
         }
       } 
       ok=pwrupfile_delete();
@@ -757,6 +857,8 @@ int main()
     printf("start failed\n");
     exit(EXIT_FAILURE);
   }
+
+  read_config(); // read configuration file
 
   pid_t pid, sid;
         
