@@ -1,0 +1,2 @@
+#!/bin/bash
+pod2man -c "Raspberry Pi" -r "version 20140215" pipicswitch.pod pipicswitch.1
