@@ -3,7 +3,7 @@
 # Makefile for compiling 'pipicswitch' on Raspberry Pi. 
 #
 # Sat Feb 15 18:49:41 CET 2014
-# Edit: 
+# Edit: Sun Feb 16 14:27:15 CET 2014
 # Jaakko Koivuniemi
 
 CXX           = gcc
@@ -14,9 +14,12 @@ LDFLAGS       = -O
 %.o : %.c
 	$(CXX) $(CXXFLAGS) -c $<
 
-all: pipicswitch 
+all: pipicswitch pipicswd 
 
 pipicswitch: pipicswitch.o
+	$(LD) $(LDFLAGS) $^ -o $@
+
+pipicswd: pipicswd.o
 	$(LD) $(LDFLAGS) $^ -o $@
 
 clean:
