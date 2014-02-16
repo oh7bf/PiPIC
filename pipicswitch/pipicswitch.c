@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Sat Feb 15 20:35:37 CET 2014
- * Edit: 
+ * Edit: Sat Feb 15 23:47:13 CET 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -45,7 +45,7 @@
 const int version=20140215; // program version
 
 const char i2cdev[100]="/dev/i2c-1";
-int  address=0x27;
+int  address=0x00;
 const int  i2lockmax=10; // maximum number of times to try lock i2c port  
 
 // write i2c command to PIC optionally followed by data, length is the number 
@@ -302,7 +302,7 @@ int main(int argc, char **argv)
   int restimer=0; // reset PIC timer
   int readtimer=0; // read PIC timer
   int swtch=0; // operate switch
-  int channel=1; // switch channel
+  int channel=0; // switch channel
   char operation[200]=""; // switch operation off/on/toggle
 
   int timer=0;
@@ -356,7 +356,42 @@ int main(int argc, char **argv)
     }
   else if(swtch==1)
     {
-
+      if(channel==1)
+        {
+          if(strncmp(operation,"off",3)==0)
+          {
+            ok=write_cmd(0x14,0x00,0,verb); 
+            if(ok!=1) printf("command failed\n");
+          }
+          else if(strncmp(operation,"on",2)==0)
+          {
+            ok=write_cmd(0x24,0x00,0,verb); 
+            if(ok!=1) printf("command failed\n");
+          }
+          else if(strncmp(operation,"toggle",6)==0)
+          {
+            ok=write_cmd(0x34,0x10,1,verb); 
+            if(ok!=1) printf("command failed\n");
+          }
+        }
+      else if(channel==2)
+        {
+          if(strncmp(operation,"off",3)==0)
+          {
+            ok=write_cmd(0x15,0x00,0,verb); 
+            if(ok!=1) printf("command failed\n");
+          }
+          else if(strncmp(operation,"on",2)==0)
+          {
+            ok=write_cmd(0x25,0x00,0,verb); 
+            if(ok!=1) printf("command failed\n");
+          }
+          else if(strncmp(operation,"toggle",6)==0)
+          {
+            ok=write_cmd(0x34,0x20,1,verb); 
+            if(ok!=1) printf("command failed\n");
+          }
+        }
     }
   else if(i2ctest==1)
     {
