@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Fri Feb 14 20:17:10 CET 2014
+ * Edit: Sun Feb 23 21:28:04 CET 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -42,7 +42,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140214; // program version
+const int version=20140223; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -50,6 +50,7 @@ int confdelay=10; // delay to wait for confirmation [s]
 int pwrdown=100; // delay to power down in PIC counter cycles
 float picycle=0.445; // length of PIC counter cycles [s]
 int minvolts=600; // power down if read voltage exceeds this value
+int sleepint=60; // how often to check sleep file [s]
 
 const char i2cdev[100]="/dev/i2c-1";
 const int  address=0x26;
@@ -62,6 +63,7 @@ const char pdownfile[200]="/var/lib/pipicpowerd/pwrdown";
 const char resetfile[200]="/var/lib/pipicpowerd/resetime";
 const char upfile[200]="/var/lib/pipicpowerd/waketime";
 const char pwrupfile[200]="/var/lib/pipicpowerd/pwrup";
+const char sleepfile[200]="/var/lib/pipicpowerd/sleeptime";
 
 const char pidfile[200]="/var/run/pipicpowerd.pid";
 
@@ -218,6 +220,7 @@ int read_wakeup()
 
   return wtime;
 }
+
 
 // write i2c command to PIC optionally followed by data, length is the number 
 // of bytes and can be 0, 1, 2 or 4 
@@ -744,6 +747,58 @@ void hup(int sig)
   }
 }
 
+// read sleep time from file if it exists, if the time matches local time
+// shutdown and power down is started
+void read_sleeptime()
+{
+  int hh=0,mm=0,mins;
+  FILE *sfile;
+  time_t now;
+  struct tm* tm_info;
+  time(&now);
+  tm_info=localtime(&now);
+  int hour=tm_info->tm_hour;
+  int minute=tm_info->tm_min; 
+  int minutes=60*hour+minute;
+  sfile=fopen(sleepfile, "r");
+  if(NULL!=sfile)
+  {
+    if(fscanf(sfile,"%d:%d",&hh,&mm)!=EOF)
+    {
+      mins=60*hh+mm;
+      if((minutes>=mins)&&((minutes-mins)<3))
+      {
+        sprintf(message,"time to go to sleep");
+        logmessage(logfile,message,loglev,4);
+        sprintf(message,"shut down and power off");
+        logmessage(logfile,message,loglev,4);
+        sleep(1);
+        if(powerdown(pwrdown,1)!=1)
+        {
+          sprintf(message,"sending timed power down command failed");
+          logmessage(logfile,message,loglev,4);
+        }
+        sleep(1);
+        strcpy(message,"reset PIC timer");
+        logmessage(logfile,message,loglev,4);
+        if(resetimer()!=1)
+        {
+          sprintf(message,"sending timer reset command failed");
+          logmessage(logfile,message,loglev,4);
+        }
+        sleep(1);
+        cont=0;
+        if(system("/sbin/shutdown -h now")==-1)
+        {
+          sprintf(message,"system shutdown failed");
+          logmessage(logfile,message,loglev,4);
+        }
+      }
+    }
+    fclose(sfile);
+  }
+}
+
 
 int main()
 {  
@@ -768,6 +823,7 @@ int main()
   int unxs=(int)time(NULL); // unix seconds
   int nxtvolts=unxs; // next time to read battery voltage
   int nxtbutton=20+unxs; // next time to check button
+  int nxtsleep=60+unxs; // next time to check sleep file
 
   int i2cok=testi2c(); // test i2c data flow to PIC 
   if(i2cok==1)
@@ -920,6 +976,9 @@ int main()
   while(cont==1)
   {
     unxs=(int)time(NULL); 
+
+    if(((unxs>=nxtsleep)||((nxtsleep-unxs)>sleepint))&&(pwroff==0)) read_sleeptime();
+
     if(((unxs>=nxtvolts)||((nxtvolts-unxs)>voltint))&&(pwroff==0))
     {
       nxtvolts=voltint+unxs;
