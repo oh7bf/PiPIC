@@ -1,2 +1,2 @@
 #!/bin/bash
-pod2man -c "Raspberry Pi" -r "version 20140216" pipicswd.pod pipicswd.1
+pod2man -c "Raspberry Pi" -r "version 20140219" pipicswd.pod pipicswd.1

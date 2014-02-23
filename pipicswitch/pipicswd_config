@@ -1,29 +1,30 @@
 #
 # Example configuration file for pipicswd 
 # Sun Feb 16 16:17:27 CET 2014
-# Edit: 
+# Edit: Sun Feb 23 18:12:15 CET 2014
+# 
 # Jaakko Koivuniemi
 
 # log level 0=debug messages, 1=system commands, 2=operation messages, 
 # 3=status messages, 4=errors/warnings
-LOGLEVEL 3
+LOGLEVEL 2
 
-# switch status reading interval [s]
-STATUSINT 60
+# socket port number for the DC switch
+DCSWITCHPORT 5001
 
 # PIC internal timer cycle period in seconds, this can be checked with
 # 'pipictest -a 27 -c -n 10000' 
 PICYCLE 0.445
 
-# initial setting for switch 1, 0=do nothing, 1=switch on, 2=off
+# initial setting for switch 1, 0=do nothing, 1=switch closed, 2=open
 INITSWITCH1 0
 
-# initial setting for switch 2, 0=do nothing, 1=switch on, 2=off
+# initial setting for switch 2, 0=do nothing, 1=switch closed, 2=open
 INITSWITCH2 0
 
-# setting for switch 1 at stop, 0=do nothing, 1=switch on, 2=off
+# setting for switch 1 at stop, 0=do nothing, 1=switch closed, 2=open
 STOPSWITCH1 0
 
-# setting for switch 2 at stop, 0=do nothing, 1=switch on, 2=off
+# setting for switch 2 at stop, 0=do nothing, 1=switch closed, 2=open
 STOPSWITCH2 0
 

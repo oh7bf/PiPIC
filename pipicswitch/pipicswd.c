@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Sun Feb 16 14:29:25 CET 2014
- * Edit: 
+ * Edit: Sun Feb 23 17:45:40 CET 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -39,12 +39,16 @@
 #include <errno.h>
 #include <time.h>
 #include <signal.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 
 #define CHECK_BIT(var,pos) !!((var) & (1<<(pos)))
 
-const int version=20140216; // program version
+const int version=20140223; // program version
 
-int statusint=60; // switch status reading interval [s]
+int portno=5001; // socket port number
 
 float picycle=0.445; // length of PIC counter cycles [s]
 
@@ -59,6 +63,8 @@ const char pidfile[200]="/var/run/pipicswd.pid";
 int loglev=3;
 const char logfile[200]="/var/log/pipicswd.log";
 char message[200]="";
+
+char status[200]=""; // switch status message
 
 int initswitch1=0; // switch 1 at start 0=do nothing, 1=switch on, 2=off
 int initswitch2=0; // switch 2 at start 0=do nothing, 1=switch on, 2=off
@@ -117,10 +123,10 @@ void read_config()
              sprintf(message,"Log level set to %d",(int)value);
              logmessage(logfile,message,loglev,4);
           }
-          if(strncmp(par,"STATUSINT",9)==0)
+          if(strncmp(par,"DCSWITCHPORT",12)==0)
           {
-             statusint=(int)value;
-             sprintf(message,"Switch status reading interval set to %d s",(int)value);
+             portno=(int)value;
+             sprintf(message,"Switch port number set to %d",(int)value);
              logmessage(logfile,message,loglev,4);
           }
           if(strncmp(par,"INITSWITCH1",11)==0)
@@ -411,23 +417,40 @@ int read_status()
   if(ok==1)
   { 
     gpio=read_data(1);
-    if(CHECK_BIT(gpio,4)==1) strcpy(message,"switch 1 on");
-    else strcpy(message,"switch 1 off");
+    if(CHECK_BIT(gpio,4)==1) 
+    {
+      strcpy(message,"switch 1 closed");
+      strcpy(status,"1 closed"); 
+    }
+    else 
+    {
+      strcpy(message,"switch 1 open");
+      strcpy(status,"1 open");
+    }
     logmessage(logfile,message,loglev,3);
-    if(CHECK_BIT(gpio,5)==1) strcpy(message,"switch 2 on");
-    else strcpy(message,"switch 2 off");
+
+    if(CHECK_BIT(gpio,5)==1) 
+    {
+      strcpy(message,"switch 2 closed");
+      strcat(status," 2 closed");
+    }
+    else 
+    {
+      strcpy(message,"switch 2 open");
+      strcat(status," 2 open");
+    }
     logmessage(logfile,message,loglev,3);
   }
   else
   {
-    strcpy(message,"failed to read GPIO register"); 
+    strcpy(message,"failed to read PIC GPIO register"); 
     logmessage(logfile,message,loglev,4);
   }
 
   return ok;
 }
 
-int operate_switch(int switch1, int switch2)
+int operate_switch1(int switch1)
 {
   int ok=0;
 
@@ -436,7 +459,7 @@ int operate_switch(int switch1, int switch2)
      ok=write_cmd(0x24,0x00,0); 
      if(ok!=1) 
      {
-       sprintf(message,"initial closing switch 1 failed");
+       sprintf(message,"closing switch 1 failed");
        logmessage(logfile,message,loglev,4);
      }
   }
@@ -445,16 +468,24 @@ int operate_switch(int switch1, int switch2)
      ok=write_cmd(0x14,0x00,0); 
      if(ok!=1) 
      {
-       sprintf(message,"initial opening switch 1 failed");
+       sprintf(message,"opening switch 1 failed");
        logmessage(logfile,message,loglev,4);
      }
   }
+
+  return ok;
+}
+
+int operate_switch2(int switch2)
+{
+  int ok=0;
+
   if(switch2==1) 
   {
      ok=write_cmd(0x25,0x00,0); 
      if(ok!=1) 
      {
-       sprintf(message,"initial closing switch 2 failed");
+       sprintf(message,"closing switch 2 failed");
        logmessage(logfile,message,loglev,4);
      }
   }
@@ -463,13 +494,15 @@ int operate_switch(int switch1, int switch2)
      ok=write_cmd(0x15,0x00,0); 
      if(ok!=1) 
      {
-       sprintf(message,"initial opening switch 2 failed");
+       sprintf(message,"opening switch 2 failed");
        logmessage(logfile,message,loglev,4);
      }
   }
 
   return ok;
 }
+
+
 
 int cont=1; /* main loop flag */
 
@@ -488,7 +521,8 @@ void terminate(int sig)
   logmessage(logfile,message,loglev,4);
 
   sleep(1);
-  ok=operate_switch(stopswitch1,stopswitch2);
+  ok=operate_switch1(stopswitch1);
+  ok=operate_switch2(stopswitch2);
 
   sleep(1);
   strcpy(message,"stop");
@@ -521,7 +555,6 @@ int main()
   signal(SIGHUP,&hup); 
 
   int unxs=(int)time(NULL); // unix seconds
-  int nxtstatus=20+unxs; // next time to read switch status
 
   int i2cok=testi2c(); // test i2c data flow to PIC 
   if(i2cok==1)
@@ -598,18 +631,121 @@ int main()
   fprintf(pidf,"%d\n",getpid());
   fclose(pidf);
 
-// initialize switches
-  ok=operate_switch(initswitch1,initswitch2);
+// open socket
+  int sockfd, connfd, clilen;
+  char rbuff[25];
+  char sbuff[25];
+  struct sockaddr_in serv_addr, cli_addr; 
 
+  sockfd=socket(AF_INET, SOCK_STREAM, 0);
+  if(sockfd<0) 
+  {
+    sprintf(message,"Could not open socket");
+    logmessage(logfile,message,loglev,4);
+    exit(EXIT_FAILURE);
+  }
+  else
+  {
+    sprintf(message,"Socket open");
+    logmessage(logfile,message,loglev,2);
+  }
+  
+  memset(&serv_addr, '0', sizeof(serv_addr));
+  memset(sbuff, '0', sizeof(sbuff)); 
+
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  serv_addr.sin_port = htons(portno); 
+
+  if(bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr))<0)
+  {
+    sprintf(message,"Could not bind socket");
+    logmessage(logfile,message,loglev,4);
+    exit(EXIT_FAILURE);
+  }
+  else
+  {
+    sprintf(message,"Socket binding successful");
+    logmessage(logfile,message,loglev,2);
+  }
+
+  listen(sockfd, 1); // listen one client only 
+  clilen=sizeof(cli_addr);
+
+// initialize switches
+  ok=operate_switch1(initswitch1);
+  ok=operate_switch2(initswitch2);
+
+  int n=0;
   while(cont==1)
   {
     unxs=(int)time(NULL); 
 
-    if((unxs>=nxtstatus)||((nxtstatus-unxs)>statusint))
+    connfd=accept(sockfd, (struct sockaddr*)&cli_addr, (socklen_t *)&clilen); 
+    if(connfd<0) 
     {
-      ok=read_status();
-      nxtstatus=statusint+unxs;
+      sprintf(message,"Socket accept failed");
+      logmessage(logfile,message,loglev,4);
+      exit(EXIT_FAILURE);
     }
+    else
+    {
+      sprintf(message,"Socket accepted");
+      logmessage(logfile,message,loglev,2);
+    }
+
+    bzero(rbuff,25);
+    n=read(connfd,rbuff,24);
+    if(n<0)
+    {
+      sprintf(message,"Socket reading failed");
+      logmessage(logfile,message,loglev,4);
+      exit(EXIT_FAILURE);
+    }
+    else
+    {
+      sprintf(message,"Received: %s\n",rbuff);
+      logmessage(logfile,message,loglev,3);
+    }
+
+    if(strncmp(rbuff,"open 1",6)==0)
+    {
+      ok=operate_switch1(2);
+      sleep(1);
+    } 
+    else if(strncmp(rbuff,"close 1",7)==0)
+    {
+      ok=operate_switch1(1);
+      sleep(1);
+    } 
+    else if(strncmp(rbuff,"open 2",6)==0)
+    {
+      ok=operate_switch2(2);
+      sleep(1);
+    } 
+    else if(strncmp(rbuff,"close 2",7)==0)
+    {
+      ok=operate_switch2(1);
+      sleep(1);
+    } 
+
+    ok=read_status();
+    snprintf(sbuff,sizeof(sbuff),"%.24s",status);
+
+    n=write(connfd,sbuff,strlen(sbuff)); 
+    if(n<0)
+    {
+      sprintf(message,"Socket writing failed");
+      exit(EXIT_FAILURE);
+    }
+    else
+    {
+      sprintf(message,"Send: %s\n",sbuff);
+      logmessage(logfile,message,loglev,3);
+    }
+
+    close(connfd);
+
     sleep(1);
   }
 

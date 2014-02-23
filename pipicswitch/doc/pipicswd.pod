@@ -9,7 +9,7 @@ B<pipicswd>
 =head1 DESCRIPTION
 
 The B<pipicswd> is used to monitor and control Raspberry Pi power switch 
-with i2c bus. 
+with i2c bus. The daemon is started with command 
 
 B<service> I<pipicswd> I<start>
 
@@ -23,7 +23,14 @@ If this data flow test fails the daemon exits. One reason for this
 failure could be that the internal counter of PIC was not yet reset with
 command B<pipic> B<-a> 27 B<-c> 50.
 
-In the main loop the switch status is read at predetermined intervals. 
+In the main loop a socket is listened for any incoming commands. The possible
+commands are
+
+I<status> send switch status to the connecting client
+
+I<close> I<N> close switch with channel number I<N>
+
+I<open> I<N> open switch with channel number I<N>
 
 =head1 FILES
 
@@ -50,5 +57,5 @@ Jaakko Koivuniemi
 
 =head1 SEE ALSO
 
-pipic(1), pipicfile(1), pipictest(1), i2cdetect(8), i2cset(8), i2cget(8)
+pipicsw(1), pipic(1), pipicfile(1), pipictest(1), socket(2)
 
