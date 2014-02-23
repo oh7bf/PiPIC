@@ -1,0 +1,33 @@
+=head1 NAME
+
+pipicsw -  monitor and control Raspberry Pi power switch 
+
+=head1 SYNOPSIS
+
+B<pipicsw> [B<options>] B<command> 
+
+=head1 DESCRIPTION
+
+The B<pipicsw> client connects to the B<pipicswd> server and prints the 
+switch status if no command is given. The commands can be
+
+I<status> read switch status from server
+
+I<close> I<N> close switch with channel number I<N>
+
+I<open> I<N> open switch with channel number I<N>
+
+=head1 OPTIONS
+
+B<-h> host name to connect, default local host
+
+B<-p> port number for the server
+
+=head1 AUTHORS
+
+Jaakko Koivuniemi 
+
+=head1 SEE ALSO
+
+pipicswd(1), pipic(1), socket(2)
+
