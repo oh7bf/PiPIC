@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Sun Feb 16 14:29:25 CET 2014
- * Edit: Sun Feb 23 17:45:40 CET 2014
+ * Edit: Mon Feb 24 21:10:13 CET 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -46,7 +46,7 @@
 
 #define CHECK_BIT(var,pos) !!((var) & (1<<(pos)))
 
-const int version=20140223; // program version
+const int version=20140224; // program version
 
 int portno=5001; // socket port number
 
@@ -535,8 +535,6 @@ void hup(int sig)
 {
   sprintf(message,"signal %d catched",sig);
   logmessage(logfile,message,loglev,4);
-
-
 }
 
 
@@ -553,8 +551,6 @@ int main()
   signal(SIGTERM,&terminate); 
   signal(SIGQUIT,&stop); 
   signal(SIGHUP,&hup); 
-
-  int unxs=(int)time(NULL); // unix seconds
 
   int i2cok=testi2c(); // test i2c data flow to PIC 
   if(i2cok==1)
@@ -679,8 +675,6 @@ int main()
   int n=0;
   while(cont==1)
   {
-    unxs=(int)time(NULL); 
-
     connfd=accept(sockfd, (struct sockaddr*)&cli_addr, (socklen_t *)&clilen); 
     if(connfd<0) 
     {
@@ -704,7 +698,7 @@ int main()
     }
     else
     {
-      sprintf(message,"Received: %s\n",rbuff);
+      sprintf(message,"Received: %s",rbuff);
       logmessage(logfile,message,loglev,3);
     }
 
@@ -740,7 +734,7 @@ int main()
     }
     else
     {
-      sprintf(message,"Send: %s\n",sbuff);
+      sprintf(message,"Send: %s",sbuff);
       logmessage(logfile,message,loglev,3);
     }
 
