@@ -20,7 +20,7 @@
  ****************************************************************************
  *
  * Wed Feb 19 21:49:16 CET 2014
- * Edit: Sun Feb 23 17:08:52 CET 2014
+ * Edit: Mon Feb 24 21:33:09 CET 2014
  *
  * Jaakko Koivuniemi
  * */
@@ -44,7 +44,7 @@ void printusage()
 
 void printversion()
 {
-  printf("pipicsw v. 20140223, Jaakko Koivuniemi\n");
+  printf("pipicsw v. 20140224, Jaakko Koivuniemi\n");
 }
 
 int main(int argc, char *argv[])
@@ -65,6 +65,16 @@ int main(int argc, char *argv[])
       {
         portno=atoi(argv[i+1]);
         i++;
+      }
+      else if((strncmp(argv[i],"help",4)==0))
+      {
+        printusage();
+        return 0;    
+      }
+      else if((strncmp(argv[i],"version",7)==0))
+      {
+        printversion();
+        return 0;    
       }
       else
       {

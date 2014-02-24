@@ -11,11 +11,15 @@ B<pipicsw> [B<options>] B<command>
 The B<pipicsw> client connects to the B<pipicswd> server and prints the 
 switch status if no command is given. The commands can be
 
-I<status> read switch status from server
-
 I<close> I<N> close switch with channel number I<N>
 
+I<help> print usage message
+
 I<open> I<N> open switch with channel number I<N>
+
+I<status> read switch status from server
+
+I<version> print version
 
 =head1 OPTIONS
 
