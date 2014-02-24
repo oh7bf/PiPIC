@@ -427,16 +427,15 @@ int read_status()
       strcpy(message,"switch 1 open");
       strcpy(status,"1 open");
     }
-    logmessage(logfile,message,loglev,3);
 
     if(CHECK_BIT(gpio,5)==1) 
     {
-      strcpy(message,"switch 2 closed");
+      strcat(message," switch 2 closed");
       strcat(status," 2 closed");
     }
     else 
     {
-      strcpy(message,"switch 2 open");
+      strcat(message," switch 2 open");
       strcat(status," 2 open");
     }
     logmessage(logfile,message,loglev,3);
@@ -462,6 +461,12 @@ int operate_switch1(int switch1)
        sprintf(message,"closing switch 1 failed");
        logmessage(logfile,message,loglev,4);
      }
+     else
+     {
+       sprintf(message,"switch 1 closed");
+       logmessage(logfile,message,loglev,2);
+     }
+
   }
   else if(switch1==2) 
   {
@@ -470,6 +475,11 @@ int operate_switch1(int switch1)
      {
        sprintf(message,"opening switch 1 failed");
        logmessage(logfile,message,loglev,4);
+     }
+     else
+     {
+       sprintf(message,"switch 1 opened");
+       logmessage(logfile,message,loglev,2);
      }
   }
 
@@ -488,6 +498,11 @@ int operate_switch2(int switch2)
        sprintf(message,"closing switch 2 failed");
        logmessage(logfile,message,loglev,4);
      }
+     else
+     {
+       sprintf(message,"switch 2 closed");
+       logmessage(logfile,message,loglev,2);
+     }
   }
   else if(switch2==2) 
   {
@@ -496,6 +511,11 @@ int operate_switch2(int switch2)
      {
        sprintf(message,"opening switch 2 failed");
        logmessage(logfile,message,loglev,4);
+     }
+     else
+     {
+       sprintf(message,"switch 2 opened");
+       logmessage(logfile,message,loglev,2);
      }
   }
 
@@ -671,6 +691,9 @@ int main()
 // initialize switches
   ok=operate_switch1(initswitch1);
   ok=operate_switch2(initswitch2);
+ 
+  sleep(1);
+  ok=read_status();
 
   int n=0;
   while(cont==1)
