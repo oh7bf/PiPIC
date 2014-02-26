@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Sun Feb 23 21:28:04 CET 2014
+ * Edit: Wed Feb 26 19:28:24 CET 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -36,13 +36,11 @@
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <unistd.h>
-#include <getopt.h>
-#include <errno.h>
 #include <time.h>
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140223; // program version
+const int version=20140226; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -51,6 +49,7 @@ int pwrdown=100; // delay to power down in PIC counter cycles
 float picycle=0.445; // length of PIC counter cycles [s]
 int minvolts=600; // power down if read voltage exceeds this value
 int sleepint=60; // how often to check sleep file [s]
+int forcereset=0; // force PIC timer reset if i2c test fails
 
 const char i2cdev[100]="/dev/i2c-1";
 const int  address=0x26;
@@ -177,6 +176,22 @@ void read_config()
                 logmessage(logfile,message,loglev,4);
              }
           }
+          if(strncmp(par,"FORCERESET",10)==0)
+          {
+             if(value==1)
+             {
+                forcereset=1;
+                sprintf(message,"Force PIC timer reset at start if i2c test fails");
+                logmessage(logfile,message,loglev,4);
+             }
+             else
+             {
+                forcereset=0;
+                sprintf(message,"Exit in case of i2c test failure");
+                logmessage(logfile,message,loglev,4);
+             }
+          }
+
        }
     }
     fclose(cfile);
@@ -825,6 +840,8 @@ int main()
   int nxtbutton=20+unxs; // next time to check button
   int nxtsleep=60+unxs; // next time to check sleep file
 
+  read_config(); // read configuration file
+
   int i2cok=testi2c(); // test i2c data flow to PIC 
   if(i2cok==1)
   {
@@ -833,13 +850,47 @@ int main()
   }
   else
   {
-    strcpy(message,"i2c dataflow test failed, exit");
-    logmessage(logfile,message,loglev,4); 
-    strcpy(message,"try to reset timer with 'pipic -a 26 -c 50'");
-    logmessage(logfile,message,loglev,4); 
-    strcpy(message,"and restart with 'service pipicpowerd start'");
-    logmessage(logfile,message,loglev,4); 
-    cont=0;
+    pwrupfile_delete();
+    strcpy(message,"i2c dataflow test failed");
+    logmessage(logfile,message,loglev,4);
+    if(forcereset==1)
+    {
+      sleep(1); 
+      strcpy(message,"try to reset timer now");
+      logmessage(logfile,message,loglev,4); 
+      ok=resetimer();
+      sleep(1);
+      if(resetimer()!=1)
+      {
+        strcpy(message,"failed to reset timer");
+        logmessage(logfile,message,loglev,4);
+        cont=0; 
+      }
+      else
+      {
+        sleep(1);
+        i2cok=testi2c(); // test i2c data flow to PIC 
+        if(i2cok==1)
+        {
+          strcpy(message,"i2c dataflow test ok"); 
+          logmessage(logfile,message,loglev,4);
+        }
+        else
+        {
+          strcpy(message,"i2c dataflow test failed");
+          logmessage(logfile,message,loglev,4);
+          cont=0;
+        }
+      }
+    }
+    else
+    {
+      strcpy(message,"try to reset timer with 'pipic -a 26 -c 50'");
+      logmessage(logfile,message,loglev,4); 
+      strcpy(message,"and restart with 'service pipicpowerd start'");
+      logmessage(logfile,message,loglev,4); 
+      cont=0;
+    }
   }
   if(cont==1)
   {
@@ -914,7 +965,6 @@ int main()
     exit(EXIT_FAILURE);
   }
 
-  read_config(); // read configuration file
 
   pid_t pid, sid;
         
@@ -977,7 +1027,11 @@ int main()
   {
     unxs=(int)time(NULL); 
 
-    if(((unxs>=nxtsleep)||((nxtsleep-unxs)>sleepint))&&(pwroff==0)) read_sleeptime();
+    if(((unxs>=nxtsleep)||((nxtsleep-unxs)>sleepint))&&(pwroff==0)) 
+    {
+      nxtsleep=sleepint+unxs;
+      read_sleeptime();
+    }
 
     if(((unxs>=nxtvolts)||((nxtvolts-unxs)>voltint))&&(pwroff==0))
     {
