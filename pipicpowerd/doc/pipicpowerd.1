@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPICPOWERD 1"
-.TH PIPICPOWERD 1 "2014-02-23" "version 20140223" "Raspberry Pi"
+.TH PIPICPOWERD 1 "2014-03-30" "version 20140330" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -187,6 +187,8 @@ down to be executed.
 .PP
 \&\fI/usr/sbin/pipicpowerd\fR           Daemon code.
 .PP
+\&\fI/var/lib/pipicpowerd/battery\fR    Most recent battery value 1023\-0.
+.PP
 \&\fI/var/lib/pipicpowerd/pwrup\fR      If this file exists approximative system time is set at power up.
 .PP
 \&\fI/var/lib/pipicpowerd/pwrdown\fR    If this file exists power down with \s-1SIGINT\s0.
@@ -194,6 +196,8 @@ down to be executed.
 \&\fI/var/lib/pipicpowerd/resetime\fR   Time of last \s-1PIC\s0 timer reset hh:mm.
 .PP
 \&\fI/var/lib/pipicpowerd/sleeptime\fR   If this file exists and has hh:mm, this time is used to start system shutdown and power down.
+.PP
+\&\fI/var/lib/pipicpowerd/volts\fR      Most recent battery voltage.
 .PP
 \&\fI/var/lib/pipicpowerd/wakeup\fR     Next wakeup time hh:mm.
 .PP

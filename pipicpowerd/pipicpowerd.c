@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Wed Feb 26 19:28:24 CET 2014
+ * Edit: Sun Mar 30 22:33:57 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -40,7 +40,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140226; // program version
+const int version=20140330; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -48,6 +48,7 @@ int confdelay=10; // delay to wait for confirmation [s]
 int pwrdown=100; // delay to power down in PIC counter cycles
 float picycle=0.445; // length of PIC counter cycles [s]
 int minvolts=600; // power down if read voltage exceeds this value
+float voltcal=0.0216449; // voltage calibration constant
 int sleepint=60; // how often to check sleep file [s]
 int forcereset=0; // force PIC timer reset if i2c test fails
 
@@ -63,6 +64,8 @@ const char resetfile[200]="/var/lib/pipicpowerd/resetime";
 const char upfile[200]="/var/lib/pipicpowerd/waketime";
 const char pwrupfile[200]="/var/lib/pipicpowerd/pwrup";
 const char sleepfile[200]="/var/lib/pipicpowerd/sleeptime";
+const char batteryfile[200]="/var/lib/pipicpowerd/battery";
+const char voltfile[200]="/var/lib/pipicpowerd/volts";
 
 const char pidfile[200]="/var/run/pipicpowerd.pid";
 
@@ -131,6 +134,13 @@ void read_config()
              sprintf(message,"Voltage reading interval set to %d s",(int)value);
              logmessage(logfile,message,loglev,4);
           }
+          if(strncmp(par,"VOLTCAL",7)==0)
+          {
+             voltcal=value;
+             sprintf(message,"Voltage calibration constant set to %f",value);
+             logmessage(logfile,message,loglev,4);
+          }
+
           if(strncmp(par,"BUTTONINT",9)==0)
           {
              buttonint=(int)value;
@@ -673,7 +683,6 @@ int pwrupfile_create()
   { 
     fclose(pwrup);
   }
-
   return ok;
 }
 
@@ -814,10 +823,43 @@ void read_sleeptime()
   }
 }
 
+// write '/var/lib/pipicpowerd/battery'
+int write_battery(int b, float v)
+{
+  int ok=0;
+  FILE *bfile;
+  bfile=fopen(batteryfile, "w");
+  if(NULL==bfile)
+  {
+    sprintf(message,"could not write file: %s",batteryfile);
+    logmessage(logfile,message,loglev,4);
+  }
+  else
+  { 
+    fprintf(bfile,"%d",b);
+    fclose(bfile);
+  }
+
+  FILE *vfile;
+  vfile=fopen(voltfile, "w");
+  if(NULL==vfile)
+  {
+    sprintf(message,"could not write file: %s",voltfile);
+    logmessage(logfile,message,loglev,4);
+  }
+  else
+  { 
+    fprintf(vfile,"%4.1f",v);
+    fclose(vfile);
+  }
+
+  return ok;
+}
 
 int main()
 {  
   int volts=-1; // voltage reading
+  float voltsV=0; // conversion to Volts
   int button=0; // button pressed
   int timer=0; // PIC internal timer
   int ok=0;
@@ -1037,8 +1079,10 @@ int main()
     {
       nxtvolts=voltint+unxs;
       volts=readvolts();
-      sprintf(message,"read voltage %d",volts);
+      voltsV=voltcal*(1023-volts);
+      sprintf(message,"read voltage %d (%4.1f V)",volts,voltsV);
       logmessage(logfile,message,loglev,4);
+      write_battery(volts,voltsV);
       if(volts>minvolts)
       {
         strcpy(message,"battery voltage low, shut down and power off");

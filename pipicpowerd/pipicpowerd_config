@@ -1,7 +1,7 @@
 #
 # Example configuration file for pipicpowerd 
 # Fri Feb 14 21:06:59 CET 2014
-# Edit: Wed Feb 26 19:53:54 CET 2014
+# Edit: Thu Mar 27 22:11:53 CET 2014
 # Jaakko Koivuniemi
 
 # log level 0=debug messages, 1=system commands, 2=operation messages, 
@@ -35,4 +35,12 @@ PWRDOWN 100
 
 # set system time from PIC counter
 SETTIME 1
+
+# force power off after given PIC counter cycles, can be used as a hardware
+# watchdog for RPi power, if set to zero this value is ignored 
+FORCEPOWEROFF 0
+
+# force power up after given PIC counter cycles, can be used as a hardware
+# watchdog for RPi power, if set to zero this value is ignored
+FORCEPOWERUP 0
 
