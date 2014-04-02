@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Sun Mar 30 22:33:57 CEST 2014
+ * Edit: Wed Apr  2 21:22:42 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -40,17 +40,19 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140330; // program version
+const int version=20140402; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
 int confdelay=10; // delay to wait for confirmation [s]
 int pwrdown=100; // delay to power down in PIC counter cycles
 float picycle=0.445; // length of PIC counter cycles [s]
-int minvolts=600; // power down if read voltage exceeds this value
+int minvolts=550; // power down if read voltage exceeds this value
 float voltcal=0.0216449; // voltage calibration constant
 int sleepint=60; // how often to check sleep file [s]
 int forcereset=0; // force PIC timer reset if i2c test fails
+int forceoff=0; // force power off after give PIC counter cycles
+int forceon=0; // force power up after give PIC counter cycles
 
 const char i2cdev[100]="/dev/i2c-1";
 const int  address=0x26;
@@ -164,6 +166,24 @@ void read_config()
              picycle=value;
              sprintf(message,"PIC cycle %f s",value);
              logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"FORCEPOWEROFF",13)==0)
+          {
+             forceoff=(int)value;
+             if(forceoff>0)
+             {
+               sprintf(message,"Force power off after %d PIC cycles",(int)value);
+               logmessage(logfile,message,loglev,4);
+             }
+          }
+          if(strncmp(par,"FORCEPOWERUP",12)==0)
+          {
+             forceon=(int)value;
+             if(forceon>0)
+             {
+               sprintf(message,"Force power up after %d PIC cycles",(int)value);
+               logmessage(logfile,message,loglev,4);
+             }
           }
           if(strncmp(par,"LOWBATTERY",10)==0)
           {
@@ -594,13 +614,22 @@ int powerdown(int delay, int pwrup)
       updelay=(int)(wdelay/picycle);
       sprintf(message,"power up after %d counts",updelay);
       logmessage(logfile,message,loglev,4);
-
       ok=write_cmd(0x72,updelay,4);
       ok=write_cmd(0x73,8703,2);
       ok=write_cmd(0x74,0,1);
       ok=write_cmd(0x71,0,0); // start task2
     }
   }
+  else if(pwrup>0) // watch dog power up for reboot
+  {
+    sprintf(message,"power up after %d counts",pwrup);
+    logmessage(logfile,message,loglev,4);
+    ok=write_cmd(0x72,pwrup,4);
+    ok=write_cmd(0x73,8703,2);
+    ok=write_cmd(0x74,0,1);
+    ok=write_cmd(0x71,0,0); // start task2
+  }
+
   ok=button_powerup();
   ok=write_cmd(0x61,0,0); // start task1
 
@@ -1063,6 +1092,13 @@ int main()
 
   fprintf(pidf,"%d\n",getpid());
   fclose(pidf);
+
+  if(forceoff>0)
+  {
+    strcpy(message,"forced power off active");
+    logmessage(logfile,message,loglev,4);
+    ok=powerdown(forceoff,forceon);
+  }
 
   int wtime=0;
   while(cont==1)
