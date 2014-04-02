@@ -78,10 +78,67 @@ I</var/log/pipicpowerd.log>        Log file.
 
 I</var/run/pipicpowerd.pid>        PID file.
 
+The configuration file can have following parameters.
+
+I<BUTTONINT>
+Push button reading interval in seconds. When the daemon is running the
+push button can be used to initiate system shutdown and power down.
+
+I<CONFDELAY>
+The system shutdown and power down needs to be confirmed by a second button
+press. This is the waiting time in seconds for confirmation button press.
+
+I<FORCEPOWEROFF>
+Force power off after given PIC counter cycles. This can be used as a 
+hardware watchdog for RPi power. If set to zero the value is ignored. 
+
+I<FORCEPOWERUP>
+Force power up after given PIC counter cycles. This can be used as a 
+hardware watchdog to wake up after forced power off. If set to zero this 
+value is ignored.
+
+I<FORCERESET>
+If set force reset of PIC counter if initial i2c dataflow test fails. The PIC
+counter needs to be reset after power cycling of the PIC. 
+
+I<LOGLEVEL>
+Log level 0=debug messages, 1=system commands, 2=operation messages, 
+3=status messages and 4=errors/warnings.
+
+I<LOWBATTERY> 
+Low battery voltage level 0 - 1023. Due to the inverting transistor 
+circuit from battery to AN3 high value means low voltage at battery.
+Reaching this level will initiate automatic shutdown.
+
+I<PICYCLE> 
+PIC internal timer cycle period in seconds. Needed to estimate number of
+PIC counter cycles to wake up the Raspberry Pi again. This can checked with
+command 'pipictest -a 26 -c -n 10000'. 
+
+I<PWRDOWN> 
+After system shutdown wait given PIC counter cycles before power is switched
+off.
+
+I<SETTIME>
+If set the current time is estimated from PIC counter cycles at boot time
+and the system time is set accordingly.
+
+I<VOLTCAL>
+Battery voltage calibration constant.
+
+I<VOLTINT>
+Battery voltage reading interval in seconds.
+
 =head1 WARNING
 
 No check is done where the query data is written. Could make some hardware 
 unusable.
+
+=head1 BUGS
+
+The i2c clock needs to be low 10 - 20 kHz for the PIC12F675 used with this 
+daemon. The clock can be set in I</etc/modprobe.d/i2c.conf> with line
+I<options i2c_bcm2708 baudrate=20000>. 
 
 =head1 AUTHORS
 

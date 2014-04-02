@@ -123,8 +123,8 @@
 .rm #[ #] #H #V #F C
 .\" ========================================================================
 .\"
-.IX Title "PIPICPOWERD 1"
-.TH PIPICPOWERD 1 "2014-03-30" "version 20140330" "Raspberry Pi"
+.IX Title "PIPICPOWERD 8"
+.TH PIPICPOWERD 8 "2014-04-02" "version 20140402" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -204,10 +204,66 @@ down to be executed.
 \&\fI/var/log/pipicpowerd.log\fR        Log file.
 .PP
 \&\fI/var/run/pipicpowerd.pid\fR        \s-1PID\s0 file.
+.PP
+The configuration file can have following parameters.
+.PP
+\&\fI\s-1BUTTONINT\s0\fR
+Push button reading interval in seconds. When the daemon is running the
+push button can be used to initiate system shutdown and power down.
+.PP
+\&\fI\s-1CONFDELAY\s0\fR
+The system shutdown and power down needs to be confirmed by a second button
+press. This is the waiting time in seconds for confirmation button press.
+.PP
+\&\fI\s-1FORCEPOWEROFF\s0\fR
+Force power off after given \s-1PIC\s0 counter cycles. This can be used as a 
+hardware watchdog for RPi power. If set to zero the value is ignored.
+.PP
+\&\fI\s-1FORCEPOWERUP\s0\fR
+Force power up after given \s-1PIC\s0 counter cycles. This can be used as a 
+hardware watchdog to wake up after forced power off. If set to zero this 
+value is ignored.
+.PP
+\&\fI\s-1FORCERESET\s0\fR
+If set force reset of \s-1PIC\s0 counter if initial i2c dataflow test fails. The \s-1PIC\s0
+counter needs to be reset after power cycling of the \s-1PIC\s0.
+.PP
+\&\fI\s-1LOGLEVEL\s0\fR
+Log level 0=debug messages, 1=system commands, 2=operation messages, 
+3=status messages and 4=errors/warnings.
+.PP
+\&\fI\s-1LOWBATTERY\s0\fR 
+Low battery voltage level 0 \- 1023. Due to the inverting transistor 
+circuit from battery to \s-1AN3\s0 high value means low voltage at battery.
+Reaching this level will initiate automatic shutdown.
+.PP
+\&\fI\s-1PICYCLE\s0\fR 
+\&\s-1PIC\s0 internal timer cycle period in seconds. Needed to estimate number of
+\&\s-1PIC\s0 counter cycles to wake up the Raspberry Pi again. This can checked with
+command 'pipictest \-a 26 \-c \-n 10000'.
+.PP
+\&\fI\s-1PWRDOWN\s0\fR 
+After system shutdown wait given \s-1PIC\s0 counter cycles before power is switched
+off.
+.PP
+\&\fI\s-1SETTIME\s0\fR
+If set the current time is estimated from \s-1PIC\s0 counter cycles at boot time
+and the system time is set accordingly.
+.PP
+\&\fI\s-1VOLTCAL\s0\fR
+Battery voltage calibration constant.
+.PP
+\&\fI\s-1VOLTINT\s0\fR
+Battery voltage reading interval in seconds.
 .SH "WARNING"
 .IX Header "WARNING"
 No check is done where the query data is written. Could make some hardware 
 unusable.
+.SH "BUGS"
+.IX Header "BUGS"
+The i2c clock needs to be low 10 \- 20 kHz for the \s-1PIC12F675\s0 used with this 
+daemon. The clock can be set in \fI/etc/modprobe.d/i2c.conf\fR with line
+\&\fIoptions i2c_bcm2708 baudrate=20000\fR.
 .SH "AUTHORS"
 .IX Header "AUTHORS"
 Jaakko Koivuniemi
