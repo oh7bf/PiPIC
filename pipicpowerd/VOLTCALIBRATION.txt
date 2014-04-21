@@ -1,0 +1,77 @@
+
+The battery voltage is measured with a bipolar transistor circuit and the
+A/D-converter result from the PIC12F675 needs to be calibrated if the voltage
+value needs to be known. The calibration depends on temperature of the 
+transistor used 2N3904 and this is close to the ambient temperature.
+
+For example calibration done at room temperature was done with 12 V lead 
+acid battery of capacity 1.2 Ah while the battery was running empty.
+
+reading   volts
+400       13.55
+399       13.55
+476       11.81
+477       11.77
+486       11.72
+488       11.63
+486       11.58
+488       11.52
+491       11.47
+496       11.42
+502       11.36
+499       11.30
+502       11.23
+511       11.13
+517       11.06
+519       10.94
+520       10.84
+528       10.65
+553       10.03
+ 
+The readings are written to a file 'voltcal.txt'. The result can be plotted
+with gnuplot
+
+gnuplot> plot "voltcal.txt" using 1:2
+
+Next we define linear fitting function
+
+gnuplot> f(x)=a*(1023-x)
+
+and fit the function to the data
+
+fit f(x) "voltcal.txt" using 1:2 via a
+
+Now the fitted parameter 'a' can be used for VOLTCAL in the configuration 
+file.
+
+If only one voltage point is available approximative calibration constant
+can be calculated from
+
+VOLTCAL=U/(1023-AN3)
+
+The temperature dependence of VOLTCAL can be taken into account if the ambient
+temperature is measured. For example 
+
+temperature[C]   voltcal
++6.00            0.02585
++12.94           0.02454
++20              0.02346
+
+These are written to a file 'volttemp.txt' and plotted with
+
+gnuplot> plot "volttemp.txt" using 1:2
+
+A linear fitting function is defined and fitted to the data
+
+gnuplot> f(x)=a*x+b
+
+gnuplot> fit f(x) "voltcal.txt" using 1:2 via a, b
+
+The result can be plotted with
+
+gnuplot> plot "volttemp.txt" using 1:2, f(x)
+
+The fitted parameters 'a' and 'b' can be used for VOLTTEMP in the configuration file.
+
+
+

@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPICPOWERD 8"
-.TH PIPICPOWERD 8 "2014-04-02" "version 20140402" "Raspberry Pi"
+.TH PIPICPOWERD 8 "2014-04-21" "version 20140421" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -167,7 +167,7 @@ the inverting transistor circuit.
 The event register from the \s-1PIC\s0 is read at programmed intervals to see if
 the power button has been pressed. If this is the case the red \s-1LED\s0 is turned
 on and if the button is pressed again the shut down and delayed power down is 
-initiated. If the file \fI/var/lib/pipicpowerd/wakeup\fR exits the \s-1PIC\s0 is 
+initiated. If the file \fI/var/lib/pipicpowerd/wakeup\fR exists the \s-1PIC\s0 is 
 programmed to wake up later in future at the given time. The time delay
 depends on how accurately the \s-1PIC\s0 internal counter cycle length is known.
 This can be determined for example with command 
@@ -251,7 +251,11 @@ If set the current time is estimated from \s-1PIC\s0 counter cycles at boot time
 and the system time is set accordingly.
 .PP
 \&\fI\s-1VOLTCAL\s0\fR
-Battery voltage calibration constant.
+Battery voltage calibration constant U=VOLTCAL*(1023\-AN3).
+.PP
+\&\fI\s-1VOLTTEMPA\s0\fR \fI\s-1VOLTTEMPB\s0\fR  
+Temperature dependent battery voltage calibration constants with linear
+model VOLTCAL=A*T+B.
 .PP
 \&\fI\s-1VOLTINT\s0\fR
 Battery voltage reading interval in seconds.

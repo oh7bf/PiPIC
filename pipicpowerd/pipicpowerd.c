@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Wed Apr  2 21:22:42 CEST 2014
+ * Edit: Mon Apr 21 19:06:10 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -40,7 +40,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140402; // program version
+const int version=20140421; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -49,6 +49,8 @@ int pwrdown=100; // delay to power down in PIC counter cycles
 float picycle=0.445; // length of PIC counter cycles [s]
 int minvolts=550; // power down if read voltage exceeds this value
 float voltcal=0.0216449; // voltage calibration constant
+float volttempa=-0.000170663; // temperature dependent voltage calibration 
+float volttempb=0.0268319; // temperature dependent voltage calibration 
 int sleepint=60; // how often to check sleep file [s]
 int forcereset=0; // force PIC timer reset if i2c test fails
 int forceoff=0; // force power off after give PIC counter cycles
@@ -68,6 +70,7 @@ const char pwrupfile[200]="/var/lib/pipicpowerd/pwrup";
 const char sleepfile[200]="/var/lib/pipicpowerd/sleeptime";
 const char batteryfile[200]="/var/lib/pipicpowerd/battery";
 const char voltfile[200]="/var/lib/pipicpowerd/volts";
+const char tempfile[200]="/var/lib/tmp102d/temperature";
 
 const char pidfile[200]="/var/run/pipicpowerd.pid";
 
@@ -142,7 +145,18 @@ void read_config()
              sprintf(message,"Voltage calibration constant set to %f",value);
              logmessage(logfile,message,loglev,4);
           }
-
+          if(strncmp(par,"VOLTTEMPA",9)==0)
+          {
+             volttempa=value;
+             sprintf(message,"Voltage temperature coefficient set to %f",value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"VOLTTEMPB",9)==0)
+          {
+             volttempb=value;
+             sprintf(message,"Voltage temperature constant set to %f",value);
+             logmessage(logfile,message,loglev,4);
+          }
           if(strncmp(par,"BUTTONINT",9)==0)
           {
              buttonint=(int)value;
@@ -885,10 +899,31 @@ int write_battery(int b, float v)
   return ok;
 }
 
+// read ambient temperature
+float readtemp()
+{
+  float temp=-100;
+  FILE *tfile;
+  tfile=fopen(tempfile, "r");
+  if(NULL==tfile)
+  {
+    sprintf(message,"could not read file: %s",tempfile);
+    logmessage(logfile,message,loglev,4);
+  }
+  else
+  { 
+    if(fscanf(tfile,"%f",&temp)==EOF) temp=-100;
+    fclose(tfile);
+  }
+
+  return temp;
+}
+
 int main()
 {  
   int volts=-1; // voltage reading
   float voltsV=0; // conversion to Volts
+  float temp=-100; // ambient temperature [C]
   int button=0; // button pressed
   int timer=0; // PIC internal timer
   int ok=0;
@@ -1115,8 +1150,11 @@ int main()
     {
       nxtvolts=voltint+unxs;
       volts=readvolts();
+      temp=readtemp();
+      if((temp>-100)&&(temp<100)) voltcal=volttempa*temp+volttempb;
       voltsV=voltcal*(1023-volts);
       sprintf(message,"read voltage %d (%4.1f V)",volts,voltsV);
+      if((temp>-100)&&(temp<100)) sprintf(message,"read voltage %d (%4.1f V at %4.1f C)",volts,voltsV,temp);
       logmessage(logfile,message,loglev,4);
       write_battery(volts,voltsV);
       if(volts>minvolts)

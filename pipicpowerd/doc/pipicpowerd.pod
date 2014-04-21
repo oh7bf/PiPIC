@@ -39,7 +39,7 @@ the inverting transistor circuit.
 The event register from the PIC is read at programmed intervals to see if
 the power button has been pressed. If this is the case the red LED is turned
 on and if the button is pressed again the shut down and delayed power down is 
-initiated. If the file I</var/lib/pipicpowerd/wakeup> exits the PIC is 
+initiated. If the file I</var/lib/pipicpowerd/wakeup> exists the PIC is 
 programmed to wake up later in future at the given time. The time delay
 depends on how accurately the PIC internal counter cycle length is known.
 This can be determined for example with command 
@@ -124,7 +124,11 @@ If set the current time is estimated from PIC counter cycles at boot time
 and the system time is set accordingly.
 
 I<VOLTCAL>
-Battery voltage calibration constant.
+Battery voltage calibration constant U=VOLTCAL*(1023-AN3).
+
+I<VOLTTEMPA> I<VOLTTEMPB>  
+Temperature dependent battery voltage calibration constants with linear
+model VOLTCAL=A*T+B.
 
 I<VOLTINT>
 Battery voltage reading interval in seconds.

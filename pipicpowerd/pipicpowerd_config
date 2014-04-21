@@ -1,7 +1,7 @@
 #
 # Example configuration file for pipicpowerd 
 # Fri Feb 14 21:06:59 CET 2014
-# Edit: Wed Apr  2 21:51:25 CEST 2014
+# Edit: Mon Apr 21 18:41:36 CEST 2014
 # Jaakko Koivuniemi
 
 # log level 0=debug messages, 1=system commands, 2=operation messages, 
@@ -22,6 +22,11 @@ LOWBATTERY 550
 
 # calibration constant for voltage U=VOLTCAL*(1023-AN3)
 VOLTCAL 0.0216449
+
+# temperature dependent calibration constants for the voltage
+# VOLTCAL=VOLTTEMPA*T+VOLTTEMPB
+VOLTTEMPA -0.000170663 
+VOLTTEMPB 0.025399486 
 
 # PIC internal timer cycle period in seconds, this can be checked with
 # 'pipictest -a 26 -c -n 10000' 
