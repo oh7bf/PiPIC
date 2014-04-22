@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Mon Apr 21 19:06:10 CEST 2014
+ * Edit: Tue Apr 22 20:30:03 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -29,6 +29,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <fcntl.h>
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
@@ -40,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140421; // program version
+const int version=20140422; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -51,6 +52,10 @@ int minvolts=550; // power down if read voltage exceeds this value
 float voltcal=0.0216449; // voltage calibration constant
 float volttempa=-0.000170663; // temperature dependent voltage calibration 
 float volttempb=0.0268319; // temperature dependent voltage calibration 
+float battcap=7; // nominal battery capacity [Ah]
+const float pkfact=1.1; // Peukert's law exponent
+const float phours=20; // Peukert's law discharge time for nominal capacity [h]
+float current=0.15; // estimated average current used [A]
 int sleepint=60; // how often to check sleep file [s]
 int forcereset=0; // force PIC timer reset if i2c test fails
 int forceoff=0; // force power off after give PIC counter cycles
@@ -70,6 +75,8 @@ const char pwrupfile[200]="/var/lib/pipicpowerd/pwrup";
 const char sleepfile[200]="/var/lib/pipicpowerd/sleeptime";
 const char batteryfile[200]="/var/lib/pipicpowerd/battery";
 const char voltfile[200]="/var/lib/pipicpowerd/volts";
+const char batterytime[200]="/var/lib/pipicpowerd/hoursleft";
+const char batterylevel[200]="/var/lib/pipicpowerd/battlevel";
 const char tempfile[200]="/var/lib/tmp102d/temperature";
 
 const char pidfile[200]="/var/run/pipicpowerd.pid";
@@ -203,6 +210,18 @@ void read_config()
           {
              minvolts=(int)value;
              sprintf(message,"Minimum voltage set to %d [1023-0]",(int)value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"BATTCAP",7)==0)
+          {
+             battcap=value;
+             sprintf(message,"Nominal battery capacity  %f",value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"CURRENT",7)==0)
+          {
+             current=value;
+             sprintf(message,"Current consumption  %f",value);
              logmessage(logfile,message,loglev,4);
           }
           if(strncmp(par,"SETTIME",7)==0)
@@ -866,8 +885,9 @@ void read_sleeptime()
   }
 }
 
-// write '/var/lib/pipicpowerd/battery'
-int write_battery(int b, float v)
+// write '/var/lib/pipicpowerd/battery', '/var/lib/pipicpowerd/volts'
+// and '/var/lib/pipicpowerd/hoursleft'
+int write_battery(int b, float v, float h, float l)
 {
   int ok=0;
   FILE *bfile;
@@ -896,10 +916,36 @@ int write_battery(int b, float v)
     fclose(vfile);
   }
 
+  FILE *hfile;
+  hfile=fopen(batterytime, "w");
+  if(NULL==hfile)
+  {
+    sprintf(message,"could not write file: %s",batterytime);
+    logmessage(logfile,message,loglev,4);
+  }
+  else
+  { 
+    fprintf(hfile,"%4.1f",h);
+    fclose(hfile);
+  }
+
+  FILE *lfile;
+  lfile=fopen(batterylevel, "w");
+  if(NULL==lfile)
+  {
+    sprintf(message,"could not write file: %s",batterylevel);
+    logmessage(logfile,message,loglev,4);
+  }
+  else
+  { 
+    fprintf(lfile,"%4.1f",l);
+    fclose(lfile);
+  }
+
   return ok;
 }
 
-// read ambient temperature
+// read ambient temperature from file
 float readtemp()
 {
   float temp=-100;
@@ -919,10 +965,36 @@ float readtemp()
   return temp;
 }
 
+// estimate remaining battery capacity from voltage
+// 10.5 V (loaded) = 0 % and 13.0 V (loaded) = 100 %
+float battlevel(float volts)
+{
+  float level=100*(volts-10.5)/2.5;
+
+  return level;
+}
+
+// estimate time remaining before battery is empty
+// http://en.wikipedia.org/wiki/Peukert's_law
+float battime(float level, float battcap, float pkfact, float phours, float current)
+{
+  float hours=0;
+  float capleft=level*battcap/100;
+  float base=0;
+  if(current>0) base=capleft/(current*phours);
+  float expo=pkfact-1.0;
+
+  if(current>0) hours=capleft*powf(base,expo)/current;
+
+  return hours;
+}
+
 int main()
 {  
   int volts=-1; // voltage reading
   float voltsV=0; // conversion to Volts
+  float battlev=0; // battery level [%]
+  float batim=0; // hours left with battery
   float temp=-100; // ambient temperature [C]
   int button=0; // button pressed
   int timer=0; // PIC internal timer
@@ -1071,7 +1143,6 @@ int main()
     exit(EXIT_FAILURE);
   }
 
-
   pid_t pid, sid;
         
   pid=fork();
@@ -1153,10 +1224,12 @@ int main()
       temp=readtemp();
       if((temp>-100)&&(temp<100)) voltcal=volttempa*temp+volttempb;
       voltsV=voltcal*(1023-volts);
-      sprintf(message,"read voltage %d (%4.1f V)",volts,voltsV);
-      if((temp>-100)&&(temp<100)) sprintf(message,"read voltage %d (%4.1f V at %4.1f C)",volts,voltsV,temp);
+      battlev=battlevel(voltsV);
+      batim=battime(battlev,battcap,pkfact,phours,current);
+      sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.1f hours)",volts,voltsV,battlev,batim);
+      if((temp>-100)&&(temp<100)) sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.1f hours at %4.1f C)",volts,voltsV,battlev,batim,temp);
       logmessage(logfile,message,loglev,4);
-      write_battery(volts,voltsV);
+      write_battery(volts,voltsV,batim,battlev);
       if(volts>minvolts)
       {
         strcpy(message,"battery voltage low, shut down and power off");

@@ -20,6 +20,12 @@ VOLTINT 300
 # reaching this level will initiate automatic shutdown
 LOWBATTERY 550
 
+# nominal battery capacity [Ah]
+BATTCAP 7
+
+# estimated average discharge current [A]
+CURRENT 0.15
+
 # calibration constant for voltage U=VOLTCAL*(1023-AN3)
 VOLTCAL 0.0216449
 
