@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Tue Apr 22 20:30:03 CEST 2014
+ * Edit: Wed Apr 23 21:10:02 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140422; // program version
+const int version=20140423; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -49,6 +49,8 @@ int confdelay=10; // delay to wait for confirmation [s]
 int pwrdown=100; // delay to power down in PIC counter cycles
 float picycle=0.445; // length of PIC counter cycles [s]
 int minvolts=550; // power down if read voltage exceeds this value
+float minbattlev=50; // power down if battery charge less than this value [%]
+float maxbattvolts=14.4; // maximum battery voltage [V]
 float voltcal=0.0216449; // voltage calibration constant
 float volttempa=-0.000170663; // temperature dependent voltage calibration 
 float volttempb=0.0268319; // temperature dependent voltage calibration 
@@ -222,6 +224,18 @@ void read_config()
           {
              current=value;
              sprintf(message,"Current consumption  %f",value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"MINBATTLEVEL",12)==0)
+          {
+             minbattlev=value;
+             sprintf(message,"Minimum battery level for operating %f %%",value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"MAXBATTVOLTS",12)==0)
+          {
+             maxbattvolts=value;
+             sprintf(message,"Maximum safe charging voltage %f V",value);
              logmessage(logfile,message,loglev,4);
           }
           if(strncmp(par,"SETTIME",7)==0)
@@ -965,11 +979,33 @@ float readtemp()
   return temp;
 }
 
-// estimate remaining battery capacity from voltage
-// 10.5 V (loaded) = 0 % and 13.0 V (loaded) = 100 %
+// capacity   voltage[V]
+// 100%       12.7
+//  90%       12.5
+//  80%       12.42
+//  70%       12.32
+//  60%       12.20
+//  50%       12.06
+//  40%       11.9
+//  30%       11.75
+//  20%       11.58
+//  10%       11.31
+//   0%       10.5
 float battlevel(float volts)
 {
-  float level=100*(volts-10.5)/2.5;
+  float level=0;
+
+  if(volts>=12.7) level=100;
+  else if(volts>=12.5) level=10*(volts-12.5)/0.2+90;
+  else if(volts>=12.42) level=10*(volts-12.42)/0.08+80;
+  else if(volts>=12.32) level=10*(volts-12.32)/0.1+70;
+  else if(volts>=12.20) level=10*(volts-12.20)/0.12+60;
+  else if(volts>=12.06) level=10*(volts-12.06)/0.14+50;
+  else if(volts>=11.9) level=10*(volts-11.9)/0.16+40;
+  else if(volts>=11.75) level=10*(volts-11.75)/0.15+30;
+  else if(volts>=11.58) level=10*(volts-11.58)/0.17+20;
+  else if(volts>=11.31) level=10*(volts-11.31)/0.27+10;
+  else if(volts>=10.5) level=10*(volts-10.5)/0.81;
 
   return level;
 }
@@ -1237,6 +1273,22 @@ int main()
         sleep(1);
         pwroff=2;
         ok=system("/sbin/shutdown -h now battery low");
+      }
+      if(battlev<minbattlev)
+      {
+        strcpy(message,"battery charge low, shut down and power off");
+        logmessage(logfile,message,loglev,4);
+        sleep(1);
+        pwroff=1;
+        ok=system("/sbin/shutdown -h +5 battery charge low");
+
+      }
+      if(voltsV>maxbattvolts)
+      {
+        strcpy(message,"too high charging voltage reached");
+        logmessage(logfile,message,loglev,4);
+        sleep(1);
+        ok=system("/usr/bin/wall too high charging voltage reached");
       }
       sprintf(message,"unxs=%d nxtvolts=%d",unxs,nxtvolts);
       logmessage(logfile,message,loglev,2);

@@ -1,7 +1,7 @@
 #
 # Example configuration file for pipicpowerd 
 # Fri Feb 14 21:06:59 CET 2014
-# Edit: Mon Apr 21 18:41:36 CEST 2014
+# Edit: Wed Apr 23 22:11:34 CEST 2014
 # Jaakko Koivuniemi
 
 # log level 0=debug messages, 1=system commands, 2=operation messages, 
@@ -33,6 +33,15 @@ VOLTCAL 0.0216449
 # VOLTCAL=VOLTTEMPA*T+VOLTTEMPB
 VOLTTEMPA -0.000170663 
 VOLTTEMPB 0.025399486 
+
+# minimum operating charge level for battery, should be more than 50 %
+# for longer battery life, ideally 70 % could be used
+# user is warned when reaching this level and automatic shutdown is started
+MINBATTLEVEL 50
+
+# maximum battery voltage during charging, higher voltage than this could
+# damage the battery is applied for long time
+MAXBATTVOLTS 14.4
 
 # PIC internal timer cycle period in seconds, this can be checked with
 # 'pipictest -a 26 -c -n 10000' 
