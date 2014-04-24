@@ -80,6 +80,9 @@ I</var/run/pipicpowerd.pid>        PID file.
 
 The configuration file can have following parameters.
 
+I<BATTCAP>
+Nominal battery capacity in Ampere-hours.
+
 I<BUTTONINT>
 Push button reading interval in seconds. When the daemon is running the
 push button can be used to initiate system shutdown and power down.
@@ -88,9 +91,14 @@ I<CONFDELAY>
 The system shutdown and power down needs to be confirmed by a second button
 press. This is the waiting time in seconds for confirmation button press.
 
+I<CURRENT>
+Estimated average discharge current in Amperes.
+
 I<FORCEPOWEROFF>
 Force power off after given PIC counter cycles. This can be used as a 
 hardware watchdog for RPi power. If set to zero the value is ignored. 
+Using this option will lead to data loss and might lead to data corruption
+on the SD card too.
 
 I<FORCEPOWERUP>
 Force power up after given PIC counter cycles. This can be used as a 
@@ -109,6 +117,19 @@ I<LOWBATTERY>
 Low battery voltage level 0 - 1023. Due to the inverting transistor 
 circuit from battery to AN3 high value means low voltage at battery.
 Reaching this level will initiate automatic shutdown.
+
+I<MAXBATTVOLTS>
+Maximum battery voltage during charging. Higher voltage than this could
+damage the battery is applied for long time.
+
+I<MINBATTLEVEL>
+Minimum operating charge level for battery. This should be more than 50 %
+for longer battery life and ideally 70 % could be used. User is warned when
+this level is reached and automatic shutdown in five minutes followed by
+power down is started. During this period no new logins are allowed. 
+The system can wake up automatically in future if file 
+/var/lib/pipicpowerd/wakeup exists. The shutdown(8) could be canceled
+manually if needed.
 
 I<PICYCLE> 
 PIC internal timer cycle period in seconds. Needed to estimate number of

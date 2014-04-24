@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPICPOWERD 8"
-.TH PIPICPOWERD 8 "2014-04-21" "version 20140421" "Raspberry Pi"
+.TH PIPICPOWERD 8 "2014-04-24" "version 20140424" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -207,6 +207,9 @@ down to be executed.
 .PP
 The configuration file can have following parameters.
 .PP
+\&\fI\s-1BATTCAP\s0\fR
+Nominal battery capacity in Ampere-hours.
+.PP
 \&\fI\s-1BUTTONINT\s0\fR
 Push button reading interval in seconds. When the daemon is running the
 push button can be used to initiate system shutdown and power down.
@@ -215,9 +218,14 @@ push button can be used to initiate system shutdown and power down.
 The system shutdown and power down needs to be confirmed by a second button
 press. This is the waiting time in seconds for confirmation button press.
 .PP
+\&\fI\s-1CURRENT\s0\fR
+Estimated average discharge current in Amperes.
+.PP
 \&\fI\s-1FORCEPOWEROFF\s0\fR
 Force power off after given \s-1PIC\s0 counter cycles. This can be used as a 
-hardware watchdog for RPi power. If set to zero the value is ignored.
+hardware watchdog for RPi power. If set to zero the value is ignored. 
+Using this option will lead to data loss and might lead to data corruption
+on the \s-1SD\s0 card too.
 .PP
 \&\fI\s-1FORCEPOWERUP\s0\fR
 Force power up after given \s-1PIC\s0 counter cycles. This can be used as a 
@@ -236,6 +244,19 @@ Log level 0=debug messages, 1=system commands, 2=operation messages,
 Low battery voltage level 0 \- 1023. Due to the inverting transistor 
 circuit from battery to \s-1AN3\s0 high value means low voltage at battery.
 Reaching this level will initiate automatic shutdown.
+.PP
+\&\fI\s-1MAXBATTVOLTS\s0\fR
+Maximum battery voltage during charging. Higher voltage than this could
+damage the battery is applied for long time.
+.PP
+\&\fI\s-1MINBATTLEVEL\s0\fR
+Minimum operating charge level for battery. This should be more than 50 %
+for longer battery life and ideally 70 % could be used. User is warned when
+this level is reached and automatic shutdown in five minutes followed by
+power down is started. During this period no new logins are allowed. 
+The system can wake up automatically in future if file 
+/var/lib/pipicpowerd/wakeup exists. The \fIshutdown\fR\|(8) could be canceled
+manually if needed.
 .PP
 \&\fI\s-1PICYCLE\s0\fR 
 \&\s-1PIC\s0 internal timer cycle period in seconds. Needed to estimate number of
