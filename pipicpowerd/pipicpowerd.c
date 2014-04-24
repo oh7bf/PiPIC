@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Wed Apr 23 21:10:02 CEST 2014
+ * Edit: Thu Apr 24 20:35:20 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140423; // program version
+const int version=20140424; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -79,6 +79,7 @@ const char batteryfile[200]="/var/lib/pipicpowerd/battery";
 const char voltfile[200]="/var/lib/pipicpowerd/volts";
 const char batterytime[200]="/var/lib/pipicpowerd/hoursleft";
 const char batterylevel[200]="/var/lib/pipicpowerd/battlevel";
+const char operationtime[200]="/var/lib/pipicpowerd/ophours";
 const char tempfile[200]="/var/lib/tmp102d/temperature";
 
 const char pidfile[200]="/var/run/pipicpowerd.pid";
@@ -901,7 +902,7 @@ void read_sleeptime()
 
 // write '/var/lib/pipicpowerd/battery', '/var/lib/pipicpowerd/volts'
 // and '/var/lib/pipicpowerd/hoursleft'
-int write_battery(int b, float v, float h, float l)
+int write_battery(int b, float v, float h, float t, float l)
 {
   int ok=0;
   FILE *bfile;
@@ -941,6 +942,19 @@ int write_battery(int b, float v, float h, float l)
   { 
     fprintf(hfile,"%4.1f",h);
     fclose(hfile);
+  }
+
+  FILE *tfile;
+  tfile=fopen(operationtime, "w");
+  if(NULL==tfile)
+  {
+    sprintf(message,"could not write file: %s",operationtime);
+    logmessage(logfile,message,loglev,4);
+  }
+  else
+  { 
+    fprintf(tfile,"%4.1f",t);
+    fclose(tfile);
   }
 
   FILE *lfile;
@@ -1017,9 +1031,29 @@ float battime(float level, float battcap, float pkfact, float phours, float curr
   float hours=0;
   float capleft=level*battcap/100;
   float base=0;
+
   if(current>0) base=capleft/(current*phours);
   float expo=pkfact-1.0;
+  if(current>0) hours=capleft*powf(base,expo)/current;
 
+  return hours;
+}
+
+// estimate time remaining before battery level is too low, operation
+// can be continued after this time but battery life will be less if this
+// is done often
+// http://en.wikipedia.org/wiki/Peukert's_law
+float optime(float level, float minbattlev, float battcap, float pkfact, float phours, float current)
+{
+  float hours=0;
+  float capleft=0;
+
+  if(level>=minbattlev) capleft=(level-minbattlev)*battcap/100;
+
+  float base=0;
+  if(current>0) base=capleft/(current*phours);
+
+  float expo=pkfact-1.0;
   if(current>0) hours=capleft*powf(base,expo)/current;
 
   return hours;
@@ -1031,6 +1065,7 @@ int main()
   float voltsV=0; // conversion to Volts
   float battlev=0; // battery level [%]
   float batim=0; // hours left with battery
+  float ophours=0; // hours left before recommended low charge level reached
   float temp=-100; // ambient temperature [C]
   int button=0; // button pressed
   int timer=0; // PIC internal timer
@@ -1262,10 +1297,11 @@ int main()
       voltsV=voltcal*(1023-volts);
       battlev=battlevel(voltsV);
       batim=battime(battlev,battcap,pkfact,phours,current);
-      sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.1f hours)",volts,voltsV,battlev,batim);
-      if((temp>-100)&&(temp<100)) sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.1f hours at %4.1f C)",volts,voltsV,battlev,batim,temp);
+      sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.0f hours)",volts,voltsV,battlev,batim);
+      if((temp>-100)&&(temp<100)) sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.0f hours at %4.1f C)",volts,voltsV,battlev,batim,temp);
       logmessage(logfile,message,loglev,4);
-      write_battery(volts,voltsV,batim,battlev);
+      ophours=optime(battlev,minbattlev,battcap,pkfact,phours,current);
+      write_battery(volts,voltsV,batim,ophours,battlev);
       if(volts>minvolts)
       {
         strcpy(message,"battery voltage low, shut down and power off");
