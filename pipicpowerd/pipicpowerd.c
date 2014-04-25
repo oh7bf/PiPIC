@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Thu Apr 24 20:35:20 CEST 2014
+ * Edit: Fri Apr 25 19:53:13 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140424; // program version
+const int version=20140425; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -729,6 +729,60 @@ int resetimer()
   return ok;
 }
 
+// test if ntp is running
+int test_ntp()
+{
+  int ntpruns=0;
+
+  char str[250]="/usr/bin/ntpq -p > /tmp/pipicpowerd_ntp_test";
+  int ok=system(str);
+
+  FILE *nfile;
+  char *line=NULL;
+  char p1[200],p2[200],p3[200],p4[200],p5[200],p6[200],p7[200],p8[200],p9[200],p10[200];
+  size_t len;
+  ssize_t read;
+
+  nfile=fopen("/tmp/pipicpowerd_ntp_test", "r");
+  if(NULL!=nfile)
+  {
+    if((read=getline(&line,&len,nfile))!=-1)
+    {
+      if(sscanf(line,"%s %s %s %s %s %s %s %s %s %s",p1,p2,p3,p4,p5,p6,p7,p8,p9,p10)!=EOF)
+      {
+        if((strncmp(p1,"remote",6)==0)&&(strncmp(p2,"refid",5)==0))
+        {
+          if((read=getline(&line,&len,nfile))!=-1)
+          {
+            if((read=getline(&line,&len,nfile))!=-1)
+            {
+              if(sscanf(line,"%s %s %s %s %s %s %s %s %s %s",p1,p2,p3,p4,p5,p6,p7,p8,p9,p10)!=EOF)
+              {
+                ntpruns=1;
+                logmessage(logfile,line,loglev,4);
+              }
+            }
+          }
+        }
+      }
+    }
+    fclose(nfile);
+  }
+
+  if(ntpruns==0)
+  {
+    sprintf(str,"test 'ntpq -p > /tmp/pipicpowerd_ntp_test' failed");
+    logmessage(logfile,str,loglev,4);
+  }
+  else
+  {
+    sprintf(str,"test 'ntpq -p > /tmp/pipicpowerd_ntp_test' success");
+    logmessage(logfile,str,loglev,4);
+  }
+
+  return ntpruns;
+}
+
 // write calculated wakeup time calculated from PIC internal timer
 int writeuptime(int timer)
 {
@@ -759,6 +813,7 @@ int pwrupfile_create()
   else
   { 
     fclose(pwrup);
+    ok=1;
   }
   return ok;
 }
@@ -839,6 +894,11 @@ void hup(int sig)
       logmessage(logfile,message,loglev,4);
     }
     sleep(1);
+    if(pwrupfile_create()!=1)
+    {
+      sprintf(message,"failed to create 'pwrup' file");
+      logmessage(logfile,message,loglev,4);
+    }
     cont=0;
     if(system("/sbin/shutdown -h now")==-1)
     {
@@ -1069,6 +1129,7 @@ int main()
   float temp=-100; // ambient temperature [C]
   int button=0; // button pressed
   int timer=0; // PIC internal timer
+  int ntpok=0; // does the ntpd seem to be running?
   int ok=0;
   char s[100];
   char wd[25],mo[25],tzone[25];
@@ -1178,7 +1239,8 @@ int main()
     sprintf(message,"PIC timer at %d",timer);
     logmessage(logfile,message,loglev,4);
 
-    if(access(pwrupfile,F_OK)!=-1)
+    ntpok=test_ntp();
+    if((access(pwrupfile,F_OK)!=-1)&&(ntpok==0))
     {
       ok=writeuptime(timer);
       wakef=fopen(upfile,"r");
