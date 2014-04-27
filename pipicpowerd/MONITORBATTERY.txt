@@ -1,0 +1,19 @@
+
+The battery status can be printed on the screen during the login by adding 
+the commands from the file 'battery.sh' to the end of '.bashrc'. 
+
+The 'filterlog' script can be used to extract the data from the log file
+'pipicpowerd.log'. This data can then be plotted with
+
+gnuplot> set title "Battery voltage"
+gnuplot> set xdata time
+gnuplot> set timefmt "%Y-%m-%d %H:%M:%S"
+gnuplot> set format x "%m-%d\n%H:%M"
+gnuplot> set xlabel "Date"
+gnuplot> set ylabel "U[V]"
+gnuplot> set xrange ["2014-04-24 21:00":"2014-04-27 18:00"]
+gnuplot> plot "battery27Apr2014.txt" using 1:4
+gnuplot> set term png
+gnuplot> set output "battery27Apr2014.png"
+gnuplot> plot "battery27Apr2014.txt" using 1:4
+
