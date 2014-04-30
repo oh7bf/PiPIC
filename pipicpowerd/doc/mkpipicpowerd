@@ -1,2 +1,2 @@
 #!/bin/bash
-pod2man -c "Raspberry Pi" -r "version 20140424" --section=8 pipicpowerd.pod pipicpowerd.1
+pod2man -c "Raspberry Pi" -r "version 20140430" --section=8 pipicpowerd.pod pipicpowerd.1

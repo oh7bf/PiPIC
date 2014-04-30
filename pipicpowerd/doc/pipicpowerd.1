@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPICPOWERD 8"
-.TH PIPICPOWERD 8 "2014-04-24" "version 20140424" "Raspberry Pi"
+.TH PIPICPOWERD 8 "2014-04-30" "version 20140430" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -189,15 +189,22 @@ down to be executed.
 .PP
 \&\fI/var/lib/pipicpowerd/battery\fR    Most recent battery value 1023\-0.
 .PP
-\&\fI/var/lib/pipicpowerd/pwrup\fR      If this file exists approximative system time is set at power up.
+\&\fI/var/lib/pipicpowerd/battlevel\fR  Battery level 0 \- 100 %.
 .PP
+\&\fI/var/lib/pipicpowerd/hoursleft\fR  Hours left before battery flat.
+.PP
+\&\fI/var/lib/pipicpowerd/ophours\fR    Operation hours before \s-1MINBATTLEVEL\s0 reached.  
 \&\fI/var/lib/pipicpowerd/pwrdown\fR    If this file exists power down with \s-1SIGINT\s0.
+.PP
+\&\fI/var/lib/pipicpowerd/pwrup\fR      If this file exists approximative system time is set at power up.
 .PP
 \&\fI/var/lib/pipicpowerd/resetime\fR   Time of last \s-1PIC\s0 timer reset hh:mm.
 .PP
-\&\fI/var/lib/pipicpowerd/sleeptime\fR   If this file exists and has hh:mm, this time is used to start system shutdown and power down.
+\&\fI/var/lib/pipicpowerd/sleeptime\fR  If this file exists and has hh:mm, this time is used to start system shutdown and power down.
 .PP
 \&\fI/var/lib/pipicpowerd/volts\fR      Most recent battery voltage.
+.PP
+\&\fI/var/lib/pipicpowerd/waketime\fR   Estimated time from \s-1PIC\s0 counter at boot.
 .PP
 \&\fI/var/lib/pipicpowerd/wakeup\fR     Next wakeup time hh:mm.
 .PP
@@ -274,12 +281,13 @@ and the system time is set accordingly.
 \&\fI\s-1VOLTCAL\s0\fR
 Battery voltage calibration constant U=VOLTCAL*(1023\-AN3).
 .PP
-\&\fI\s-1VOLTTEMPA\s0\fR \fI\s-1VOLTTEMPB\s0\fR  
-Temperature dependent battery voltage calibration constants with linear
-model VOLTCAL=A*T+B.
-.PP
 \&\fI\s-1VOLTINT\s0\fR
 Battery voltage reading interval in seconds.
+.PP
+\&\fI\s-1VOLTTEMPA\s0\fR \fI\s-1VOLTTEMPB\s0\fR  
+Temperature dependent battery voltage calibration constants with linear
+model VOLTCAL=A*T+B. These are for outdoor use and at room temperature
+20 \- 25 C it is better to use \fI\s-1VOLTCAL\s0\fR only.
 .SH "WARNING"
 .IX Header "WARNING"
 No check is done where the query data is written. Could make some hardware 

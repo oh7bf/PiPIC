@@ -62,18 +62,25 @@ I</usr/sbin/pipicpowerd>           Daemon code.
 
 I</var/lib/pipicpowerd/battery>    Most recent battery value 1023-0. 
 
-I</var/lib/pipicpowerd/pwrup>      If this file exists approximative system time is set at power up.
+I</var/lib/pipicpowerd/battlevel>  Battery level 0 - 100 %.
 
-I</var/lib/pipicpowerd/pwrdown>    If this file exists power down with SIGINT. 
+I</var/lib/pipicpowerd/hoursleft>  Hours left before battery flat. 
+
+I</var/lib/pipicpowerd/ophours>    Operation hours before MINBATTLEVEL reached.  
+I</var/lib/pipicpowerd/pwrdown>    If this file exists power down with SIGINT.
+ 
+I</var/lib/pipicpowerd/pwrup>      If this file exists approximative system time is set at power up.
 
 I</var/lib/pipicpowerd/resetime>   Time of last PIC timer reset hh:mm. 
 
-I</var/lib/pipicpowerd/sleeptime>   If this file exists and has hh:mm, this time is used to start system shutdown and power down.
+I</var/lib/pipicpowerd/sleeptime>  If this file exists and has hh:mm, this time is used to start system shutdown and power down.
 
 I</var/lib/pipicpowerd/volts>      Most recent battery voltage. 
  
-I</var/lib/pipicpowerd/wakeup>     Next wakeup time hh:mm. 
+I</var/lib/pipicpowerd/waketime>   Estimated time from PIC counter at boot.
 
+I</var/lib/pipicpowerd/wakeup>     Next wakeup time hh:mm.
+ 
 I</var/log/pipicpowerd.log>        Log file.
 
 I</var/run/pipicpowerd.pid>        PID file.
@@ -147,12 +154,13 @@ and the system time is set accordingly.
 I<VOLTCAL>
 Battery voltage calibration constant U=VOLTCAL*(1023-AN3).
 
-I<VOLTTEMPA> I<VOLTTEMPB>  
-Temperature dependent battery voltage calibration constants with linear
-model VOLTCAL=A*T+B.
-
 I<VOLTINT>
 Battery voltage reading interval in seconds.
+
+I<VOLTTEMPA> I<VOLTTEMPB>  
+Temperature dependent battery voltage calibration constants with linear
+model VOLTCAL=A*T+B. These are for outdoor use and at room temperature
+20 - 25 C it is better to use I<VOLTCAL> only.
 
 =head1 WARNING
 
