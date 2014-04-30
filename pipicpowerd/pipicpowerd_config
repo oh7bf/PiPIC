@@ -1,7 +1,7 @@
 #
 # Example configuration file for pipicpowerd 
 # Fri Feb 14 21:06:59 CET 2014
-# Edit: Wed Apr 23 22:11:34 CEST 2014
+# Edit: Wed Apr 30 22:10:03 CEST 2014
 # Jaakko Koivuniemi
 
 # log level 0=debug messages, 1=system commands, 2=operation messages, 
@@ -29,10 +29,11 @@ CURRENT 0.15
 # calibration constant for voltage U=VOLTCAL*(1023-AN3)
 VOLTCAL 0.0216449
 
-# temperature dependent calibration constants for the voltage
+# temperature dependent calibration constants for the voltage, for outdoor
+# use only, at room temperature 20 - 25 C it is better to use VOLTCAL only
 # VOLTCAL=VOLTTEMPA*T+VOLTTEMPB
-VOLTTEMPA -0.000170663 
-VOLTTEMPB 0.025399486 
+#VOLTTEMPA -0.000170663 
+#VOLTTEMPB 0.025399486 
 
 # minimum operating charge level for battery, should be more than 50 %
 # for longer battery life, ideally 70 % could be used

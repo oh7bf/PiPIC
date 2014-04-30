@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Fri Apr 25 19:53:13 CEST 2014
+ * Edit: Wed Apr 30 22:12:20 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140425; // program version
+const int version=20140430; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -52,8 +52,8 @@ int minvolts=550; // power down if read voltage exceeds this value
 float minbattlev=50; // power down if battery charge less than this value [%]
 float maxbattvolts=14.4; // maximum battery voltage [V]
 float voltcal=0.0216449; // voltage calibration constant
-float volttempa=-0.000170663; // temperature dependent voltage calibration 
-float volttempb=0.0268319; // temperature dependent voltage calibration 
+float volttempa=0; // temperature dependent voltage calibration 
+float volttempb=0; // temperature dependent voltage calibration 
 float battcap=7; // nominal battery capacity [Ah]
 const float pkfact=1.1; // Peukert's law exponent
 const float phours=20; // Peukert's law discharge time for nominal capacity [h]
@@ -1354,13 +1354,13 @@ int main()
     {
       nxtvolts=voltint+unxs;
       volts=readvolts();
-      temp=readtemp();
-      if((temp>-100)&&(temp<100)) voltcal=volttempa*temp+volttempb;
+      if(volttempa!=0) temp=readtemp();
+      if((temp>-100)&&(temp<100)&&(volttempa!=0)) voltcal=volttempa*temp+volttempb;
       voltsV=voltcal*(1023-volts);
       battlev=battlevel(voltsV);
       batim=battime(battlev,battcap,pkfact,phours,current);
       sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.0f hours)",volts,voltsV,battlev,batim);
-      if((temp>-100)&&(temp<100)) sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.0f hours at %4.1f C)",volts,voltsV,battlev,batim,temp);
+      if((temp>-100)&&(temp<100)&&(volttempa!=0)) sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.0f hours at %4.1f C)",volts,voltsV,battlev,batim,temp);
       logmessage(logfile,message,loglev,4);
       ophours=optime(battlev,minbattlev,battcap,pkfact,phours,current);
       write_battery(volts,voltsV,batim,ophours,battlev);
