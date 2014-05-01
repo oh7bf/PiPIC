@@ -66,7 +66,9 @@ I</var/lib/pipicpowerd/battlevel>  Battery level 0 - 100 %.
 
 I</var/lib/pipicpowerd/hoursleft>  Hours left before battery flat. 
 
-I</var/lib/pipicpowerd/ophours>    Operation hours before MINBATTLEVEL reached.  
+I</var/lib/pipicpowerd/ophours>    Operation hours before MINBATTLEVEL reached. 
+
+ 
 I</var/lib/pipicpowerd/pwrdown>    If this file exists power down with SIGINT.
  
 I</var/lib/pipicpowerd/pwrup>      If this file exists approximative system time is set at power up.

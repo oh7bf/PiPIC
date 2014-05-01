@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "PIPICPOWERD 8"
-.TH PIPICPOWERD 8 "2014-04-30" "version 20140430" "Raspberry Pi"
+.TH PIPICPOWERD 8 "2014-05-01" "version 20140501" "Raspberry Pi"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -193,7 +193,8 @@ down to be executed.
 .PP
 \&\fI/var/lib/pipicpowerd/hoursleft\fR  Hours left before battery flat.
 .PP
-\&\fI/var/lib/pipicpowerd/ophours\fR    Operation hours before \s-1MINBATTLEVEL\s0 reached.  
+\&\fI/var/lib/pipicpowerd/ophours\fR    Operation hours before \s-1MINBATTLEVEL\s0 reached.
+.PP
 \&\fI/var/lib/pipicpowerd/pwrdown\fR    If this file exists power down with \s-1SIGINT\s0.
 .PP
 \&\fI/var/lib/pipicpowerd/pwrup\fR      If this file exists approximative system time is set at power up.
@@ -224,6 +225,9 @@ push button can be used to initiate system shutdown and power down.
 \&\fI\s-1CONFDELAY\s0\fR
 The system shutdown and power down needs to be confirmed by a second button
 press. This is the waiting time in seconds for confirmation button press.
+.PP
+\&\fI\s-1COUNTINT\s0\fR
+Read \s-1PIC\s0 internal timer at given intervals in seconds.
 .PP
 \&\fI\s-1CURRENT\s0\fR
 Estimated average discharge current in Amperes.

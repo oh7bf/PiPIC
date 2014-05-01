@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Sun Feb 16 14:29:25 CET 2014
- * Edit: Mon Feb 24 21:10:13 CET 2014
+ * Edit: Thu May  1 19:35:27 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -46,7 +46,7 @@
 
 #define CHECK_BIT(var,pos) !!((var) & (1<<(pos)))
 
-const int version=20140224; // program version
+const int version=20140501; // program version
 
 int portno=5001; // socket port number
 
@@ -55,6 +55,7 @@ float picycle=0.445; // length of PIC counter cycles [s]
 const char i2cdev[100]="/dev/i2c-1";
 const int  address=0x27;
 const int  i2lockmax=10; // maximum number of times to try lock i2c port  
+int forcereset=0; // force PIC timer reset if i2c test fails
 
 const char confile[200]="/etc/pipicswd_config";
 
@@ -159,7 +160,21 @@ void read_config()
              sprintf(message,"PIC cycle %f s",value);
              logmessage(logfile,message,loglev,4);
           }
-
+          if(strncmp(par,"FORCERESET",10)==0)
+          {
+             if(value==1)
+             {
+                forcereset=1;
+                sprintf(message,"Force PIC timer reset at start if i2c test fails");
+                logmessage(logfile,message,loglev,4);
+             }
+             else
+             {
+                forcereset=0;
+                sprintf(message,"Exit in case of i2c test failure");
+                logmessage(logfile,message,loglev,4);
+             }
+          }
        }
     }
     fclose(cfile);
@@ -522,7 +537,15 @@ int operate_switch2(int switch2)
   return ok;
 }
 
+// reset PIC internal timer
+int resetimer()
+{
+  int ok=-1;
 
+  ok=write_cmd(0x50,0,0);
+
+  return ok;
+}
 
 int cont=1; /* main loop flag */
 
@@ -572,6 +595,8 @@ int main()
   signal(SIGQUIT,&stop); 
   signal(SIGHUP,&hup); 
 
+  read_config(); // read configuration file
+
   int i2cok=testi2c(); // test i2c data flow to PIC 
   if(i2cok==1)
   {
@@ -580,16 +605,49 @@ int main()
   }
   else
   {
-    strcpy(message,"i2c dataflow test failed, exit");
-    logmessage(logfile,message,loglev,4); 
-    strcpy(message,"try to reset timer with 'pipic -a 27 -c 50'");
-    logmessage(logfile,message,loglev,4); 
-    strcpy(message,"and restart with 'service pipicswd start'");
-    logmessage(logfile,message,loglev,4); 
-    cont=0;
+    if(forcereset==1)
+    {
+      sleep(1); 
+      strcpy(message,"try to reset timer now");
+      logmessage(logfile,message,loglev,4); 
+      ok=resetimer();
+      sleep(1);
+      if(resetimer()!=1)
+      {
+        strcpy(message,"failed to reset timer");
+        logmessage(logfile,message,loglev,4);
+        cont=0; 
+      }
+      else
+      {
+        sleep(1);
+        i2cok=testi2c(); // test i2c data flow to PIC 
+        if(i2cok==1)
+        {
+          strcpy(message,"i2c dataflow test ok"); 
+          logmessage(logfile,message,loglev,4);
+        }
+        else
+        {
+          strcpy(message,"i2c dataflow test failed");
+          logmessage(logfile,message,loglev,4);
+          cont=0;
+          exit(EXIT_FAILURE);
+        }
+      }
+    }
+    else
+    {
+      strcpy(message,"i2c dataflow test failed, exit");
+      logmessage(logfile,message,loglev,4); 
+      strcpy(message,"try to reset timer with 'pipic -a 27 -c 50'");
+      logmessage(logfile,message,loglev,4); 
+      strcpy(message,"and restart with 'service pipicswd start'");
+      logmessage(logfile,message,loglev,4); 
+      cont=0;
+      exit(EXIT_FAILURE);
+    }
   }
-
-  read_config(); // read configuration file
 
   pid_t pid, sid;
         

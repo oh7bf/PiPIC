@@ -1,13 +1,17 @@
 #
 # Example configuration file for pipicswd 
 # Sun Feb 16 16:17:27 CET 2014
-# Edit: Sun Feb 23 18:12:15 CET 2014
-# 
+# Edit: Thu May  1 19:27:37 CEST 2014
+#
 # Jaakko Koivuniemi
 
 # log level 0=debug messages, 1=system commands, 2=operation messages, 
 # 3=status messages, 4=errors/warnings
 LOGLEVEL 2
+
+# force reset of PIC counter if initial i2c dataflow test fails, the PIC
+# counter needs to be reset after power cycling of the PIC 
+FORCERESET 0
 
 # socket port number for the DC switch
 DCSWITCHPORT 5001
