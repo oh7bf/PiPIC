@@ -48,6 +48,9 @@ MAXBATTVOLTS 14.4
 # 'pipictest -a 26 -c -n 10000' 
 PICYCLE 0.445
 
+# read PIC internal timer at given intervals [s]
+#COUNTINT 1200
+
 # push button reading interval [s]
 BUTTONINT 10
 

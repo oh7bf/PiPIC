@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Wed Apr 30 22:12:20 CEST 2014
+ * Edit: Thu May  1 13:15:13 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,13 +41,14 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140430; // program version
+const int version=20140501; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
 int confdelay=10; // delay to wait for confirmation [s]
 int pwrdown=100; // delay to power down in PIC counter cycles
 float picycle=0.445; // length of PIC counter cycles [s]
+int countint=0; // PIC counter reading interval [s] 
 int minvolts=550; // power down if read voltage exceeds this value
 float minbattlev=50; // power down if battery charge less than this value [%]
 float maxbattvolts=14.4; // maximum battery voltage [V]
@@ -80,6 +81,7 @@ const char voltfile[200]="/var/lib/pipicpowerd/volts";
 const char batterytime[200]="/var/lib/pipicpowerd/hoursleft";
 const char batterylevel[200]="/var/lib/pipicpowerd/battlevel";
 const char operationtime[200]="/var/lib/pipicpowerd/ophours";
+const char timerfile[200]="/var/lib/pipicpowerd/timer";
 const char tempfile[200]="/var/lib/tmp102d/temperature";
 
 const char pidfile[200]="/var/run/pipicpowerd.pid";
@@ -189,6 +191,12 @@ void read_config()
           {
              picycle=value;
              sprintf(message,"PIC cycle %f s",value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"COUNTINT",8)==0)
+          {
+             countint=(int)value;
+             sprintf(message,"PIC counter reading interval %d s",(int)value);
              logmessage(logfile,message,loglev,4);
           }
           if(strncmp(par,"FORCEPOWEROFF",13)==0)
@@ -729,6 +737,42 @@ int resetimer()
   return ok;
 }
 
+// write timer to file
+void write_timer(int timer)
+{
+  FILE *tfile;
+  tfile=fopen(timerfile, "w");
+  if(NULL==tfile)
+  {
+    sprintf(message,"could not write file: %s",timerfile);
+    logmessage(logfile,message,loglev,4);
+  }
+  else
+  { 
+    fprintf(tfile,"%d\n",timer);
+    fclose(tfile);
+  }
+}
+
+// read timer file
+int read_timer_file()
+{
+  int timer=0;
+
+  FILE *tfile;
+  tfile=fopen(timerfile, "r");
+  if(NULL!=tfile)
+  {
+    if(fscanf(tfile,"%d",&timer)==EOF)
+    {
+      sprintf(message,"reading %s failed",timerfile);
+      logmessage(logfile,message,loglev,4);
+    }
+  }
+
+  return timer;
+}
+
 // test if ntp is running
 int test_ntp()
 {
@@ -744,7 +788,7 @@ int test_ntp()
   ssize_t read;
 
   nfile=fopen("/tmp/pipicpowerd_ntp_test", "r");
-  if(NULL!=nfile)
+  if((NULL!=nfile)&&(ok!=-1))
   {
     if((read=getline(&line,&len,nfile))!=-1)
     {
@@ -787,7 +831,8 @@ int test_ntp()
 int writeuptime(int timer)
 {
   int ok=0;
-  int s=(int)(timer*picycle);
+  int timer0=read_timer_file(); 
+  int s=(int)((timer-timer0)*picycle);
   int h=(int)(s/3600);
   int m=(int)((s%3600)/60);
   char str[250];
@@ -840,6 +885,7 @@ void stop(int sig)
 void terminate(int sig)
 {
   int ok=0;
+  int timer=0;
 
   sprintf(message,"signal %d catched",sig);
   logmessage(logfile,message,loglev,4);
@@ -848,18 +894,20 @@ void terminate(int sig)
   {
     ok=powerdown(pwrdown,1);
     sleep(1);
-    strcpy(message,"reset PIC timer");
+    strcpy(message,"save PIC timer value to file");
     logmessage(logfile,message,loglev,4);
-    ok=resetimer();
+    timer=read_timer(); 
+    write_timer(timer);// save last PIC timer value to file 
     ok=pwrupfile_create();
   } 
   else if(pwroff==2)
   {
     ok=powerdown(pwrdown,0);
     sleep(1);
-    strcpy(message,"reset PIC timer");
+    strcpy(message,"save PIC timer value to file");
     logmessage(logfile,message,loglev,4);
-    ok=resetimer();
+    timer=read_timer();
+    write_timer(timer); // save last PIC timer value to file
     ok=pwrupfile_create();
   }
 
@@ -872,6 +920,8 @@ void terminate(int sig)
 // shut down and power off if '/var/lib/pipicpowerd/pwrdown' exists
 void hup(int sig)
 {
+  int timer=0;
+
   sprintf(message,"signal %d catched",sig);
   logmessage(logfile,message,loglev,4);
 
@@ -886,13 +936,12 @@ void hup(int sig)
       logmessage(logfile,message,loglev,4);
     }
     sleep(1);
-    strcpy(message,"reset PIC timer");
+
+    strcpy(message,"save PIC timer value to file");
     logmessage(logfile,message,loglev,4);
-    if(resetimer()!=1)
-    {
-      sprintf(message,"sending timer reset command failed");
-      logmessage(logfile,message,loglev,4);
-    }
+    timer=read_timer();
+    write_timer(timer); // save last PIC timer value to file
+
     sleep(1);
     if(pwrupfile_create()!=1)
     {
@@ -913,6 +962,7 @@ void hup(int sig)
 void read_sleeptime()
 {
   int hh=0,mm=0,mins;
+  int timer=0;
   FILE *sfile;
   time_t now;
   struct tm* tm_info;
@@ -940,14 +990,14 @@ void read_sleeptime()
           logmessage(logfile,message,loglev,4);
         }
         sleep(1);
-        strcpy(message,"reset PIC timer");
+
+        strcpy(message,"save PIC timer value to file");
         logmessage(logfile,message,loglev,4);
-        if(resetimer()!=1)
-        {
-          sprintf(message,"sending timer reset command failed");
-          logmessage(logfile,message,loglev,4);
-        }
+        timer=read_timer();
+        write_timer(timer); // save last PIC timer value to file
+
         sleep(1);
+
         cont=0;
         if(system("/sbin/shutdown -h now")==-1)
         {
@@ -1149,6 +1199,7 @@ int main()
   int nxtvolts=unxs; // next time to read battery voltage
   int nxtbutton=20+unxs; // next time to check button
   int nxtsleep=60+unxs; // next time to check sleep file
+  int nxtcounter=300+unxs; // next time to read PIC counter
 
   read_config(); // read configuration file
 
@@ -1438,6 +1489,15 @@ int main()
       }
       sprintf(message,"unxs=%d nxtbutton=%d",unxs,nxtbutton);
       logmessage(logfile,message,loglev,2);
+    }
+
+    if(((unxs>=nxtcounter)||((nxtcounter-unxs)>countint))&&(pwroff==0)&&(countint>10)) 
+    {
+      nxtcounter=countint+unxs;
+      timer=read_timer();
+      sprintf(message,"PIC timer at %d",timer);
+      logmessage(logfile,message,loglev,4);
+      write_timer(timer);
     }
 
     sleep(1);

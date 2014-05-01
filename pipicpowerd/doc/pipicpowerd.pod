@@ -98,6 +98,9 @@ I<CONFDELAY>
 The system shutdown and power down needs to be confirmed by a second button
 press. This is the waiting time in seconds for confirmation button press.
 
+I<COUNTINT>
+Read PIC internal timer at given intervals in seconds. 
+
 I<CURRENT>
 Estimated average discharge current in Amperes.
 
