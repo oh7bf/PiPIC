@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Thu May  1 13:15:13 CEST 2014
+ * Edit: Fri May  2 20:10:39 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140501; // program version
+const int version=20140502; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -859,6 +859,8 @@ int pwrupfile_create()
   { 
     fclose(pwrup);
     ok=1;
+    sprintf(message,"created file: %s",pwrupfile);
+    logmessage(logfile,message,loglev,4);
   }
   return ok;
 }
@@ -869,6 +871,8 @@ int pwrupfile_delete()
   int ok=0;
 
   ok=remove(pwrupfile);
+  sprintf(message,"removed file: %s",pwrupfile);
+  logmessage(logfile,message,loglev,4);
 
   return ok;
 }
@@ -949,6 +953,11 @@ void hup(int sig)
       logmessage(logfile,message,loglev,4);
     }
     cont=0;
+    if(system("/bin/sync")==-1)
+    {
+      sprintf(message,"sync to disk failed");
+      logmessage(logfile,message,loglev,4);
+    }
     if(system("/sbin/shutdown -h now")==-1)
     {
       sprintf(message,"system shutdown failed");
@@ -999,11 +1008,17 @@ void read_sleeptime()
         sleep(1);
 
         cont=0;
+        if(system("/bin/sync")==-1)
+        {
+          sprintf(message,"sync to disk failed");
+          logmessage(logfile,message,loglev,4);
+        }
         if(system("/sbin/shutdown -h now")==-1)
         {
           sprintf(message,"system shutdown failed");
           logmessage(logfile,message,loglev,4);
         }
+
       }
     }
     fclose(sfile);
@@ -1319,6 +1334,11 @@ int main()
         }
       } 
       ok=pwrupfile_delete();
+    }
+    else if(access(pwrupfile,F_OK)==-1)
+    {
+      sprintf(message,"not power up, leave time untouched");
+      logmessage(logfile,message,loglev,4);
     } 
   }
   else
@@ -1421,6 +1441,7 @@ int main()
         logmessage(logfile,message,loglev,4);
         sleep(1);
         pwroff=2;
+        ok=system("/bin/sync");
         ok=system("/sbin/shutdown -h now battery low");
       }
       if(battlev<minbattlev)
@@ -1429,8 +1450,8 @@ int main()
         logmessage(logfile,message,loglev,4);
         sleep(1);
         pwroff=1;
+        ok=system("/bin/sync");
         ok=system("/sbin/shutdown -h +5 battery charge low");
-
       }
       if(voltsV>maxbattvolts)
       {
@@ -1481,6 +1502,7 @@ int main()
             logmessage(logfile,message,loglev,4);
             sleep(1);
             pwroff=1;
+            ok=system("/bin/sync");
             ok=system("/sbin/shutdown -h now");
           }
         }
