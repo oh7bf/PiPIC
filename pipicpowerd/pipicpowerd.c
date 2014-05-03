@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Fri May  2 20:10:39 CEST 2014
+ * Edit: Sat May  3 11:10:46 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140502; // program version
+const int version=20140503; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -968,10 +968,11 @@ void hup(int sig)
 
 // read sleep time from file if it exists, if the time matches local time
 // shutdown and power down is started
-void read_sleeptime()
+int read_sleeptime()
 {
+  int sleepnow=0;
+
   int hh=0,mm=0,mins;
-  int timer=0;
   FILE *sfile;
   time_t now;
   struct tm* tm_info;
@@ -986,43 +987,12 @@ void read_sleeptime()
     if(fscanf(sfile,"%d:%d",&hh,&mm)!=EOF)
     {
       mins=60*hh+mm;
-      if((minutes>=mins)&&((minutes-mins)<3))
-      {
-        sprintf(message,"time to go to sleep");
-        logmessage(logfile,message,loglev,4);
-        sprintf(message,"shut down and power off");
-        logmessage(logfile,message,loglev,4);
-        sleep(1);
-        if(powerdown(pwrdown,1)!=1)
-        {
-          sprintf(message,"sending timed power down command failed");
-          logmessage(logfile,message,loglev,4);
-        }
-        sleep(1);
-
-        strcpy(message,"save PIC timer value to file");
-        logmessage(logfile,message,loglev,4);
-        timer=read_timer();
-        write_timer(timer); // save last PIC timer value to file
-
-        sleep(1);
-
-        cont=0;
-        if(system("/bin/sync")==-1)
-        {
-          sprintf(message,"sync to disk failed");
-          logmessage(logfile,message,loglev,4);
-        }
-        if(system("/sbin/shutdown -h now")==-1)
-        {
-          sprintf(message,"system shutdown failed");
-          logmessage(logfile,message,loglev,4);
-        }
-
-      }
+      if((minutes>=mins)&&((minutes-mins)<3)) sleepnow=1;
     }
     fclose(sfile);
   }
+
+  return sleepnow;
 }
 
 // write '/var/lib/pipicpowerd/battery', '/var/lib/pipicpowerd/volts'
@@ -1418,7 +1388,15 @@ int main()
     if(((unxs>=nxtsleep)||((nxtsleep-unxs)>sleepint))&&(pwroff==0)) 
     {
       nxtsleep=sleepint+unxs;
-      read_sleeptime();
+      if(read_sleeptime()==1)
+      {
+        strcpy(message,"time to go to sleep");
+        logmessage(logfile,message,loglev,4);
+        sleep(1);
+        pwroff=1;
+        ok=system("/bin/sync");
+        ok=system("/sbin/shutdown -h now");
+      }
     }
 
     if(((unxs>=nxtvolts)||((nxtvolts-unxs)>voltint))&&(pwroff==0))
