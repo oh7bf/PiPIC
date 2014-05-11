@@ -35,6 +35,11 @@ VOLTCAL 0.0216449
 #VOLTTEMPA -0.000170663 
 #VOLTTEMPB 0.025399486 
 
+# voltage drop from battery to power supply [V]
+# this is needed for example if a diode is used as a switch between 
+# the battery and power supply 
+#VDROP 0.4
+
 # minimum operating charge level for battery, should be more than 50 %
 # for longer battery life, ideally 70 % could be used
 # user is warned when reaching this level and automatic shutdown is started
@@ -62,12 +67,4 @@ PWRDOWN 100
 
 # set system time from PIC counter
 SETTIME 1
-
-# force power off after given PIC counter cycles, can be used as a hardware
-# watchdog for RPi power, if set to zero this value is ignored 
-FORCEPOWEROFF 0
-
-# force power up after given PIC counter cycles, can be used as a hardware
-# watchdog for RPi power, if set to zero this value is ignored
-FORCEPOWERUP 0
 

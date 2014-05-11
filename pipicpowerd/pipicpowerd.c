@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Sat May  3 11:10:46 CEST 2014
+ * Edit: Sun May 11 23:37:38 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140503; // program version
+const int version=20140511; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -55,6 +55,7 @@ float maxbattvolts=14.4; // maximum battery voltage [V]
 float voltcal=0.0216449; // voltage calibration constant
 float volttempa=0; // temperature dependent voltage calibration 
 float volttempb=0; // temperature dependent voltage calibration 
+float vdrop=0; // voltage drop between battery and power supply [V]
 float battcap=7; // nominal battery capacity [Ah]
 const float pkfact=1.1; // Peukert's law exponent
 const float phours=20; // Peukert's law discharge time for nominal capacity [h]
@@ -167,6 +168,12 @@ void read_config()
           {
              volttempb=value;
              sprintf(message,"Voltage temperature constant set to %f",value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"VDROP",5)==0)
+          {
+             vdrop=value;
+             sprintf(message,"Voltage drop set to %f",value);
              logmessage(logfile,message,loglev,4);
           }
           if(strncmp(par,"BUTTONINT",9)==0)
@@ -1405,7 +1412,7 @@ int main()
       volts=readvolts();
       if(volttempa!=0) temp=readtemp();
       if((temp>-100)&&(temp<100)&&(volttempa!=0)) voltcal=volttempa*temp+volttempb;
-      voltsV=voltcal*(1023-volts);
+      voltsV=voltcal*(1023-volts)+vdrop;
       battlev=battlevel(voltsV);
       batim=battime(battlev,battcap,pkfact,phours,current);
       sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.0f hours)",volts,voltsV,battlev,batim);
