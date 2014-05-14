@@ -1,2 +1,0 @@
-#!/bin/bash
-pod2man -c "Raspberry Pi" -r "version 20130819" pipictest.pod pipictest.1

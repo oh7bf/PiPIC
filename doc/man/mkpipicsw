@@ -1,2 +1,0 @@
-#!/bin/bash
-pod2man -c "Raspberry Pi" -r "version 20140224" pipicsw.pod pipicsw.1
