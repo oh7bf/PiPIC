@@ -3,7 +3,7 @@
 # Makefile for compiling PiPIC programs on Raspberry Pi. 
 #
 # Wed May 14 22:55:55 CEST 2014
-# Edit: 
+# Edit: Thu May 15 17:48:26 CEST 2014
 # Jaakko Koivuniemi
 
 CXX           = gcc
@@ -29,6 +29,9 @@ pipicswd: pipicswd.o
 	$(LD) $(LDFLAGS) $^ -o $@
 
 pipicsw: pipicsw.o
+	$(LD) $(LDFLAGS) $^ -o $@
+
+pipicswitch: pipicswitch.o
 	$(LD) $(LDFLAGS) $^ -o $@
 
 pipictest: pipictest.o
