@@ -1,0 +1,163 @@
+#!/bin/sh
+#
+# Installation script for Rasbian Wheezy. The installation script can be
+# run after compiling the binaries.
+#
+# The directories used and files created by this script:
+#
+# /etc/init.d/pipicpowerd            - power supply init script
+# /etc/init.d/pipicswd               - power switch init script
+# /etc/logrotate.d/pipicpowerd       - power supply log rotation file
+# /etc/logrotate.d/pipicswd          - power switch log rotation file
+# /etc/pipicpowerd_config            - power supply configuration file
+# /etc/pipicswd_config               - power switch configuration file
+# /usr/share/man                     - manual pages
+# /usr/sbin/pipic                    - read and control PiPIC
+# /usr/sbin/pipicfile                - print files from PiPIC
+# /usr/sbin/pipicpowerd              - power supply daemon
+# /usr/sbin/pipicswd                 - power switch daemon
+# /usr/sbin/pipicsw                  - power switch client
+# /usr/sbin/pipictest                - send and read test data from PiPIC 
+#
+# Wed May 14 21:59:43 CEST 2014
+# Edit: Thu May 15 18:30:14 CEST 2014
+# 
+# Jaakko Koivuniemi
+#
+
+
+# source directory for 'PiPIC'
+SOURCEDIR=${PWD}
+SOURCEBIN=${SOURCEDIR}/src
+SOURCEMAN=${SOURCEDIR}/doc/man
+
+# binary executables 
+BINDIR=/usr/sbin
+
+# manual pages
+MANDIR=/usr/share/man/man1
+
+# pipicpowerd.log log rotation  
+LOGROTADIR=/etc/logrotate.d
+
+# automatic loading of modules
+MODPROBEDIR=/etc/modprobe.d
+
+# init script
+INITDIR=/etc/init.d
+
+# for pipicpowerd_conf configuration file
+CONFDIR=/etc
+
+# live data 
+VARLIBDIR=/var/lib
+
+# binary executables
+BINS='pipic pipicfile pipicpowerd pipicsw pipicswd pipictest'
+
+if [ -d $SOURCEBIN ]; then
+  echo "Copy binary executables to ${BINDIR}"
+  for item in $BINS;
+  do
+    if [ -r ${SOURCEBIN}/${item} ]; then
+       echo "... ${item}"
+       /usr/bin/install -C -m 755 ${SOURCEBIN}/${item} ${BINDIR}
+    fi 
+  done
+else
+  echo "Source directory ${SOURCEBIN} does not exist"
+fi
+
+if [ -d $SOURCEMAN ]; then
+  echo "Copy manual pages to ${MANDIR}"
+  for item in $BINS;
+  do
+    if [ -r ${SOURCEMAN}/$item.1 ]; then
+       echo "... ${item}.1"
+       /usr/bin/install -C -m 664 ${SOURCEMAN}/${item}.1 ${MANDIR}
+    fi 
+  done
+else
+  echo "Source directory ${SOURCEMAN} does not exist"
+fi
+
+if [ ! -r ${LOGROTADIR}/pipicpowerd ]; then
+  echo "Write log rotation file ${LOGROTADIR}/pipicpowerd"
+  /usr/bin/install -C -m 644 ${SOURCEDIR}/pipicpowerd/pipicpowerd.lrota ${LOGROTADIR}
+  /bin/mv ${LOGROTADIR}/pipicpowerd.lrota ${LOGROTADIR}/pipicpowerd
+else
+  echo "Log rotation file ${LOGROTADIR}/pipicpowerd already exists"
+fi
+
+if [ ! -x ${INITDIR}/pipicpowerd ]; then
+  echo "Write init script ${INITDIR}/pipicpowerd"
+  /usr/bin/install -C -m 755 ${SOURCEDIR}/pipicpowerd/pipicpowerd.sh ${INITDIR} 
+  /bin/mv ${INITDIR}/pipicpowerd.sh ${INITDIR}/pipicpowerd
+else
+  echo "Init script ${INITDIR}/pipicpowerd already exists"
+fi
+
+if [ ! -r ${CONFDIR}/pipicpowerd_config ]; then
+  echo "Write default configuration file ${CONFDIR}/pipicpowerd_config"
+  /usr/bin/install -C -m 664 ${SOURCEDIR}/pipicpowerd/pipicpowerd_config ${CONFDIR} 
+else
+  echo "Configuration file ${CONFDIR}/pipicpowerd.config already exists" 
+fi
+
+if [ ! -r ${LOGROTADIR}/pipicswd ]; then
+  echo "Write log rotation file ${LOGROTADIR}/pipicswd"
+  /usr/bin/install -C -m 644 ${SOURCEDIR}/pipicswd/pipicswd.lrota ${LOGROTADIR}
+  /bin/mv ${LOGROTADIR}/pipicswd.lrota ${LOGROTADIR}/pipicswd
+else
+  echo "Log rotation file ${LOGROTADIR}/pipicswd already exists"
+fi
+
+if [ ! -x ${INITDIR}/pipicswd ]; then
+  echo "Write init script ${INITDIR}/pipicswd"
+  /usr/bin/install -C -m 755 ${SOURCEDIR}/pipicswd/pipicswd.sh ${INITDIR} 
+  /bin/mv ${INITDIR}/pipicswd.sh ${INITDIR}/pipicswd
+else
+  echo "Init script ${INITDIR}/pipicswd already exists"
+fi
+
+if [ ! -r ${CONFDIR}/pipicswd_config ]; then
+  echo "Write default configuration file ${CONFDIR}/pipicswd_config"
+  /usr/bin/install -C -m 664 ${SOURCEDIR}/pipicswd/pipicswd_config ${CONFDIR} 
+else
+  echo "Configuration file ${CONFDIR}/pipicswd.config already exists" 
+fi
+
+if [ ! -r ${MODPROBEDIR}/i2c.conf ]; then
+  echo "Write modprobe configuration ${MODPROBEDIR}/i2c.conf"
+  /usr/bin/install -C -m 644 ${SOURCEDIR}/i2c.conf ${MODPROBEDIR}
+else
+  echo "modprobe configuration file ${MODPROBEDIR}/i2c.conf already exists"
+fi
+
+if /bin/grep -Fxq "i2c-bcm2708" /etc/modules
+then
+  echo "i2c-bcm2708 found from /etc/modules"
+else
+  echo "Add i2c-bcm2708 to /etc/modules"
+  echo "i2c-bcm2708" >> /etc/modules
+fi
+
+if /bin/grep -Fxq "i2c-dev" /etc/modules
+then
+  echo "i2c-dev found from /etc/modules"
+else
+  echo "Add i2c-dev to /etc/modules"
+  echo "i2c-dev" >> /etc/modules
+fi
+
+if /bin/grep -Fxq "#blacklist i2c-bcm2708" /etc/modprobe.d/raspi-blacklist.conf
+then
+  echo "black listing of i2c-bcm2708 already removed"
+else
+  echo "remove black listing of i2c-bcm2708"
+  /bin/cp /etc/modprobe.d/raspi-blacklist.conf /etc/modprobe.d/raspi-blacklist.conf.old
+  /bin/sed "s/blacklist i2c-bcm2708/#blacklist i2c-bcm2708/g" /etc/modprobe.d/raspi-blacklist.conf > /etc/modprobe.d/raspi-blacklist.conf.new
+  /bin/mv /etc/modprobe.d/raspi-blacklist.conf.new /etc/modprobe.d/raspi-blacklist.conf 
+fi
+
+echo "Run 'update-rc.d pipicpowerd defaults' to automatically start at boot time"
