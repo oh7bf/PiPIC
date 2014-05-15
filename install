@@ -127,6 +127,13 @@ else
   echo "Configuration file ${CONFDIR}/pipicswd.config already exists" 
 fi
 
+if [ -d /var/lib/pipicpowerd ]; then
+  echo "Directory to /var/lib/pipicpowerd already exists"
+else
+  echo "Create directory /var/lib/pipicpowerd"
+  /bin/mkdir -m 775 /var/lib/pipicpowerd
+fi
+
 if [ ! -r ${MODPROBEDIR}/i2c.conf ]; then
   echo "Write modprobe configuration ${MODPROBEDIR}/i2c.conf"
   /usr/bin/install -C -m 644 ${SOURCEDIR}/i2c.conf ${MODPROBEDIR}
