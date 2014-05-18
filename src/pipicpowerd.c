@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Sun May 11 23:37:38 CEST 2014
+ * Edit: Sun May 18 20:41:21 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140511; // program version
+const int version=20140518; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -55,6 +55,7 @@ float maxbattvolts=14.4; // maximum battery voltage [V]
 float voltcal=0.0216449; // voltage calibration constant
 float volttempa=0; // temperature dependent voltage calibration 
 float volttempb=0; // temperature dependent voltage calibration 
+float volttempc=0; // temperature dependent voltage calibration 
 float vdrop=0; // voltage drop between battery and power supply [V]
 float battcap=7; // nominal battery capacity [Ah]
 const float pkfact=1.1; // Peukert's law exponent
@@ -161,12 +162,18 @@ void read_config()
           if(strncmp(par,"VOLTTEMPA",9)==0)
           {
              volttempa=value;
-             sprintf(message,"Voltage temperature coefficient set to %f",value);
+             sprintf(message,"Voltage temperature non-linear set to %e",value);
              logmessage(logfile,message,loglev,4);
           }
           if(strncmp(par,"VOLTTEMPB",9)==0)
           {
              volttempb=value;
+             sprintf(message,"Voltage temperature coefficient set to %f",value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"VOLTTEMPC",9)==0)
+          {
+             volttempc=value;
              sprintf(message,"Voltage temperature constant set to %f",value);
              logmessage(logfile,message,loglev,4);
           }
@@ -1411,7 +1418,7 @@ int main()
       nxtvolts=voltint+unxs;
       volts=readvolts();
       if(volttempa!=0) temp=readtemp();
-      if((temp>-100)&&(temp<100)&&(volttempa!=0)) voltcal=volttempa*temp+volttempb;
+      if((temp>-100)&&(temp<100)&&(volttempa!=0)) voltcal=volttempa*temp*temp+volttempb*temp+volttempc;
       voltsV=voltcal*(1023-volts)+vdrop;
       battlev=battlevel(voltsV);
       batim=battime(battlev,battcap,pkfact,phours,current);

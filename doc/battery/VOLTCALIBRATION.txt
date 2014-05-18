@@ -56,22 +56,24 @@ temperature[C]   voltcal
 +6.00            0.02585
 +12.94           0.02454
 +20              0.02346
++33.9            0.02232
 
 These are written to a file 'volttemp.txt' and plotted with
 
 gnuplot> plot "volttemp.txt" using 1:2
 
-A linear fitting function is defined and fitted to the data
+A fitting function is defined and fitted to the data
 
-gnuplot> f(x)=a*x+b
+gnuplot> f(x)=a*x*x+b*x+c 
 
-gnuplot> fit f(x) "voltcal.txt" using 1:2 via a, b
+gnuplot> fit f(x) "volttemp.txt" using 1:2 via a, b, c
 
 The result can be plotted with
 
 gnuplot> plot "volttemp.txt" using 1:2, f(x)
 
-The fitted parameters 'a' and 'b' can be used for VOLTTEMP in the configuration file.
+The fitted parameters 'a', 'b' and 'c' can be used for VOLTTEMP in the 
+configuration file.
 
 
 

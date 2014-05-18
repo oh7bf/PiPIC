@@ -1,7 +1,7 @@
 #
 # Example configuration file for pipicpowerd 
 # Fri Feb 14 21:06:59 CET 2014
-# Edit: Wed Apr 30 22:10:03 CEST 2014
+# Edit: Sun May 18 20:39:20 CEST 2014
 # Jaakko Koivuniemi
 
 # log level 0=debug messages, 1=system commands, 2=operation messages, 
@@ -31,9 +31,10 @@ VOLTCAL 0.0216449
 
 # temperature dependent calibration constants for the voltage, for outdoor
 # use only, at room temperature 20 - 25 C it is better to use VOLTCAL only
-# VOLTCAL=VOLTTEMPA*T+VOLTTEMPB
-#VOLTTEMPA -0.000170663 
-#VOLTTEMPB 0.025399486 
+# VOLTCAL=VOLTTEMPA*T*T+VOLTTEMPB*T+VOLTTEMPC
+#VOLTTEMPA 3.12241e-06 
+#VOLTTEMPB -0.000251429 
+#VOLTTEMPC 0.0272529
 
 # voltage drop from battery to power supply [V]
 # this is needed for example if a diode is used as a switch between 
