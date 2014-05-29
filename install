@@ -3,6 +3,25 @@
 # Installation script for Rasbian Wheezy. The installation script can be
 # run after compiling the binaries.
 #
+# Installation:
+#
+# a) cd src; make
+# 
+# b) cd doc/man; ./mkman
+# 
+# c) sudo ./install (this script)
+#
+# d) sudo modprobe i2c-bcm2708; sudo modprobe i2c-dev
+#
+# e) sudo pipic -a 26 -c 50 (or set FORCERESET from configuration file)
+#
+# f) sudo service pipicpowerd start
+# 
+# g) tail -f /var/log/pipicpowerd.log
+#
+# h) sudo update-rc.d pipicpowerd defaults (optional)
+# 
+#
 # The directories used and files created by this script:
 #
 # /etc/init.d/pipicpowerd            - power supply init script
@@ -20,7 +39,7 @@
 # /usr/sbin/pipictest                - send and read test data from PiPIC 
 #
 # Wed May 14 21:59:43 CEST 2014
-# Edit: Thu May 15 18:30:14 CEST 2014
+# Edit: Thu May 29 10:06:39 CEST 2014
 # 
 # Jaakko Koivuniemi
 #
