@@ -156,16 +156,19 @@ I<SETTIME>
 If set the current time is estimated from PIC counter cycles at boot time
 and the system time is set accordingly.
 
+I<VDROP>
+Voltage drop from battery to power supply in Volts
+
 I<VOLTCAL>
 Battery voltage calibration constant U=VOLTCAL*(1023-AN3).
 
 I<VOLTINT>
 Battery voltage reading interval in seconds.
 
-I<VOLTTEMPA> I<VOLTTEMPB>  
-Temperature dependent battery voltage calibration constants with linear
-model VOLTCAL=A*T+B. These are for outdoor use and at room temperature
-20 - 25 C it is better to use I<VOLTCAL> only.
+I<VOLTTEMPA> I<VOLTTEMPB> I<VOLTTEMPC>    
+Temperature dependent battery voltage calibration constants with non-linear
+model VOLTCAL=VOLTTEMPA*T^2+VOLTTEMPB*T+VOLTTEMPC. These are for outdoor use 
+and at room temperature 20 - 25 C it is better to use I<VOLTCAL> only.
 
 =head1 WARNING
 

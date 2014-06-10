@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Sun May 18 20:41:21 CEST 2014
+ * Edit: Tue Jun 10 20:10:53 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140518; // program version
+const int version=20140610; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -49,6 +49,8 @@ int confdelay=10; // delay to wait for confirmation [s]
 int pwrdown=100; // delay to power down in PIC counter cycles
 float picycle=0.445; // length of PIC counter cycles [s]
 int countint=0; // PIC counter reading interval [s] 
+int wifint=0; // WiFi checking interval
+int wifiact=0; // WiFi down action: 0=nothing, 1=reboot, 2=pwr cycle
 int minvolts=550; // power down if read voltage exceeds this value
 float minbattlev=50; // power down if battery charge less than this value [%]
 float maxbattvolts=14.4; // maximum battery voltage [V]
@@ -85,6 +87,7 @@ const char batterylevel[200]="/var/lib/pipicpowerd/battlevel";
 const char operationtime[200]="/var/lib/pipicpowerd/ophours";
 const char timerfile[200]="/var/lib/pipicpowerd/timer";
 const char tempfile[200]="/var/lib/tmp102d/temperature";
+const char wifistate[200]="/sys/class/net/wlan0/operstate";
 
 const char pidfile[200]="/var/run/pipicpowerd.pid";
 
@@ -92,7 +95,7 @@ int loglev=3;
 const char logfile[200]="/var/log/pipicpowerd.log";
 char message[200]="";
 
-int pwroff=0; // 1==SIGTERM causes power off, 2==no power up in future 
+int pwroff=0; // 1==SIGTERM causes power off, 2==no power up in future, 3==power cycle  
 int settime=1; // 1==set system time from PIC counter
 
 void logmessage(const char logfile[200], const char message[200], int loglev, int msglev)
@@ -211,6 +214,20 @@ void read_config()
           {
              countint=(int)value;
              sprintf(message,"PIC counter reading interval %d s",(int)value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"WIFINT",6)==0)
+          {
+             wifint=(int)value;
+             sprintf(message,"WiFi check interval %d s",(int)value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"WIFIACT",7)==0)
+          {
+             wifiact=(int)value;
+             if(value==0) sprintf(message,"Do nothing if WiFi down"); 
+             else if(value==1) sprintf(message,"Reboot if WiFi down");
+             else if(value==2) sprintf(message,"Power cycle if WiFi down"); 
              logmessage(logfile,message,loglev,4);
           }
           if(strncmp(par,"FORCEPOWEROFF",13)==0)
@@ -615,6 +632,7 @@ int readvolts()
   }
   sleep(1);
 
+
   return volts;
 }
 
@@ -928,6 +946,16 @@ void terminate(int sig)
     write_timer(timer); // save last PIC timer value to file
     ok=pwrupfile_create();
   }
+  else if(pwroff==3)
+  {
+    ok=powerdown(pwrdown,pwrdown+60);
+    sleep(1);
+    strcpy(message,"save PIC timer value to file");
+    logmessage(logfile,message,loglev,4);
+    timer=read_timer();
+    write_timer(timer); // save last PIC timer value to file
+    ok=pwrupfile_create();
+  }
 
   sleep(1);
   strcpy(message,"stop");
@@ -1098,7 +1126,6 @@ float readtemp()
     if(fscanf(tfile,"%f",&temp)==EOF) temp=-100;
     fclose(tfile);
   }
-
   return temp;
 }
 
@@ -1168,6 +1195,33 @@ float optime(float level, float minbattlev, float battcap, float pkfact, float p
   return hours;
 }
 
+// read WiFi operation state file
+int read_wifi()
+{
+  int wifiup=0;
+  char state[200]="";
+
+  FILE *wfile;
+  wfile=fopen(wifistate, "r");
+  if(NULL==wfile)
+  {
+    sprintf(message,"could not read file: %s",wifistate);
+    logmessage(logfile,message,loglev,4);
+  }
+  else
+  { 
+    if(fscanf(wfile,"%s",state)!=EOF) 
+    {
+      if(strncmp(state,"up",2)==0) wifiup=1;
+      else if(strncmp(state,"down",4)==0) wifiup=-1;
+    }
+    fclose(wfile);
+  }
+
+  return wifiup;
+}
+
+
 int main()
 {  
   int volts=-1; // voltage reading
@@ -1179,6 +1233,7 @@ int main()
   int button=0; // button pressed
   int timer=0; // PIC internal timer
   int ntpok=0; // does the ntpd seem to be running?
+  int wifiup=0; // WiFi 0=unknown,-1=down, +1=up
   int ok=0;
   char s[100];
   char wd[25],mo[25],tzone[25];
@@ -1199,6 +1254,7 @@ int main()
   int nxtbutton=20+unxs; // next time to check button
   int nxtsleep=60+unxs; // next time to check sleep file
   int nxtcounter=300+unxs; // next time to read PIC counter
+  int nxtwifi=120+unxs; // next time to check WiFi status
 
   read_config(); // read configuration file
 
@@ -1454,6 +1510,18 @@ int main()
       }
       sprintf(message,"unxs=%d nxtvolts=%d",unxs,nxtvolts);
       logmessage(logfile,message,loglev,2);
+      if(reset_event_register()!=1)
+      {
+        strcpy(message,"failed to reset event register");
+        logmessage(logfile,message,loglev,4); 
+      }
+      sleep(1);
+      if(reset_event_register()!=1)
+      {
+        strcpy(message,"failed to reset event register");
+        logmessage(logfile,message,loglev,4); 
+      }
+      sleep(1);
     }
 
     if(((unxs>=nxtbutton)||((nxtbutton-unxs)>buttonint))&&(pwroff==0))
@@ -1512,6 +1580,29 @@ int main()
       sprintf(message,"PIC timer at %d",timer);
       logmessage(logfile,message,loglev,4);
       write_timer(timer);
+    }
+
+    if(((unxs>=nxtwifi)||((nxtwifi-unxs)>countint))&&(pwroff==0)&&(wifint>=60))
+    {
+      nxtwifi=wifint+unxs;
+      wifiup=read_wifi();
+      sprintf(message,"WiFi status %d",wifiup);
+      logmessage(logfile,message,loglev,4);
+      if((wifiup==-1)&&(wifiact==1))
+      {
+        strcpy(message,"reboot system");
+        logmessage(logfile,message,loglev,4);
+        ok=system("/bin/sync");
+        ok=system("/sbin/shutdown -r now");
+      }
+      if((wifiup==-1)&&(wifiact==2))
+      {
+        strcpy(message,"power cycle system");
+        logmessage(logfile,message,loglev,4);
+        pwroff=3; 
+        ok=system("/bin/sync");
+        ok=system("/sbin/shutdown -h now");
+      }
     }
 
     sleep(1);

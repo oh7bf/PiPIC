@@ -57,6 +57,12 @@ PICYCLE 0.445
 # read PIC internal timer at given intervals [s]
 #COUNTINT 1200
 
+# check WiFi connection interval [s]
+#WIFINT 3600
+
+# action in case WiFi down, 0=do nothing, 1=reboot, 2=power cycle
+#WIFIACT 0
+
 # push button reading interval [s]
 BUTTONINT 10
 
