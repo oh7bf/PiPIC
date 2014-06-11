@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Tue Jun 10 20:10:53 CEST 2014
+ * Edit: Wed Jun 11 21:47:34 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140610; // program version
+const int version=20140611; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -1254,9 +1254,10 @@ int main()
   int nxtbutton=20+unxs; // next time to check button
   int nxtsleep=60+unxs; // next time to check sleep file
   int nxtcounter=300+unxs; // next time to read PIC counter
-  int nxtwifi=120+unxs; // next time to check WiFi status
 
   read_config(); // read configuration file
+
+  int nxtwifi=wifint+unxs; // next time to check WiFi status
 
   int i2cok=testi2c(); // test i2c data flow to PIC 
   if(i2cok==1)
@@ -1582,7 +1583,7 @@ int main()
       write_timer(timer);
     }
 
-    if(((unxs>=nxtwifi)||((nxtwifi-unxs)>countint))&&(pwroff==0)&&(wifint>=60))
+    if(((unxs>=nxtwifi)||((nxtwifi-unxs)>wifint))&&(pwroff==0)&&(wifint>=60))
     {
       nxtwifi=wifint+unxs;
       wifiup=read_wifi();
