@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Wed Jun 11 21:47:34 CEST 2014
+ * Edit: Thu Jun 12 22:32:32 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140611; // program version
+const int version=20140612; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -869,6 +869,15 @@ int writeuptime(int timer)
   int m=(int)((s%3600)/60);
   char str[250];
 
+  if(timer<timer0)
+  {
+    h=0;
+    m=0;
+    sprintf(str,"timer0=%d has higher value than timer=%d!",timer0,timer);
+    logmessage(logfile,str,loglev,4);
+    strcpy(message,"force hours=0 and minutes=0");
+    logmessage(logfile,message,loglev,4);
+  }
   sprintf(str,"date --date='%d hours %d minutes' > /var/lib/pipicpowerd/waketime",h,m);
   logmessage(logfile,str,loglev,4);
   ok=system(str);
