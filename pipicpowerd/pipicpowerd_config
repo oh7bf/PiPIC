@@ -58,9 +58,12 @@ PICYCLE 0.445
 #COUNTINT 1200
 
 # check WiFi connection interval [s]
-#WIFINT 3600
+#WIFINT 600
 
-# action in case WiFi down, 0=do nothing, 1=reboot, 2=power cycle
+# time out before any action is taken
+#WIFITIMEOUT 3600
+
+# action in case WiFi down, 0=do nothing, 1=ifdownup, 2=reboot, 3=power cycle
 #WIFIACT 0
 
 # push button reading interval [s]

@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Thu Jun 12 22:32:32 CEST 2014
+ * Edit: Fri Jun 13 21:39:10 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140612; // program version
+const int version=20140613; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -49,8 +49,9 @@ int confdelay=10; // delay to wait for confirmation [s]
 int pwrdown=100; // delay to power down in PIC counter cycles
 float picycle=0.445; // length of PIC counter cycles [s]
 int countint=0; // PIC counter reading interval [s] 
-int wifint=0; // WiFi checking interval
-int wifiact=0; // WiFi down action: 0=nothing, 1=reboot, 2=pwr cycle
+int wifint=0; // WiFi checking interval [s]
+int wifitimeout=3600; // time out before any action is taken [s]
+int wifiact=0; // WiFi down action: 0=nothing, 1=downup, 2=reboot, 3=pwr cycle
 int minvolts=550; // power down if read voltage exceeds this value
 float minbattlev=50; // power down if battery charge less than this value [%]
 float maxbattvolts=14.4; // maximum battery voltage [V]
@@ -220,6 +221,12 @@ void read_config()
           {
              wifint=(int)value;
              sprintf(message,"WiFi check interval %d s",(int)value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"WIFITIMEOUT",11)==0)
+          {
+             wifitimeout=(int)value;
+             sprintf(message,"WiFi timeout %d s",(int)value);
              logmessage(logfile,message,loglev,4);
           }
           if(strncmp(par,"WIFIACT",7)==0)
@@ -1460,6 +1467,7 @@ int main()
     ok=powerdown(forceoff,forceon);
   }
 
+  int wifidown=0;
   int wtime=0;
   while(cont==1)
   {
@@ -1598,20 +1606,37 @@ int main()
       wifiup=read_wifi();
       sprintf(message,"WiFi status %d",wifiup);
       logmessage(logfile,message,loglev,4);
-      if((wifiup==-1)&&(wifiact==1))
+      if(wifiup==1) wifidown=0;
+      else if(wifiup==-1) wifidown+=wifint;
+
+      if((wifiup==-1)&&(wifidown>wifitimeout))
       {
-        strcpy(message,"reboot system");
-        logmessage(logfile,message,loglev,4);
-        ok=system("/bin/sync");
-        ok=system("/sbin/shutdown -r now");
-      }
-      if((wifiup==-1)&&(wifiact==2))
-      {
-        strcpy(message,"power cycle system");
-        logmessage(logfile,message,loglev,4);
-        pwroff=3; 
-        ok=system("/bin/sync");
-        ok=system("/sbin/shutdown -h now");
+        if(wifiact==1)
+        {
+          strcpy(message,"interface down");
+          logmessage(logfile,message,loglev,4);
+          ok=system("/sbin/ifdown wlan0");
+          sleep(10);
+          strcpy(message,"interface up");
+          logmessage(logfile,message,loglev,4);
+          ok=system("/sbin/ifup wlan0");
+        }
+        else if(wifiact==2)
+        {
+          strcpy(message,"reboot system");
+          logmessage(logfile,message,loglev,4);
+          ok=system("/bin/sync");
+          ok=system("/sbin/shutdown -r now");
+        }
+        else if(wifiact==3)
+        {
+          strcpy(message,"power cycle system");
+          logmessage(logfile,message,loglev,4);
+          pwroff=3; 
+          ok=system("/bin/sync");
+          ok=system("/sbin/shutdown -h now");
+        }
+        wifidown=0;
       }
     }
 
