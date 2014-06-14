@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Fri Jun 13 21:39:10 CEST 2014
+ * Edit: Sat Jun 14 09:50:28 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140613; // program version
+const int version=20140614; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -232,8 +232,9 @@ void read_config()
           if(strncmp(par,"WIFIACT",7)==0)
           {
              wifiact=(int)value;
-             if(value==0) sprintf(message,"Do nothing if WiFi down"); 
-             else if(value==1) sprintf(message,"Reboot if WiFi down");
+             if(value==0) sprintf(message,"Do nothing if WiFi down");
+             else if(value==1) sprintf(message,"Interface down-up"); 
+             else if(value==2) sprintf(message,"Reboot if WiFi down");
              else if(value==2) sprintf(message,"Power cycle if WiFi down"); 
              logmessage(logfile,message,loglev,4);
           }
