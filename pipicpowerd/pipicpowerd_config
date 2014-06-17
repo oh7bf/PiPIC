@@ -1,12 +1,15 @@
 #
 # Example configuration file for pipicpowerd 
 # Fri Feb 14 21:06:59 CET 2014
-# Edit: Sun May 18 20:39:20 CEST 2014
+# Edit: Mon Jun 16 23:03:28 CEST 2014
 # Jaakko Koivuniemi
 
 # log level 0=debug messages, 1=system commands, 2=operation messages, 
 # 3=status messages, 4=errors/warnings
 LOGLEVEL 3
+
+# log statistics on power up time to a separate log file 'pipicpowers.log'
+LOGSTATS 0
 
 # force reset of PIC counter if initial i2c dataflow test fails, the PIC
 # counter needs to be reset after power cycling of the PIC 

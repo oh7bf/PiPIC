@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Sat Jun 14 09:50:28 CEST 2014
+ * Edit: Tue Jun 17 21:21:50 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140614; // program version
+const int version=20140617; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -95,6 +95,8 @@ const char pidfile[200]="/var/run/pipicpowerd.pid";
 int loglev=3;
 const char logfile[200]="/var/log/pipicpowerd.log";
 char message[200]="";
+int logstats=0;
+const char statfile[200]="/var/log/pipicpowers.log";
 
 int pwroff=0; // 1==SIGTERM causes power off, 2==no power up in future, 3==power cycle  
 int settime=1; // 1==set system time from PIC counter
@@ -109,6 +111,7 @@ void logmessage(const char logfile[200], const char message[200], int loglev, in
   time(&now);
   tm_info=localtime(&now);
   strftime(tstr,25,"%Y-%m-%d %H:%M:%S",tm_info);
+
   if(msglev>=loglev)
   {
     log=fopen(logfile, "a");
@@ -122,8 +125,37 @@ void logmessage(const char logfile[200], const char message[200], int loglev, in
       fprintf(log,"%s\n",message);
       fclose(log);
     }
+
   }
 }
+
+// write usage statistics
+void writestat(const char statfile[200], unsigned unxstart, unsigned unxstop, float Vmin, float Vave, float Vmax, float Tmin, float Tave, float Tmax)
+{
+  time_t now;
+  char tstr[25];
+  struct tm* tm_info;
+  FILE *sfile;
+
+  time(&now);
+  tm_info=localtime(&now);
+  strftime(tstr,25,"%Y-%m-%d %H:%M:%S",tm_info);
+
+  sfile=fopen(statfile, "a");
+  if(NULL==sfile)
+  {
+      perror("could not open statistics file");
+  }
+  else
+  { 
+      fprintf(sfile,"%s %u %u",tstr,unxstart,unxstop);
+      fprintf(sfile," %5.2f %5.2f %5.2f",Vmin,Vave,Vmax);
+      fprintf(sfile," %+5.2f %+5.2f %+5.2f\n",Tmin,Tave,Tmax);
+      fclose(sfile);
+  }
+
+}
+
 
 // read configuration file if it exists
 void read_config()
@@ -150,6 +182,15 @@ void read_config()
              loglev=(int)value;
              sprintf(message,"Log level set to %d",(int)value);
              logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"LOGSTAT",7)==0)
+          {
+             logstats=(int)value;
+             if(value==1)
+             {
+                sprintf(message,"Log statistics to 'pipicpowers.log'");
+                logmessage(logfile,message,loglev,4);
+             }
           }
           if(strncmp(par,"VOLTINT",7)==0)
           {
@@ -1247,6 +1288,15 @@ int main()
   float batim=0; // hours left with battery
   float ophours=0; // hours left before recommended low charge level reached
   float temp=-100; // ambient temperature [C]
+  float Vmin=100; // minimum voltage for statistics
+  float Vmax=-100; // maximun voltage for statistics
+  float Vave=0; // average voltage
+  float Vaven=0; // number of samples to calculate average voltage
+  float Tmin=100; // minimum temperature for statistics
+  float Tmax=-100; // maximun temperature for statistics
+  float Tave=0; // average temperature
+  float Taven=0; // number of samples to calculate average temperature
+
   int button=0; // button pressed
   int timer=0; // PIC internal timer
   int ntpok=0; // does the ntpd seem to be running?
@@ -1468,6 +1518,9 @@ int main()
     ok=powerdown(forceoff,forceon);
   }
 
+  unsigned unxstart=time(NULL); // for power up statistics
+  unsigned unxstop=0;
+
   int wifidown=0;
   int wtime=0;
   while(cont==1)
@@ -1495,6 +1548,17 @@ int main()
       if(volttempa!=0) temp=readtemp();
       if((temp>-100)&&(temp<100)&&(volttempa!=0)) voltcal=volttempa*temp*temp+volttempb*temp+volttempc;
       voltsV=voltcal*(1023-volts)+vdrop;
+      if(voltsV<Vmin) Vmin=voltsV;
+      if(voltsV>Vmax) Vmax=voltsV;
+      Vave+=voltsV;
+      Vaven++;
+      if((temp>-100)&&(temp<100)) 
+      {
+        if(temp<Tmin) Tmin=temp;
+        if(temp>Tmax) Tmax=temp;
+        Tave+=temp;
+        Taven++;
+      }
       battlev=battlevel(voltsV);
       batim=battime(battlev,battcap,pkfact,phours,current);
       sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.0f hours)",volts,voltsV,battlev,batim);
@@ -1642,6 +1706,16 @@ int main()
     }
 
     sleep(1);
+  }
+
+  unxstop=time(NULL);
+  if(logstats==1) 
+  {
+    sprintf(message,"write power up statistics");
+    logmessage(logfile,message,loglev,4);
+    Vave/=Vaven;
+    Tave/=Taven;
+    writestat(statfile,unxstart,unxstop,Vmin,Vave,Vmax,Tmin,Tave,Tmax);
   }
 
   strcpy(message,"remove PID file");
