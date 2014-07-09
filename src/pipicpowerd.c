@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Tue Jun 17 21:21:50 CEST 2014
+ * Edit: Wed Jul  9 20:32:37 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140617; // program version
+const int version=20140709; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -88,6 +88,7 @@ const char batterylevel[200]="/var/lib/pipicpowerd/battlevel";
 const char operationtime[200]="/var/lib/pipicpowerd/ophours";
 const char timerfile[200]="/var/lib/pipicpowerd/timer";
 const char tempfile[200]="/var/lib/tmp102d/temperature";
+const char cputempfile[200]="/sys/class/thermal/thermal_zone0/temp";
 const char wifistate[200]="/sys/class/net/wlan0/operstate";
 
 const char pidfile[200]="/var/run/pipicpowerd.pid";
@@ -97,6 +98,10 @@ const char logfile[200]="/var/log/pipicpowerd.log";
 char message[200]="";
 int logstats=0;
 const char statfile[200]="/var/log/pipicpowers.log";
+
+// optional scripts to execute at power up or power down
+const char atpwrup[200]="/usr/sbin/atpwrup";
+const char atpwrdown[200]="/usr/sbin/atpwrdown";
 
 int pwroff=0; // 1==SIGTERM causes power off, 2==no power up in future, 3==power cycle  
 int settime=1; // 1==set system time from PIC counter
@@ -130,7 +135,7 @@ void logmessage(const char logfile[200], const char message[200], int loglev, in
 }
 
 // write usage statistics
-void writestat(const char statfile[200], unsigned unxstart, unsigned unxstop, float Vmin, float Vave, float Vmax, float Tmin, float Tave, float Tmax)
+void writestat(const char statfile[200], unsigned unxstart, unsigned unxstop, float Vmin, float Vave, float Vmax, float Tmin, float Tave, float Tmax, float Tcpumin, float Tcpuave, float Tcpumax)
 {
   time_t now;
   char tstr[25];
@@ -150,7 +155,8 @@ void writestat(const char statfile[200], unsigned unxstart, unsigned unxstop, fl
   { 
       fprintf(sfile,"%s %u %u",tstr,unxstart,unxstop);
       fprintf(sfile," %5.2f %5.2f %5.2f",Vmin,Vave,Vmax);
-      fprintf(sfile," %+5.2f %+5.2f %+5.2f\n",Tmin,Tave,Tmax);
+      fprintf(sfile," %+5.2f %+5.2f %+5.2f",Tmin,Tave,Tmax);
+      fprintf(sfile," %+5.2f %+5.2f %+5.2f\n",Tcpumin,Tcpuave,Tcpumax);
       fclose(sfile);
   }
 
@@ -1168,6 +1174,26 @@ int write_battery(int b, float v, float h, float t, float l)
   return ok;
 }
 
+// read CPU temperature from file
+float readcputemp()
+{
+  float temp=-100;
+  FILE *tfile;
+  tfile=fopen(cputempfile, "r");
+  if(NULL==tfile)
+  {
+    sprintf(message,"could not read file: %s",cputempfile);
+    logmessage(logfile,message,loglev,4);
+  }
+  else
+  { 
+    if(fscanf(tfile,"%f",&temp)==EOF) temp=-100000;
+    temp/=1000;
+    fclose(tfile);
+  }
+  return temp;
+}
+
 // read ambient temperature from file
 float readtemp()
 {
@@ -1288,6 +1314,7 @@ int main()
   float batim=0; // hours left with battery
   float ophours=0; // hours left before recommended low charge level reached
   float temp=-100; // ambient temperature [C]
+  float cputemp=-100; // CPU temperature
   float Vmin=100; // minimum voltage for statistics
   float Vmax=-100; // maximun voltage for statistics
   float Vave=0; // average voltage
@@ -1296,6 +1323,10 @@ int main()
   float Tmax=-100; // maximun temperature for statistics
   float Tave=0; // average temperature
   float Taven=0; // number of samples to calculate average temperature
+  float Tcpumin=100; // minimum CPU temperature for statistics
+  float Tcpumax=-100; // maximun CPU temperature for statistics
+  float Tcpuave=0; // average CPU temperature
+  float Tcpuaven=0; // number of samples to calculate average CPU temperature
 
   int button=0; // button pressed
   int timer=0; // PIC internal timer
@@ -1441,13 +1472,23 @@ int main()
           }
         }
       } 
-      ok=pwrupfile_delete();
     }
     else if(access(pwrupfile,F_OK)==-1)
     {
       sprintf(message,"not power up, leave time untouched");
       logmessage(logfile,message,loglev,4);
     } 
+    
+    if(access(pwrupfile,F_OK)!=-1)
+    {
+      ok=pwrupfile_delete();
+      if(access(atpwrup,X_OK)!=-1)
+      {
+        sprintf(message,"execute power up script %s",atpwrup);
+        logmessage(logfile,message,loglev,4);
+        ok=system(atpwrup);
+      }
+    }
   }
   else
   {
@@ -1559,6 +1600,15 @@ int main()
         Tave+=temp;
         Taven++;
       }
+      cputemp=readcputemp();
+      if(cputemp>-100) 
+      {
+        if(cputemp<Tcpumin) Tcpumin=cputemp;
+        if(cputemp>Tcpumax) Tcpumax=cputemp;
+        Tcpuave+=cputemp;
+        Tcpuaven++;
+      }
+
       battlev=battlevel(voltsV);
       batim=battime(battlev,battcap,pkfact,phours,current);
       sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.0f hours)",volts,voltsV,battlev,batim);
@@ -1715,7 +1765,15 @@ int main()
     logmessage(logfile,message,loglev,4);
     Vave/=Vaven;
     Tave/=Taven;
-    writestat(statfile,unxstart,unxstop,Vmin,Vave,Vmax,Tmin,Tave,Tmax);
+    Tcpuave/=Tcpuaven;
+    writestat(statfile,unxstart,unxstop,Vmin,Vave,Vmax,Tmin,Tave,Tmax,Tcpumin,Tcpuave,Tcpumax);
+  }
+
+  if(access(atpwrdown,X_OK)!=-1)
+  {
+    sprintf(message,"execute power down script %s",atpwrdown);
+    logmessage(logfile,message,loglev,4); 
+    ok=system(atpwrdown);
   }
 
   strcpy(message,"remove PID file");
