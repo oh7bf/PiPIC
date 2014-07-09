@@ -58,6 +58,10 @@ I</etc/init.d/pipicpowerd>         Init script.
 
 I</etc/pipicpowerd_config>         Configuration file.
 
+I</usr/sbin/atpwrdown>             Optional script to execute at power down.
+
+I</usr/sbin/atpwrup>               Optional script to execute at power up.
+
 I</usr/sbin/pipicpowerd>           Daemon code.
 
 I</var/lib/pipicpowerd/battery>    Most recent battery value 1023-0. 
