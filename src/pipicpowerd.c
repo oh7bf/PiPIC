@@ -135,7 +135,7 @@ void logmessage(const char logfile[200], const char message[200], int loglev, in
 }
 
 // write usage statistics
-void writestat(const char statfile[200], unsigned unxstart, unsigned unxstop, float Vmin, float Vave, float Vmax, float Tmin, float Tave, float Tmax, float Tcpumin, float Tcpuave, float Tcpumax)
+void writestat(const char statfile[200], unsigned unxstart, unsigned unxstop, int timerstart, int timerstop, float Vmin, float Vave, float Vmax, float Tmin, float Tave, float Tmax, float Tcpumin, float Tcpuave, float Tcpumax)
 {
   time_t now;
   char tstr[25];
@@ -154,6 +154,7 @@ void writestat(const char statfile[200], unsigned unxstart, unsigned unxstop, fl
   else
   { 
       fprintf(sfile,"%s %u %u",tstr,unxstart,unxstop);
+      fprintf(sfile," %d %d",timerstart,timerstop);
       fprintf(sfile," %5.2f %5.2f %5.2f",Vmin,Vave,Vmax);
       fprintf(sfile," %+5.2f %+5.2f %+5.2f",Tmin,Tave,Tmax);
       fprintf(sfile," %+5.2f %+5.2f %+5.2f\n",Tcpumin,Tcpuave,Tcpumax);
@@ -1347,15 +1348,17 @@ int main()
   signal(SIGQUIT,&stop); 
   signal(SIGHUP,&hup); 
 
-  int unxs=(int)time(NULL); // unix seconds
-  int nxtvolts=unxs; // next time to read battery voltage
-  int nxtbutton=20+unxs; // next time to check button
-  int nxtsleep=60+unxs; // next time to check sleep file
-  int nxtcounter=300+unxs; // next time to read PIC counter
+  unsigned unxs=(int)time(NULL); // unix seconds
+  unsigned nxtvolts=unxs; // next time to read battery voltage
+  unsigned nxtbutton=20+unxs; // next time to check button
+  unsigned nxtsleep=60+unxs; // next time to check sleep file
+  unsigned nxtcounter=300+unxs; // next time to read PIC counter
+
+  int timerstart=0; // first timer value from PIC
 
   read_config(); // read configuration file
 
-  int nxtwifi=wifint+unxs; // next time to check WiFi status
+  unsigned nxtwifi=wifint+unxs; // next time to check WiFi status
 
   int i2cok=testi2c(); // test i2c data flow to PIC 
   if(i2cok==1)
@@ -1441,6 +1444,7 @@ int main()
     ok=write_cmd(0x70,0,0); // disable timed task 2
     sleep(1);
     timer=read_timer();
+    timerstart=timer;
     sprintf(message,"PIC timer at %d",timer);
     logmessage(logfile,message,loglev,4);
 
@@ -1758,15 +1762,17 @@ int main()
     sleep(1);
   }
 
+  int timerstop=0;
   unxstop=time(NULL);
   if(logstats==1) 
   {
     sprintf(message,"write power up statistics");
     logmessage(logfile,message,loglev,4);
+    timerstop=read_timer();
     Vave/=Vaven;
     Tave/=Taven;
     Tcpuave/=Tcpuaven;
-    writestat(statfile,unxstart,unxstop,Vmin,Vave,Vmax,Tmin,Tave,Tmax,Tcpumin,Tcpuave,Tcpumax);
+    writestat(statfile,unxstart,unxstop,timerstart,timerstop,Vmin,Vave,Vmax,Tmin,Tave,Tmax,Tcpumin,Tcpuave,Tcpumax);
   }
 
   if(access(atpwrdown,X_OK)!=-1)
