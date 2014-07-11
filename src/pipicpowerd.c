@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Wed Jul  9 20:32:37 CEST 2014
+ * Edit: Thu Jul 10 21:12:05 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140709; // program version
+const int version=20140710; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -135,7 +135,7 @@ void logmessage(const char logfile[200], const char message[200], int loglev, in
 }
 
 // write usage statistics
-void writestat(const char statfile[200], unsigned unxstart, unsigned unxstop, int timerstart, int timerstop, float Vmin, float Vave, float Vmax, float Tmin, float Tave, float Tmax, float Tcpumin, float Tcpuave, float Tcpumax)
+void writestat(const char statfile[200], unsigned unxstart, unsigned unxstop, int timerstart, int timerstop, float Vmin, float Vave, float Vmax, float Tmin, float Tave, float Tmax, float Tcpumin, float Tcpuave, float Tcpumax, int wifiuptime)
 {
   time_t now;
   char tstr[25];
@@ -157,10 +157,10 @@ void writestat(const char statfile[200], unsigned unxstart, unsigned unxstop, in
       fprintf(sfile," %d %d",timerstart,timerstop);
       fprintf(sfile," %5.2f %5.2f %5.2f",Vmin,Vave,Vmax);
       fprintf(sfile," %+5.2f %+5.2f %+5.2f",Tmin,Tave,Tmax);
-      fprintf(sfile," %+5.2f %+5.2f %+5.2f\n",Tcpumin,Tcpuave,Tcpumax);
+      fprintf(sfile," %+5.2f %+5.2f %+5.2f",Tcpumin,Tcpuave,Tcpumax);
+      fprintf(sfile," %d\n",wifiuptime);
       fclose(sfile);
   }
-
 }
 
 
@@ -1567,6 +1567,7 @@ int main()
   unsigned unxstop=0;
 
   int wifidown=0;
+  int wifiuptime=0;
   int wtime=0;
   while(cont==1)
   {
@@ -1580,6 +1581,13 @@ int main()
         strcpy(message,"time to go to sleep");
         logmessage(logfile,message,loglev,4);
         sleep(1);
+        if(access(atpwrdown,X_OK)!=-1)
+        {
+          sprintf(message,"execute power down script %s",atpwrdown);
+          logmessage(logfile,message,loglev,4); 
+          ok=system(atpwrdown);
+          sleep(5);
+        }
         pwroff=1;
         ok=system("/bin/sync");
         ok=system("/sbin/shutdown -h now");
@@ -1625,6 +1633,13 @@ int main()
         strcpy(message,"battery voltage low, shut down and power off");
         logmessage(logfile,message,loglev,4);
         sleep(1);
+        if(access(atpwrdown,X_OK)!=-1)
+        {
+          sprintf(message,"execute power down script %s",atpwrdown);
+          logmessage(logfile,message,loglev,4); 
+          ok=system(atpwrdown);
+          sleep(5);
+        }
         pwroff=2;
         ok=system("/bin/sync");
         ok=system("/sbin/shutdown -h now battery low");
@@ -1634,6 +1649,13 @@ int main()
         strcpy(message,"battery charge low, shut down and power off");
         logmessage(logfile,message,loglev,4);
         sleep(1);
+        if(access(atpwrdown,X_OK)!=-1)
+        {
+          sprintf(message,"execute power down script %s",atpwrdown);
+          logmessage(logfile,message,loglev,4); 
+          ok=system(atpwrdown);
+          sleep(5);
+        }
         pwroff=1;
         ok=system("/bin/sync");
         ok=system("/sbin/shutdown -h +5 battery charge low");
@@ -1698,6 +1720,13 @@ int main()
             strcpy(message,"shutdown confirmed");
             logmessage(logfile,message,loglev,4);
             sleep(1);
+            if(access(atpwrdown,X_OK)!=-1)
+            {
+              sprintf(message,"execute power down script %s",atpwrdown);
+              logmessage(logfile,message,loglev,4); 
+              ok=system(atpwrdown);
+              sleep(5);
+            }
             pwroff=1;
             ok=system("/bin/sync");
             ok=system("/sbin/shutdown -h now");
@@ -1725,7 +1754,11 @@ int main()
       wifiup=read_wifi();
       sprintf(message,"WiFi status %d",wifiup);
       logmessage(logfile,message,loglev,4);
-      if(wifiup==1) wifidown=0;
+      if(wifiup==1) 
+      {
+        wifiuptime+=wifint;
+        wifidown=0;
+      }
       else if(wifiup==-1) wifidown+=wifint;
 
       if((wifiup==-1)&&(wifidown>wifitimeout))
@@ -1772,14 +1805,7 @@ int main()
     Vave/=Vaven;
     Tave/=Taven;
     Tcpuave/=Tcpuaven;
-    writestat(statfile,unxstart,unxstop,timerstart,timerstop,Vmin,Vave,Vmax,Tmin,Tave,Tmax,Tcpumin,Tcpuave,Tcpumax);
-  }
-
-  if(access(atpwrdown,X_OK)!=-1)
-  {
-    sprintf(message,"execute power down script %s",atpwrdown);
-    logmessage(logfile,message,loglev,4); 
-    ok=system(atpwrdown);
+    writestat(statfile,unxstart,unxstop,timerstart,timerstop,Vmin,Vave,Vmax,Tmin,Tave,Tmax,Tcpumin,Tcpuave,Tcpumax,wifiuptime);
   }
 
   strcpy(message,"remove PID file");
