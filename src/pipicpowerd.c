@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Thu Jul 10 21:12:05 CEST 2014
+ * Edit: Sun Jul 13 23:26:42 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140710; // program version
+const int version=20140713; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -1350,6 +1350,7 @@ int main()
 
   unsigned unxs=(int)time(NULL); // unix seconds
   unsigned nxtvolts=unxs; // next time to read battery voltage
+  unsigned nxtstart=15+unxs; // next time to read start time
   unsigned nxtbutton=20+unxs; // next time to check button
   unsigned nxtsleep=60+unxs; // next time to check sleep file
   unsigned nxtcounter=300+unxs; // next time to read PIC counter
@@ -1572,6 +1573,13 @@ int main()
   while(cont==1)
   {
     unxs=(int)time(NULL); 
+
+    if((unxs>=nxtstart)&&(nxtstart>0))
+    {
+       unxstart=time(NULL); 
+       unxstart-=15;
+       nxtstart=0;
+    }
 
     if(((unxs>=nxtsleep)||((nxtsleep-unxs)>sleepint))&&(pwroff==0)) 
     {
