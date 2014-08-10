@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Sun Jul 13 23:26:42 CEST 2014
+ * Edit: Mon Jul 14 20:24:37 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -41,7 +41,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-const int version=20140713; // program version
+const int version=20140714; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -146,6 +146,7 @@ void writestat(const char statfile[200], unsigned unxstart, unsigned unxstop, in
   tm_info=localtime(&now);
   strftime(tstr,25,"%Y-%m-%d %H:%M:%S",tm_info);
 
+  int dt=(int)(picycle*(timerstop-timerstart));
   sfile=fopen(statfile, "a");
   if(NULL==sfile)
   {
@@ -154,7 +155,7 @@ void writestat(const char statfile[200], unsigned unxstart, unsigned unxstop, in
   else
   { 
       fprintf(sfile,"%s %u %u",tstr,unxstart,unxstop);
-      fprintf(sfile," %d %d",timerstart,timerstop);
+      fprintf(sfile," %d %d %d",timerstart,timerstop,dt);
       fprintf(sfile," %5.2f %5.2f %5.2f",Vmin,Vave,Vmax);
       fprintf(sfile," %+5.2f %+5.2f %+5.2f",Tmin,Tave,Tmax);
       fprintf(sfile," %+5.2f %+5.2f %+5.2f",Tcpumin,Tcpuave,Tcpumax);
