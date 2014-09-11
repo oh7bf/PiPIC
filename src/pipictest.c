@@ -2,7 +2,7 @@
 *
 * Test PiPIC processor on i2c bus connected to Raspberry Pi.
 *       
-* Copyright (C) 2013 Jaakko Koivuniemi.
+* Copyright (C) 2013 - 2014 Jaakko Koivuniemi.
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 ****************************************************************************
 *
 * Wed Aug 14 22:33:01 CEST 2013
-* Edit: Mon Aug 19 13:44:18 EEST 2013
+* Edit: Thu Sep 11 21:46:23 CEST 2014
 *
 * Jaakko Koivuniemi
 **/
@@ -60,7 +60,7 @@ void printusage()
 
 void printversion()
 {
-  printf("pipictest v. 20130819, Jaakko Koivuniemi\n");
+  printf("pipictest v. 20140911, Jaakko Koivuniemi\n");
 }
 
 int main(int argc, char **argv)
@@ -79,7 +79,6 @@ int main(int argc, char **argv)
   int i=0,j=0;
   int errcnt=0; // error count
   int nrpt=1; // number of times to repeate test function
-  time_t now;
   int rtime=0; // cycle time from PIC
   int t1=0,t2=0,dt=0; // start and end time of cycle count
   int ain0=0,ain1=0,ain3=0; // analog input voltage
