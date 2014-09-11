@@ -25,7 +25,7 @@ pipicfile: pipicfile.o
 pipicpowerd: pipicpowerd.o
 	$(LD) $(LDFLAGS) -lm $^ -o $@
 
-pipicswd: pipicswd.o
+pipicswd: pipicswd.o logmessage.o writecmd.o readdata.o testi2c.o 
 	$(LD) $(LDFLAGS) $^ -o $@
 
 pipicsw: pipicsw.o
@@ -37,7 +37,7 @@ pipicswitch: pipicswitch.o
 pipictest: pipictest.o
 	$(LD) $(LDFLAGS) $^ -o $@
 
-pipichbd: pipichbd.o logmessage.o writecmd.o readdata.o testi2c.o
+pipichbd: pipichbd.o logmessage.o writecmd.o readdata.o testi2c.o 
 	$(LD) $(LDFLAGS) $^ -o $@
 
 clean:
