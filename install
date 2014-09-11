@@ -24,22 +24,27 @@
 #
 # The directories used and files created by this script:
 #
+# /etc/init.d/pipichbd               - H-bridge init script
 # /etc/init.d/pipicpowerd            - power supply init script
 # /etc/init.d/pipicswd               - power switch init script
+# /etc/logrotate.d/pipichbd          - H-bridge log rotation file
 # /etc/logrotate.d/pipicpowerd       - power supply log rotation file
 # /etc/logrotate.d/pipicswd          - power switch log rotation file
+# /etc/pipichbdd_config              - H-bridge configuration file
 # /etc/pipicpowerd_config            - power supply configuration file
 # /etc/pipicswd_config               - power switch configuration file
 # /usr/share/man                     - manual pages
 # /usr/sbin/pipic                    - read and control PiPIC
 # /usr/sbin/pipicfile                - print files from PiPIC
+# /usr/sbin/pipichbd                 - H-bridge daemon
+# /usb/sbin/pipichb                  - H-bridge client
 # /usr/sbin/pipicpowerd              - power supply daemon
 # /usr/sbin/pipicswd                 - power switch daemon
 # /usr/sbin/pipicsw                  - power switch client
 # /usr/sbin/pipictest                - send and read test data from PiPIC 
 #
 # Wed May 14 21:59:43 CEST 2014
-# Edit: Thu May 29 10:06:39 CEST 2014
+# Edit: Thu Sep 11 19:43:53 CEST 2014
 # 
 # Jaakko Koivuniemi
 #
@@ -72,7 +77,7 @@ CONFDIR=/etc
 VARLIBDIR=/var/lib
 
 # binary executables
-BINS='pipic pipicfile pipicpowerd pipicsw pipicswd pipictest'
+BINS='pipic pipicfile pipichbd pipicpowerd pipicsw pipicswd pipictest'
 
 if [ -d $SOURCEBIN ]; then
   echo "Copy binary executables to ${BINDIR}"
@@ -130,7 +135,6 @@ if [ ! -r ${LOGROTADIR}/pipicswd ]; then
 else
   echo "Log rotation file ${LOGROTADIR}/pipicswd already exists"
 fi
-
 if [ ! -x ${INITDIR}/pipicswd ]; then
   echo "Write init script ${INITDIR}/pipicswd"
   /usr/bin/install -C -m 755 ${SOURCEDIR}/pipicswd/pipicswd.sh ${INITDIR} 
@@ -138,12 +142,34 @@ if [ ! -x ${INITDIR}/pipicswd ]; then
 else
   echo "Init script ${INITDIR}/pipicswd already exists"
 fi
-
 if [ ! -r ${CONFDIR}/pipicswd_config ]; then
   echo "Write default configuration file ${CONFDIR}/pipicswd_config"
   /usr/bin/install -C -m 664 ${SOURCEDIR}/pipicswd/pipicswd_config ${CONFDIR} 
 else
   echo "Configuration file ${CONFDIR}/pipicswd.config already exists" 
+fi
+
+if [ ! -r ${LOGROTADIR}/pipichbd ]; then
+  echo "Write log rotation file ${LOGROTADIR}/pipichbd"
+  /usr/bin/install -C -m 644 ${SOURCEDIR}/pipichbd/pipichbd.lrota ${LOGROTADIR}
+  /bin/mv ${LOGROTADIR}/pipichbd.lrota ${LOGROTADIR}/pipichbd
+else
+  echo "Log rotation file ${LOGROTADIR}/pipichbd already exists"
+fi
+
+if [ ! -x ${INITDIR}/pipichbd ]; then
+  echo "Write init script ${INITDIR}/pipichbd"
+  /usr/bin/install -C -m 755 ${SOURCEDIR}/pipichbd/pipichbd.sh ${INITDIR} 
+  /bin/mv ${INITDIR}/pipichbd.sh ${INITDIR}/pipichbd
+else
+  echo "Init script ${INITDIR}/pipichbd already exists"
+fi
+
+if [ ! -r ${CONFDIR}/pipichbd_config ]; then
+  echo "Write default configuration file ${CONFDIR}/pipichbd_config"
+  /usr/bin/install -C -m 664 ${SOURCEDIR}/pipichbd/pipichbd_config ${CONFDIR} 
+else
+  echo "Configuration file ${CONFDIR}/pipichbd.config already exists" 
 fi
 
 if [ -d /var/lib/pipicpowerd ]; then

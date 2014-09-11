@@ -1,0 +1,10 @@
+/var/log/pipichbd.log {
+   create 644 root root
+   copytruncate
+   notifempty
+   weekly 
+   rotate 4
+   missingok
+   compress
+}
+

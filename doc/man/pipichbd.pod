@@ -1,0 +1,71 @@
+=head1 NAME
+
+pipichbd -  monitor and control Raspberry Pi H-bridge with i2c
+
+=head1 SYNOPSIS
+
+B<pipichbd> 
+
+=head1 DESCRIPTION
+
+The B<pipichbd> is used to monitor and control Raspberry Pi H-bridge 
+with i2c bus. The daemon is started with command 
+
+B<service> I<pipichbd> I<start>
+
+and can be stopped any time with
+
+B<service> I<pipichbd> I<stop>
+
+The operation of the daemon can be checked from the log file.
+At the start four test bytes are written to the bridge and read back.
+If this data flow test fails the daemon exits. One reason for this
+failure could be that the internal counter of PIC was not yet reset with
+command B<pipic> B<-a> 28 B<-c> 50 (or other address for option B<-a>).
+
+In the main loop a socket is listened for any incoming commands. The possible
+commands are
+
+I<cw> I<N> turn motor clockwise during given number of PIC counts
+
+I<ccw> I<N> turn motor counter clockwise during given number of PIC counts
+
+I<go> I<N> turn motor to reach given position
+
+I<pos> send position encoder data to connecting client
+
+I<pot> send potentiometer data to connecting client
+
+I<status> read motor status: stopped, turning cw or turning ccw
+
+I<stop> stop motor
+
+I<track> track position given by potentiometer, exit with SIGHUP
+
+=head1 FILES
+
+I</etc/logrotate.d/pipichbd>       Log rotation configuration file.
+
+I</etc/init.d/pipichbd>            Init script.
+
+I</etc/pipichbd_config>            Configuration file.
+
+I</usr/sbin/pipichbd>              Daemon code.
+
+I</var/log/pipichbd.log>           Log file.
+
+I</var/run/pipichbd.pid>           PID file.
+
+=head1 WARNING
+
+No check is done where the query data is written. Could make some hardware 
+unusable.
+
+=head1 AUTHORS
+
+Jaakko Koivuniemi 
+
+=head1 SEE ALSO
+
+pipichb(1), pipic(1), pipicfile(1), pipictest(1), socket(2)
+

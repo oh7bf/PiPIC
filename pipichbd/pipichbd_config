@@ -1,0 +1,23 @@
+#
+# Example configuration file for pipichbd 
+# Fri Aug 15 21:23:37 CEST 2014
+# Edit: 
+#
+# Jaakko Koivuniemi
+
+# log level 0=debug messages, 1=system commands, 2=operation messages, 
+# 3=status messages, 4=errors/warnings
+LOGLEVEL 2
+
+# force reset of PIC counter if initial i2c dataflow test fails, the PIC
+# counter needs to be reset after power cycling of the PIC 
+FORCERESET 0
+
+# socket port number for the DC switch
+HBRIDGEPORT 5002
+
+# PIC internal timer cycle period in seconds, this can be checked with
+# 'pipictest -a 28 -c -n 10000' 
+PICYCLE 0.445
+
+
