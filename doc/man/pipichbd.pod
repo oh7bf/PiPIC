@@ -36,6 +36,8 @@ I<pos> send position encoder data to connecting client
 
 I<pot> send potentiometer data to connecting client
 
+I<set> I<N> turn motor to set position I<N> 0 - 1023
+
 I<status> read motor status: stopped, turning cw or turning ccw
 
 I<stop> stop motor

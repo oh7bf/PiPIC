@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Sun Aug 10 20:06:24 CEST 2014
- * Edit: Sun Sep 14 09:05:47 CEST 2014
+ * Edit: Sun Sep 14 17:12:29 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -68,6 +68,7 @@ float rotmax=1; // maximum number of axis rotations
 float motrpm=7; // axis turning speed [rpm]
 int mpos=-1; // motor position from AN0 [0-1023]
 int pot=-1; // potentiometer from AN1 [0-1023]
+int track=0; // 1=track potentiometer position
 char status[200]=""; // bridge status message
 
 const char confile[200]="/etc/pipichbd_config";
@@ -203,7 +204,7 @@ int read_motorpos()
   { 
     pos=read_data(2);
     sprintf(message,"Motor position at %d",pos);
-    logmessage(logfile,message,loglev,3);
+    logmessage(logfile,message,loglev,2);
   }
   else
   {
@@ -224,7 +225,7 @@ int read_potentiometer()
   { 
     pot=read_data(2);
     sprintf(message,"Potentiometer at %d",pot);
-    logmessage(logfile,message,loglev,3);
+    logmessage(logfile,message,loglev,2);
   }
   else
   {
@@ -266,13 +267,13 @@ int turn_motor(int rotcw, int cycles)
      {
        ok=write_cmd(0x63,0x301F,2);
        sprintf(message,"turn motor cw");
-       logmessage(logfile,message,loglev,4);
+       logmessage(logfile,message,loglev,2);
      } 
      else if(rotcw==-1) 
      {
        ok=write_cmd(0x63,0x302F,2);
        sprintf(message,"turn motor ccw");
-       logmessage(logfile,message,loglev,4);
+       logmessage(logfile,message,loglev,2);
      } 
      ok=write_cmd(0x64,0,1); // do task once
 
@@ -280,7 +281,7 @@ int turn_motor(int rotcw, int cycles)
      ok=write_cmd(0x72,cycles,4); // stop after given cycles
      ok=write_cmd(0x73,0x300F,2);
      sprintf(message,"stop motor after %d PIC cycles",cycles);
-     logmessage(logfile,message,loglev,4);
+     logmessage(logfile,message,loglev,2);
      ok=write_cmd(0x74,0,1); // do task once
 
      ok=write_cmd(0x61,0,0); // start task1
@@ -306,7 +307,7 @@ int goto_pos(int topos)
     cycles=(int)abs(rotmax*60.0*(topos-mpos)/(1024.0*motrpm*picycle));
     dt=cycles*picycle;
     sprintf(message,"turning time %d PIC cycles and direction %d",cycles,rotcw);
-    logmessage(logfile,message,loglev,4);
+    logmessage(logfile,message,loglev,2);
 
     ok=turn_motor(rotcw,cycles);
   }
@@ -372,6 +373,9 @@ void hup(int sig)
 {
   sprintf(message,"signal %d catched",sig);
   logmessage(logfile,message,loglev,4);
+  sprintf(message,"stop tracking potentiometer");
+  logmessage(logfile,message,loglev,4);
+  track=0;
 }
 
 int main()
@@ -545,9 +549,17 @@ else
   sleep(1);
 
   int cycles=0;
+  int dt=0;
+  int idelt=0;
+  int noted=0;
   int topos=-1;
   mpos=read_motorpos();
   pot=read_potentiometer();
+  if(loglev>2)
+  {
+    sprintf(message,"motor at %d and pot at %d",mpos,pot);
+    logmessage(logfile,message,loglev,4);
+  }
 
   int n=0;
   while(cont==1)
@@ -576,7 +588,7 @@ else
     else
     {
       sprintf(message,"Received: %s",rbuff);
-      logmessage(logfile,message,loglev,3);
+      logmessage(logfile,message,loglev,1);
     }
 
     if(strncmp(rbuff,"stop",4)==0)
@@ -630,6 +642,13 @@ else
         sprintf(status,"motor at %d",mpos);
       }
     }
+    else if(strncmp(rbuff,"track",5)==0)
+    {
+      sprintf(message,"start tracking motor position");
+      logmessage(logfile,message,loglev,4);
+      sprintf(status,"start tracking motor position");
+      track=1;
+    }
     else if(strncmp(rbuff,"status",6)==0)
     {
       ok=read_status();
@@ -647,12 +666,47 @@ else
     else
     {
       sprintf(message,"Send: %s",sbuff);
-      logmessage(logfile,message,loglev,3);
+      logmessage(logfile,message,loglev,1);
     }
 
     close(connfd);
 
     strcpy(status,"");
+
+// track motor position with the potentiometer connected on AN1
+    noted=0;
+    idelt=10;
+    while(track==1)
+    {
+      mpos=read_motorpos();
+      pot=read_potentiometer();
+      if(abs(mpos-pot)>1)
+      {
+        dt=goto_pos(pot);
+        if(dt>0)
+        {
+          sleep(dt+1);
+          mpos=read_motorpos();
+          pot=read_potentiometer();
+          sprintf(message,"motor at %d and potentiometer at %d",mpos,pot);
+          logmessage(logfile,message,loglev,3);
+        }
+        noted=0;
+        idelt=10;
+      }
+      else if(noted==0)
+      {
+        sprintf(message,"motor at %d and potentiometer at %d",mpos,pot);
+        logmessage(logfile,message,loglev,3);
+        noted=1;
+      }
+      else
+      {
+        if(idelt<50) idelt++; // read mpos and pot less freq if no change
+      }
+      sleep(idelt/10); 
+    }
+
     sleep(1);
   }
 
