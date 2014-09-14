@@ -14,7 +14,7 @@ LDFLAGS       = -O
 %.o : %.c
 	$(CXX) $(CXXFLAGS) -c $<
 
-all: pipic pipicfile pipicpowerd pipicswd pipicsw pipictest
+all: pipic pipicfile pipichbd pipicpowerd pipicswd pipicsw pipictest
 
 pipic: pipic.o
 	$(LD) $(LDFLAGS) $^ -o $@

@@ -1,7 +1,7 @@
 #
 # Example configuration file for pipichbd 
 # Fri Aug 15 21:23:37 CEST 2014
-# Edit: 
+# Edit: Sat Sep 13 17:50:17 CEST 2014
 #
 # Jaakko Koivuniemi
 
@@ -18,6 +18,13 @@ HBRIDGEPORT 5002
 
 # PIC internal timer cycle period in seconds, this can be checked with
 # 'pipictest -a 28 -c -n 10000' 
-PICYCLE 0.445
+PICYCLE 0.060
 
+# motor maximum number of turns
+ROTMAX 10
 
+# motor turning speed [rpm]
+MOTRPM 7
+ 
+
+ 

@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Sun Aug 10 20:06:24 CEST 2014
- * Edit: Thu Sep 11 18:58:49 CEST 2014
+ * Edit: Sun Sep 14 09:05:47 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -51,7 +51,7 @@
 
 #define CHECK_BIT(var,pos) !!((var) & (1<<(pos)))
 
-const int version=20140911; // program version
+const int version=20140914; // program version
 
 const char *i2cdev="/dev/i2c-1"; // i2c device file
 const int address=0x28; // PiPIC i2c address
@@ -63,6 +63,11 @@ char message[200]="";
 int portno=5002; // socket port number
 float picycle=0.445; // length of PIC counter cycles [s]
 int forcereset=0; // force PIC timer reset if i2c test fails
+int maxcycles=-1; // maximum allowed rotation time in PIC cycles
+float rotmax=1; // maximum number of axis rotations
+float motrpm=7; // axis turning speed [rpm]
+int mpos=-1; // motor position from AN0 [0-1023]
+int pot=-1; // potentiometer from AN1 [0-1023]
 char status[200]=""; // bridge status message
 
 const char confile[200]="/etc/pipichbd_config";
@@ -105,6 +110,18 @@ void read_config()
           {
              picycle=value;
              sprintf(message,"PIC cycle %f s",value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"ROTMAX",6)==0)
+          {
+             rotmax=value;
+             sprintf(message,"maximum motor turns %f",value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"MOTRPM",6)==0)
+          {
+             motrpm=value;
+             sprintf(message,"motor speed %f rpm",value);
              logmessage(logfile,message,loglev,4);
           }
           if(strncmp(par,"FORCERESET",10)==0)
@@ -180,6 +197,7 @@ int read_motorpos()
 {
   int ok=-1;
   int pos=-1;
+  ok=write_cmd(0x40,0,0); // A/D conversion is done twice 
   ok=write_cmd(0x40,0,0); 
   if(ok==1)
   { 
@@ -200,6 +218,7 @@ int read_potentiometer()
 {
   int ok=-1;
   int pot=-1;
+  ok=write_cmd(0x41,0,0); // A/D conversion is done twice 
   ok=write_cmd(0x41,0,0); 
   if(ok==1)
   { 
@@ -239,7 +258,7 @@ int turn_motor(int rotcw, int cycles)
 {
   int ok=0;
 
-  if(cycles>2)
+  if((cycles>2)&&(cycles<maxcycles))
   { 
 // timed task1 to start turning motor
      ok=write_cmd(0x62,2,4); // start after 2 cycles
@@ -267,6 +286,53 @@ int turn_motor(int rotcw, int cycles)
      ok=write_cmd(0x61,0,0); // start task1
      ok=write_cmd(0x71,0,0); // start task2
   }
+
+  return ok;
+}
+
+// turn motor to reach given position, return number of seconds needed
+// for turning
+int goto_pos(int topos)
+{
+  int ok=0;
+  int dt=0;
+  int rotcw=1;
+  if(topos>mpos) rotcw=-1;
+
+  int cycles=0;
+
+  if((topos>0)&&(topos<1023))
+  {
+    cycles=(int)abs(rotmax*60.0*(topos-mpos)/(1024.0*motrpm*picycle));
+    dt=cycles*picycle;
+    sprintf(message,"turning time %d PIC cycles and direction %d",cycles,rotcw);
+    logmessage(logfile,message,loglev,4);
+
+    ok=turn_motor(rotcw,cycles);
+  }
+  else
+  {
+    sprintf(message,"motor position out of range [0-1024]");
+    logmessage(logfile,message,loglev,4);
+  }
+
+  return (dt*ok);
+}
+
+// set motor position, first 90 % of travel, then rest and finally correction
+// steps if needed
+int set_pos(int topos)
+{
+  int ok=0;
+
+  int nxtpos=(int)(0.9*(topos-mpos)+mpos);
+  int dt=goto_pos(nxtpos);
+
+  sleep(dt+1);
+  mpos=read_motorpos();
+  dt=goto_pos(topos);
+  sleep(dt+1);
+  mpos=read_motorpos();
 
   return ok;
 }
@@ -323,6 +389,9 @@ int main()
   signal(SIGHUP,&hup); 
 
   read_config(); // read configuration file
+  maxcycles=(int)(rotmax*60/(motrpm*picycle));
+  sprintf(message,"set maximum turning time to %d cycles",maxcycles); 
+  logmessage(logfile,message,loglev,4);
 
   int i2cok=testi2c(); // test i2c data flow to PIC 
   if(i2cok==1)
@@ -476,9 +545,9 @@ else
   sleep(1);
 
   int cycles=0;
-  int mpos=-1,pot=-1;
-  ok=read_motorpos();
-  ok=read_potentiometer();
+  int topos=-1;
+  mpos=read_motorpos();
+  pot=read_potentiometer();
 
   int n=0;
   while(cont==1)
@@ -514,19 +583,16 @@ else
     {
       ok=stop_motor();
       sprintf(status,"motor stopped");
-      sleep(1);
     } 
     else if(strncmp(rbuff,"pos",3)==0)
     {
       mpos=read_motorpos();
       sprintf(status,"motor at %d",mpos);
-      sleep(1);
     } 
     else if(strncmp(rbuff,"pot",3)==0)
     {
       pot=read_potentiometer();
       sprintf(status,"pot at %d",pot);
-      sleep(1);
     } 
     else if(strncmp(rbuff,"cw",2)==0)
     {
@@ -534,7 +600,6 @@ else
       {
         ok=turn_motor(1,cycles);
         sprintf(status,"turn cw");
-        sleep(1);
       }
     } 
     else if(strncmp(rbuff,"ccw",3)==0)
@@ -543,14 +608,34 @@ else
       {
         ok=turn_motor(-1,cycles);
         sprintf(status,"turn ccw");
-        sleep(1);
       }
-    } 
+    }
+    else if(strncmp(rbuff,"go",2)==0)
+    {
+      if(sscanf(rbuff,"go %d",&topos)!=EOF)
+      {
+        mpos=read_motorpos(); // initial position
+        ok=goto_pos(topos);
+        mpos=read_motorpos();
+        sprintf(status,"motor at %d",mpos);
+      }
+    }
+    else if(strncmp(rbuff,"set",3)==0)
+    {
+      if(sscanf(rbuff,"set %d",&topos)!=EOF)
+      {
+        mpos=read_motorpos(); // initial position
+        ok=set_pos(topos);
+        mpos=read_motorpos();
+        sprintf(status,"motor at %d",mpos);
+      }
+    }
     else if(strncmp(rbuff,"status",6)==0)
     {
       ok=read_status();
     } 
 
+    sleep(1);
     snprintf(sbuff,sizeof(sbuff),"%.24s",status);
 
     n=write(connfd,sbuff,strlen(sbuff)); 
