@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Sun Aug 10 20:06:24 CEST 2014
- * Edit: Sun Sep 14 17:12:29 CEST 2014
+ * Edit: Tue Sep 16 20:41:12 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -51,7 +51,7 @@
 
 #define CHECK_BIT(var,pos) !!((var) & (1<<(pos)))
 
-const int version=20140914; // program version
+const int version=20140916; // program version
 
 const char *i2cdev="/dev/i2c-1"; // i2c device file
 const int address=0x28; // PiPIC i2c address
@@ -69,6 +69,8 @@ float motrpm=7; // axis turning speed [rpm]
 int mpos=-1; // motor position from AN0 [0-1023]
 int pot=-1; // potentiometer from AN1 [0-1023]
 int track=0; // 1=track potentiometer position
+int minpos=0; // motor minimum position [0-1023]
+int maxpos=1023; // motor maximum position [0-1023]
 char status[200]=""; // bridge status message
 
 const char confile[200]="/etc/pipichbd_config";
@@ -123,6 +125,27 @@ void read_config()
           {
              motrpm=value;
              sprintf(message,"motor speed %f rpm",value);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"TRACK",5)==0)
+          {
+             track=(int)value;
+             if(track==1)
+             {
+                sprintf(message,"track potentiometer");
+                logmessage(logfile,message,loglev,4);
+             }
+          }
+          if(strncmp(par,"MINPOS",6)==0)
+          {
+             minpos=(int)value;
+             sprintf(message,"set minimum position to %d",minpos);
+             logmessage(logfile,message,loglev,4);
+          }
+          if(strncmp(par,"MAXPOS",6)==0)
+          {
+             maxpos=(int)value;
+             sprintf(message,"set maximum position to %d",maxpos);
              logmessage(logfile,message,loglev,4);
           }
           if(strncmp(par,"FORCERESET",10)==0)
@@ -205,6 +228,7 @@ int read_motorpos()
     pos=read_data(2);
     sprintf(message,"Motor position at %d",pos);
     logmessage(logfile,message,loglev,2);
+    if((pos<0)||(pos>1023)) pos=-1;
   }
   else
   {
@@ -302,7 +326,7 @@ int goto_pos(int topos)
 
   int cycles=0;
 
-  if((topos>0)&&(topos<1023))
+  if((topos>=minpos)&&(topos<=maxpos)&&(mpos>=0)&&(mpos<1024))
   {
     cycles=(int)abs(rotmax*60.0*(topos-mpos)/(1024.0*motrpm*picycle));
     dt=cycles*picycle;
@@ -313,7 +337,7 @@ int goto_pos(int topos)
   }
   else
   {
-    sprintf(message,"motor position out of range [0-1024]");
+    sprintf(message,"motor position out of range [%d-%d]",minpos,maxpos);
     logmessage(logfile,message,loglev,4);
   }
 
@@ -380,7 +404,6 @@ void hup(int sig)
 
 int main()
 {  
-
   int ok=0;
 
   sprintf(message,"pipichbd v. %d started",version); 
@@ -551,7 +574,8 @@ else
   int cycles=0;
   int dt=0;
   int idelt=0;
-  int noted=0;
+  int mpos2=0;
+  int pot2=0;
   int topos=-1;
   mpos=read_motorpos();
   pot=read_potentiometer();
@@ -564,6 +588,37 @@ else
   int n=0;
   while(cont==1)
   {
+// track motor position with the potentiometer connected on AN1
+    idelt=10;
+    while(track==1)
+    {
+      mpos=read_motorpos();
+      sleep(1);
+      mpos=read_motorpos();
+      sleep(1);
+      pot=read_potentiometer();
+      sleep(1);
+      pot=read_potentiometer();
+
+      if(pot<minpos) pot=minpos;
+      else if(pot>maxpos) pot=maxpos;
+      if((mpos!=mpos2)||(pot!=pot2))
+      {
+        sprintf(message,"motor at %d and potentiometer at %d",mpos,pot);
+        logmessage(logfile,message,loglev,3);
+      }
+      mpos2=mpos;
+      pot2=pot;
+      if(abs(mpos-pot)>1)
+      {
+        dt=goto_pos(pot);
+        if(dt>=0) sleep(dt+1);
+        idelt=10;
+      }
+      else if(idelt<50) idelt++; // read mpos and pot less freq if no change
+      sleep(idelt/10); 
+    }
+
     connfd=accept(sockfd, (struct sockaddr*)&cli_addr, (socklen_t *)&clilen); 
     if(connfd<0) 
     {
@@ -670,43 +725,7 @@ else
     }
 
     close(connfd);
-
     strcpy(status,"");
-
-// track motor position with the potentiometer connected on AN1
-    noted=0;
-    idelt=10;
-    while(track==1)
-    {
-      mpos=read_motorpos();
-      pot=read_potentiometer();
-      if(abs(mpos-pot)>1)
-      {
-        dt=goto_pos(pot);
-        if(dt>0)
-        {
-          sleep(dt+1);
-          mpos=read_motorpos();
-          pot=read_potentiometer();
-          sprintf(message,"motor at %d and potentiometer at %d",mpos,pot);
-          logmessage(logfile,message,loglev,3);
-        }
-        noted=0;
-        idelt=10;
-      }
-      else if(noted==0)
-      {
-        sprintf(message,"motor at %d and potentiometer at %d",mpos,pot);
-        logmessage(logfile,message,loglev,3);
-        noted=1;
-      }
-      else
-      {
-        if(idelt<50) idelt++; // read mpos and pot less freq if no change
-      }
-      sleep(idelt/10); 
-    }
-
     sleep(1);
   }
 

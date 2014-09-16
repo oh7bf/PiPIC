@@ -1,13 +1,13 @@
 #
 # Example configuration file for pipichbd 
 # Fri Aug 15 21:23:37 CEST 2014
-# Edit: Sat Sep 13 17:50:17 CEST 2014
+# Edit: Mon Sep 15 20:45:10 CEST 2014
 #
 # Jaakko Koivuniemi
 
 # log level 0=debug messages, 1=system commands, 2=operation messages, 
 # 3=status messages, 4=errors/warnings
-LOGLEVEL 2
+LOGLEVEL 3
 
 # force reset of PIC counter if initial i2c dataflow test fails, the PIC
 # counter needs to be reset after power cycling of the PIC 
@@ -26,5 +26,13 @@ ROTMAX 10
 # motor turning speed [rpm]
 MOTRPM 7
  
+# minimum allowed motor position [0-1023] 
+MINPOS 1
 
- 
+# maximum allowed motor position [0-1023]
+MAXPOS 1010
+
+# if one track potentiometer from start
+TRACK 0
+
+
