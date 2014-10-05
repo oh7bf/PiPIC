@@ -28,9 +28,9 @@ commands are
 
 I<status> send switch status to the connecting client
 
-I<close> I<N> close switch with channel number I<N>
+I<close> I<N> I<[HH:MM]> close switch with channel number I<N>, time optional
 
-I<open> I<N> open switch with channel number I<N>
+I<open> I<N> I<[HH:MM]> open switch with channel number I<N>, time optional
 
 =head1 FILES
 

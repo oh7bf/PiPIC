@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Sun Feb 16 14:29:25 CET 2014
- * Edit: Thu Sep 11 21:50:56 CEST 2014
+ * Edit: Sat Oct  4 22:08:45 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -51,7 +51,7 @@
 
 #define CHECK_BIT(var,pos) !!((var) & (1<<(pos)))
 
-const int version=20140911; // program version
+const int version=20141004; // program version
 
 int portno=5001; // socket port number
 
@@ -166,11 +166,125 @@ void read_config()
   }
 }
 
+// read command 1 timer status
+int timer1status()
+{
+  int ok=0;
+  int timeron=0;
+  int gpio=0;
+
+  ok=write_cmd(0x01,0x27,1); 
+  if(ok==1)
+  {
+    gpio=read_data(1);
+    if(CHECK_BIT(gpio,7)==1) timeron=1;
+  }
+
+  return (ok*timeron);
+}
+
+// read command 2 timer status
+int timer2status()
+{
+  int ok=0;
+  int timeron=0;
+  int gpio=0;
+
+  ok=write_cmd(0x01,0x30,1); 
+  if(ok==1)
+  {
+    gpio=read_data(1);
+    if(CHECK_BIT(gpio,7)==1) timeron=1;
+  }
+
+  return (ok*timeron);
+}
+
+// read timer 1 delay
+int timer1delay()
+{
+  int ok=0;
+  int delay=0;
+  ok=write_cmd(0x01,0x2D,1);
+  if(ok==1)
+  {
+    delay+=read_data(1)*65536;
+    ok=write_cmd(0x01,0x2E,1);
+    if(ok==1)
+    {
+      delay+=read_data(1)*256;
+      ok=write_cmd(0x01,0x2F,1);
+      if(ok==1)
+      {
+        delay+=read_data(1);
+      }
+    }
+  }
+  return (delay*ok);
+}
+
+// read timer 2 delay
+int timer2delay()
+{
+  int ok=0;
+  int delay=0;
+
+  ok=write_cmd(0x01,0x36,1);
+  if(ok==1)
+  {
+    delay+=read_data(1)*65536;
+    ok=write_cmd(0x01,0x37,1);
+    if(ok==1)
+    {
+      delay+=read_data(1)*256;
+      ok=write_cmd(0x01,0x38,1);
+      if(ok==1)
+      {
+        delay+=read_data(1);
+      }
+    }
+  }
+
+  return (delay*ok);
+}
+
+// read timer 1 command
+int timer1cmd()
+{
+  int ok=0;
+  int cmd=0;
+
+  ok=write_cmd(0x01,0x2B,1);
+  if(ok==1)
+  {
+    cmd=read_data(1);
+  }
+
+  return cmd;
+}
+
+// read timer 2 command
+int timer2cmd()
+{
+  int ok=0;
+  int cmd=0;
+
+  ok=write_cmd(0x01,0x34,1);
+  if(ok==1)
+  {
+    cmd=read_data(1);
+  }
+  return cmd;
+}
+
 // read switch status
 int read_status()
 {
   int ok=-1;
   int gpio=0;
+  int wtime=0;
+  int cmd=0;
+  const char space[]=", ";
 
   ok=write_cmd(0x01,0x05,1); 
   if(ok==1)
@@ -205,81 +319,197 @@ int read_status()
     logmessage(logfile,message,loglev,4);
   }
 
+  if(timer1status()==1)
+  {
+    wtime=picycle*timer1delay();
+    cmd=timer1cmd(); 
+    if(cmd==0x24) sprintf(message,"close switch 1 after %d s",wtime); 
+    else if(cmd==0x14) sprintf(message,"open switch 1 after %d s",wtime); 
+    else if(cmd==0x25) sprintf(message,"close switch 2 after %d s",wtime);
+    else if(cmd==0x15) sprintf(message,"open switch 2 after %d s",wtime); 
+    else sprintf(message,"other command on timer 1 after %d s",wtime); 
+    logmessage(logfile,message,loglev,3);
+    strncat(status,space,2);
+    strncat(status,message,42);
+  }
+
+  if(timer2status()==1)
+  {
+    wtime=picycle*timer2delay();
+    cmd=timer2cmd(); 
+    if(cmd==0x24) sprintf(message,"close switch 1 after %d s",wtime); 
+    else if(cmd==0x14) sprintf(message,"open switch 1 after %d s",wtime); 
+    else if(cmd==0x25) sprintf(message,"close switch 2 after %d s",wtime);
+    else if(cmd==0x15) sprintf(message,"open switch 2 after %d s",wtime); 
+    else sprintf(message,"other command on timer2 after %d s",wtime); 
+    logmessage(logfile,message,loglev,3);
+    strncat(status,space,2);
+    strncat(status,message,42);
+  }
+
   return ok;
 }
 
-int operate_switch1(int switch1)
+// start timed task to open/close switch, task can be 1 or 2 depending
+// which is free to use, otherwise no new task is started
+int newtask(int sw, int operation, int delay)
 {
   int ok=0;
+  int cmd=0x0000;
+
+  if((sw==1)&&(operation==1)) cmd=0x2400;
+  else if((sw==1)&&(operation==2)) cmd=0x1400; 
+  else if((sw==2)&&(operation==1)) cmd=0x2500;
+  else if((sw==2)&&(operation==2)) cmd=0x1500; 
+
+  if(timer1status()==0)
+  {
+    sprintf(message,"task1 delay %d and %04x command", delay, cmd);
+    logmessage(logfile,message,loglev,2);
+// timed task1
+    ok=write_cmd(0x62,delay,4);
+    ok=write_cmd(0x63,cmd,2);
+    ok=write_cmd(0x64,0,1);
+    ok=write_cmd(0x61,0,0); // start task1
+  }
+  else if(timer2status()==0)
+  {
+    sprintf(message,"task2 delay %d and %04x command", delay, cmd);
+    logmessage(logfile,message,loglev,2);
+// timed task2
+    ok=write_cmd(0x72,delay,4);
+    ok=write_cmd(0x73,cmd,2);
+    ok=write_cmd(0x74,0,1);
+    ok=write_cmd(0x71,0,0); // start task2
+  }
+  else
+  {
+    sprintf(message,"tasks 1 and 2 already in use, cancel one of them first");
+    logmessage(logfile,message,loglev,4);
+  } 
+
+  return ok;
+}
+
+// operation 1=close or 2=open after seconds given by wtime (0=now)
+int operate_switch1(int switch1, int wtime)
+{
+  int ok=0;
+  int delay=0;
+
+  if(wtime>0) delay=(int)(wtime/picycle);
 
   if(switch1==1) 
   {
-     ok=write_cmd(0x24,0x00,0); 
-     if(ok!=1) 
+     if(delay==0)
      {
-       sprintf(message,"closing switch 1 failed");
-       logmessage(logfile,message,loglev,4);
+       ok=write_cmd(0x24,0x00,0); 
+       if(ok!=1) 
+       {
+         sprintf(message,"closing switch 1 failed");
+         logmessage(logfile,message,loglev,4);
+       }
+       else
+       {
+         sprintf(message,"switch 1 closed");
+         logmessage(logfile,message,loglev,2);
+       }
      }
-     else
-     {
-       sprintf(message,"switch 1 closed");
-       logmessage(logfile,message,loglev,2);
-     }
-
+     else if(delay>0) ok=newtask(1,1,delay);  
   }
   else if(switch1==2) 
   {
-     ok=write_cmd(0x14,0x00,0); 
-     if(ok!=1) 
+     if(delay==0)
      {
-       sprintf(message,"opening switch 1 failed");
-       logmessage(logfile,message,loglev,4);
+       ok=write_cmd(0x14,0x00,0); 
+       if(ok!=1) 
+       {
+         sprintf(message,"opening switch 1 failed");
+         logmessage(logfile,message,loglev,4);
+       }
+       else
+       {
+         sprintf(message,"switch 1 opened");
+         logmessage(logfile,message,loglev,2);
+       }
      }
-     else
-     {
-       sprintf(message,"switch 1 opened");
-       logmessage(logfile,message,loglev,2);
-     }
+     else if(delay>0) ok=newtask(1,2,delay); 
   }
 
   return ok;
 }
 
-int operate_switch2(int switch2)
+int operate_switch2(int switch2, int wtime)
 {
   int ok=0;
+  int delay=0;
+
+  if(wtime>0) delay=(int)(wtime/picycle);
 
   if(switch2==1) 
   {
-     ok=write_cmd(0x25,0x00,0); 
-     if(ok!=1) 
-     {
-       sprintf(message,"closing switch 2 failed");
-       logmessage(logfile,message,loglev,4);
-     }
-     else
-     {
-       sprintf(message,"switch 2 closed");
-       logmessage(logfile,message,loglev,2);
-     }
+    if(delay==0)
+    {
+      ok=write_cmd(0x25,0x00,0); 
+      if(ok!=1) 
+      {
+        sprintf(message,"closing switch 2 failed");
+        logmessage(logfile,message,loglev,4);
+      }
+      else
+      {
+        sprintf(message,"switch 2 closed");
+        logmessage(logfile,message,loglev,2);
+      }
+    }
+    else if(delay>0) ok=newtask(2,1,delay);  
   }
   else if(switch2==2) 
   {
-     ok=write_cmd(0x15,0x00,0); 
-     if(ok!=1) 
-     {
-       sprintf(message,"opening switch 2 failed");
-       logmessage(logfile,message,loglev,4);
-     }
-     else
-     {
-       sprintf(message,"switch 2 opened");
-       logmessage(logfile,message,loglev,2);
-     }
+    if(delay==0)
+    {
+      ok=write_cmd(0x15,0x00,0); 
+      if(ok!=1) 
+      {
+        sprintf(message,"opening switch 2 failed");
+        logmessage(logfile,message,loglev,4);
+      }
+      else
+      {
+        sprintf(message,"switch 2 opened");
+        logmessage(logfile,message,loglev,2);
+      }
+    }
+    else if(delay>0) ok=newtask(2,2,delay);  
   }
 
   return ok;
 }
+
+// calculate seconds to wait for programmed switch operation
+int calcwtime(int hh, int mm)
+{
+  int wtime=0;
+
+  time_t now;
+  struct tm* tm_info;
+  time(&now);
+  tm_info=localtime(&now);
+  int hour=tm_info->tm_hour;
+  int minute=tm_info->tm_min; 
+
+  if(mm<minute)
+  {
+    mm+=60;
+    hh--;
+  }
+  if(hh<hour) hh+=24;
+  wtime=3600*(hh-hour)+60*(mm-minute);
+
+  return wtime;
+}
+
+
 
 // reset PIC internal timer
 int resetimer()
@@ -308,8 +538,8 @@ void terminate(int sig)
   logmessage(logfile,message,loglev,4);
 
   sleep(1);
-  ok=operate_switch1(stopswitch1);
-  ok=operate_switch2(stopswitch2);
+  ok=operate_switch1(stopswitch1,0);
+  ok=operate_switch2(stopswitch2,0);
 
   sleep(1);
   strcpy(message,"stop");
@@ -325,15 +555,13 @@ void hup(int sig)
 }
 
 
-
 int main()
 {  
   int ok=0;
 
-  sprintf(message,"pipicswd v. %d started",version); 
+  sprintf(message,"pipicswd v. %d started",version);
   logmessage(logfile,message,loglev,4);
 
-  signal(SIGINT,&stop); 
   signal(SIGKILL,&stop); 
   signal(SIGTERM,&terminate); 
   signal(SIGQUIT,&stop); 
@@ -452,7 +680,7 @@ int main()
 // open socket
   int sockfd, connfd, clilen;
   char rbuff[25];
-  char sbuff[25];
+  char sbuff[200];
   struct sockaddr_in serv_addr, cli_addr; 
 
   sockfd=socket(AF_INET, SOCK_STREAM, 0);
@@ -491,13 +719,14 @@ int main()
   clilen=sizeof(cli_addr);
 
 // initialize switches
-  ok=operate_switch1(initswitch1);
-  ok=operate_switch2(initswitch2);
+  ok=operate_switch1(initswitch1,0);
+  ok=operate_switch2(initswitch2,0);
  
   sleep(1);
   ok=read_status();
 
   int n=0;
+  int hh=0,mm=0,wtime=0;
   while(cont==1)
   {
     connfd=accept(sockfd, (struct sockaddr*)&cli_addr, (socklen_t *)&clilen); 
@@ -529,27 +758,47 @@ int main()
 
     if(strncmp(rbuff,"open 1",6)==0)
     {
-      ok=operate_switch1(2);
+      if(sscanf(rbuff,"open 1 %d:%d",&hh,&mm)!=EOF)
+      {
+        wtime=calcwtime(hh,mm);
+        ok=operate_switch1(2,wtime);
+      }
+      else ok=operate_switch1(2,0); 
       sleep(1);
     } 
     else if(strncmp(rbuff,"close 1",7)==0)
     {
-      ok=operate_switch1(1);
+      if(sscanf(rbuff,"close 1 %d:%d",&hh,&mm)!=EOF)
+      {
+        wtime=calcwtime(hh,mm);
+        ok=operate_switch1(1,wtime);
+      }
+      else ok=operate_switch1(1,0);
       sleep(1);
     } 
     else if(strncmp(rbuff,"open 2",6)==0)
     {
-      ok=operate_switch2(2);
+      if(sscanf(rbuff,"open 2 %d:%d",&hh,&mm)!=EOF)
+      {
+        wtime=calcwtime(hh,mm);
+        ok=operate_switch2(2,wtime);
+      }
+      else ok=operate_switch2(2,0);
       sleep(1);
     } 
     else if(strncmp(rbuff,"close 2",7)==0)
     {
-      ok=operate_switch2(1);
+      if(sscanf(rbuff,"close 2 %d:%d",&hh,&mm)!=EOF)
+      {
+        wtime=calcwtime(hh,mm);
+        ok=operate_switch2(1,wtime);
+      }
+      else ok=operate_switch2(1,0);
       sleep(1);
     } 
 
     ok=read_status();
-    snprintf(sbuff,sizeof(sbuff),"%.24s",status);
+    snprintf(sbuff,sizeof(sbuff),"%s",status);
 
     n=write(connfd,sbuff,strlen(sbuff)); 
     if(n<0)

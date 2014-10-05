@@ -20,7 +20,7 @@
  ****************************************************************************
  *
  * Wed Feb 19 21:49:16 CET 2014
- * Edit: Mon Feb 24 21:33:09 CET 2014
+ * Edit: Sun Oct  5 19:53:05 CEST 2014
  *
  * Jaakko Koivuniemi
  * */
@@ -44,13 +44,13 @@ void printusage()
 
 void printversion()
 {
-  printf("pipicsw v. 20140224, Jaakko Koivuniemi\n");
+  printf("pipicsw v. 20141005, Jaakko Koivuniemi\n");
 }
 
 int main(int argc, char *argv[])
 {
     int portno=0; // socket port number
-    char host[100]=""; // server host named
+    char host[200]=""; // server host named
     char command[200]=""; // command to send to server
 
     int i=1;
@@ -130,8 +130,8 @@ int main(int argc, char *argv[])
       exit(1);
     }	
 
-    char buffer[20];
-    bzero(buffer,20);
+    char buffer[200];
+    bzero(buffer,200);
 
     strncpy(buffer,command,20);
 
@@ -143,14 +143,14 @@ int main(int argc, char *argv[])
     }
 
     // read server response
-    bzero(buffer,20);
-    n=read(sockfd,buffer,19);
+    bzero(buffer,200);
+    n=read(sockfd,buffer,199);
     if(n<0) 
     {
       perror("Failed to read from socket");
       exit(1);
     }
-    printf("%.20s\n",buffer);
+    printf("%s\n",buffer);
 
     return 0;
 
