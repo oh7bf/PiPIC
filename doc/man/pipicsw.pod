@@ -11,6 +11,8 @@ B<pipicsw> [B<options>] B<command>
 The B<pipicsw> client connects to the B<pipicswd> server and prints the 
 switch status if no command is given. The commands can be
 
+I<cancel> I<N> stop timer I<N> command
+
 I<close> I<N> close switch with channel number I<N>
 
 I<help> print usage message

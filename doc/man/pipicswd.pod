@@ -32,6 +32,8 @@ I<close> I<N> I<[HH:MM]> close switch with channel number I<N>, time optional
 
 I<open> I<N> I<[HH:MM]> open switch with channel number I<N>, time optional
 
+I<cancel> I<N> stop timer I<N> command
+ 
 =head1 FILES
 
 I</etc/logrotate.d/pipicswd>       Log rotation configuration file.

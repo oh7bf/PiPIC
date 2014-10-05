@@ -268,13 +268,43 @@ int timer2cmd()
 {
   int ok=0;
   int cmd=0;
-
   ok=write_cmd(0x01,0x34,1);
   if(ok==1)
   {
     cmd=read_data(1);
   }
+
   return cmd;
+}
+
+// cancel timer 1 command
+int timer1cancel()
+{
+  int ok=0;
+
+  ok=write_cmd(0x60,0x00,1);
+  if(ok!=1)
+  {
+    strcpy(message,"failed to cancel timer 1 command");
+    logmessage(logfile,message,loglev,4);
+  }
+ 
+  return ok;
+}
+
+// cancel timer 2 command
+int timer2cancel()
+{
+  int ok=0;
+
+  ok=write_cmd(0x70,0x00,1);
+  if(ok!=1)
+  {
+    strcpy(message,"failed to cancel timer 2 command");
+    logmessage(logfile,message,loglev,4);
+  }
+
+  return ok;
 }
 
 // read switch status
@@ -796,6 +826,14 @@ int main()
       else ok=operate_switch2(1,0);
       sleep(1);
     } 
+    else if(strncmp(rbuff,"cancel 1",8)==0)
+    {
+      ok=timer1cancel();
+    }
+    else if(strncmp(rbuff,"cancel 2",8)==0)
+    {
+      ok=timer2cancel();
+    }
 
     ok=read_status();
     snprintf(sbuff,sizeof(sbuff),"%s",status);
