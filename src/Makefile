@@ -22,7 +22,7 @@ pipic: pipic.o
 pipicfile: pipicfile.o
 	$(LD) $(LDFLAGS) $^ -o $@
 
-pipicpowerd: pipicpowerd.o
+pipicpowerd: pipicpowerd.o logmessage.o writecmd.o readdata.o testi2c.o
 	$(LD) $(LDFLAGS) -lm $^ -o $@
 
 pipicswd: pipicswd.o logmessage.o writecmd.o readdata.o testi2c.o 
