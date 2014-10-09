@@ -72,6 +72,9 @@ I</var/lib/pipicpowerd/hoursleft>  Hours left before battery flat.
 
 I</var/lib/pipicpowerd/ophours>    Operation hours before MINBATTLEVEL reached. 
 
+I</var/lib/pipicpowerd/pdowntime>   Power down time in minutes for cycling operation.
+
+I</var/lib/pipicpowerd/puptime>     Power up time in minutes for cycling operation. 
  
 I</var/lib/pipicpowerd/pwrdown>    If this file exists power down with SIGINT.
  

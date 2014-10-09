@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Sun Oct  5 12:38:55 CEST 2014
+ * Edit: Tue Oct  7 21:56:48 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -46,7 +46,7 @@
 #include "readdata.h"
 #include "testi2c.h"
 
-const int version=20141005; // program version
+const int version=20141008; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -70,6 +70,8 @@ const float pkfact=1.1; // Peukert's law exponent
 const float phours=20; // Peukert's law discharge time for nominal capacity [h]
 float current=0.15; // estimated average current used [A]
 int sleepint=60; // how often to check sleep file [s]
+int pdownint=60; // how often to check cyclic power up file [s]
+int downmins=10; // minutes for cyclic power down
 int forcereset=0; // force PIC timer reset if i2c test fails
 int forceoff=0; // force power off after give PIC counter cycles
 int forceon=0; // force power up after give PIC counter cycles
@@ -93,6 +95,8 @@ const char batterylevel[200]="/var/lib/pipicpowerd/battlevel";
 const char operationtime[200]="/var/lib/pipicpowerd/ophours";
 const char timerfile[200]="/var/lib/pipicpowerd/timer";
 const char tempfile[200]="/var/lib/tmp102d/temperature";
+const char puptimefile[200]="/var/lib/pipicpowerd/puptime";
+const char pdowntimefile[200]="/var/lib/pipicpowerd/pdowntime";
 const char cputempfile[200]="/sys/class/thermal/thermal_zone0/temp";
 const char wifistate[200]="/sys/class/net/wlan0/operstate";
 
@@ -108,7 +112,7 @@ const char statfile[200]="/var/log/pipicpowers.log";
 const char atpwrup[200]="/usr/sbin/atpwrup";
 const char atpwrdown[200]="/usr/sbin/atpwrdown";
 
-int pwroff=0; // 1==SIGTERM causes power off, 2==no power up in future, 3==power cycle  
+int pwroff=0; // 1==SIGTERM causes power off, 2==no power up in future, 3==power cycle, 4==power cycle with 'downmins'
 int settime=1; // 1==set system time from PIC counter
 
 // write usage statistics
@@ -140,7 +144,6 @@ void writestat(const char statfile[200], unsigned unxstart, unsigned unxstop, in
       fclose(sfile);
   }
 }
-
 
 // read configuration file if it exists
 void read_config()
@@ -759,6 +762,16 @@ void terminate(int sig)
     write_timer(timer); // save last PIC timer value to file
     ok=pwrupfile_create();
   }
+  else if(pwroff==4)
+  {
+    ok=powerdown(pwrdown,pwrdown+downmins*60/picycle);
+    sleep(1);
+    strcpy(message,"save PIC timer value to file");
+    logmessage(logfile,message,loglev,4);
+    timer=read_timer();
+    write_timer(timer); // save last PIC timer value to file
+    ok=pwrupfile_create();
+  }
 
   sleep(1);
   strcpy(message,"stop");
@@ -816,16 +829,18 @@ void hup(int sig)
 int read_sleeptime()
 {
   int sleepnow=0;
-
   int hh=0,mm=0,mins;
   FILE *sfile;
+
   time_t now;
   struct tm* tm_info;
   time(&now);
   tm_info=localtime(&now);
+
   int hour=tm_info->tm_hour;
   int minute=tm_info->tm_min; 
   int minutes=60*hour+minute;
+
   sfile=fopen(sleepfile, "r");
   if(NULL!=sfile)
   {
@@ -838,6 +853,51 @@ int read_sleeptime()
   }
 
   return sleepnow;
+}
+
+// read maximum power up time from file if it exists and compare to uptime
+// calculated from PIC counter, this is used for cyclic operation
+int read_puptime(int timerstart)
+{
+  int sleepnow=0;
+  int mins=0;
+  int timer=0;
+  FILE *pfile;
+
+  pfile=fopen(puptimefile, "r");
+  if(NULL!=pfile)
+  {
+    if(fscanf(pfile,"%d",&mins)!=EOF)
+    {
+      if(mins>2)
+      {
+        timer=read_timer();      
+        if((((timer-timerstart)*picycle)/60-1)>mins) sleepnow=1;
+      }
+    }
+    fclose(pfile);
+  }
+
+  return sleepnow;
+}
+
+// read power down time in minutes from file for cyclic operation
+int read_pdowntime()
+{
+  int mins=2;
+  FILE *pfile;
+
+  pfile=fopen(pdowntimefile, "r");
+  if(NULL!=pfile)
+  {
+    if(fscanf(pfile,"%d",&mins)!=EOF)
+    {
+      if(mins<2) mins=2;
+    }
+    fclose(pfile);
+  }
+
+  return mins;
 }
 
 // write '/var/lib/pipicpowerd/battery', '/var/lib/pipicpowerd/volts'
@@ -1090,6 +1150,7 @@ int main()
   unsigned nxtvolts=unxs; // next time to read battery voltage
   unsigned nxtstart=15+unxs; // next time to read start time
   unsigned nxtbutton=20+unxs; // next time to check button
+  unsigned nxtpdown=30+unxs; // next time to check cyclic power down
   unsigned nxtsleep=60+unxs; // next time to check sleep file
   unsigned nxtcounter=300+unxs; // next time to read PIC counter
 
@@ -1317,6 +1378,28 @@ int main()
        unxstart=time(NULL); 
        unxstart-=15;
        nxtstart=0;
+    }
+
+    if(((unxs>=nxtpdown)||((nxtpdown-unxs)>pdownint))&&(pwroff==0)) 
+    {
+      nxtpdown=pdownint+unxs;
+      if(read_puptime(timerstart)==1)
+      {
+        strcpy(message,"time to go to sleep");
+        logmessage(logfile,message,loglev,4);
+        sleep(1);
+        if(access(atpwrdown,X_OK)!=-1)
+        {
+          sprintf(message,"execute power down script %s",atpwrdown);
+          logmessage(logfile,message,loglev,4); 
+          ok=system(atpwrdown);
+          sleep(5);
+        }
+        downmins=read_pdowntime();
+        pwroff=4;
+        ok=system("/bin/sync");
+        ok=system("/sbin/shutdown -h +1");
+      }
     }
 
     if(((unxs>=nxtsleep)||((nxtsleep-unxs)>sleepint))&&(pwroff==0)) 
