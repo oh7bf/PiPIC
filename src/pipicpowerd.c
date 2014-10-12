@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Tue Oct  7 21:56:48 CEST 2014
+ * Edit: Sun Oct 12 19:48:13 CEST 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -46,7 +46,7 @@
 #include "readdata.h"
 #include "testi2c.h"
 
-const int version=20141008; // program version
+const int version=20141012; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -69,6 +69,8 @@ float battcap=7; // nominal battery capacity [Ah]
 const float pkfact=1.1; // Peukert's law exponent
 const float phours=20; // Peukert's law discharge time for nominal capacity [h]
 float current=0.15; // estimated average current used [A]
+int battfull=0; // battery is full 100 %
+int solarpwr=0; // solar panel is used for charging
 int sleepint=60; // how often to check sleep file [s]
 int pdownint=60; // how often to check cyclic power up file [s]
 int downmins=10; // minutes for cyclic power down
@@ -315,6 +317,15 @@ void read_config()
              sprintf(message,"Maximum safe charging voltage %f V",value);
              logmessage(logfile,message,loglev,4);
           }
+          if(strncmp(par,"SOLARPOWER",10)==0)
+          {
+             solarpwr=(int)value;
+             if(solarpwr==1)
+             {
+                sprintf(message,"Using solar power to charge battery");
+                logmessage(logfile,message,loglev,4);
+             }
+          }
           if(strncmp(par,"SETTIME",7)==0)
           {
              if(value==1)
@@ -487,8 +498,8 @@ int powerdown(int delay, int pwrup)
 
 // timed task1
   ok=write_cmd(0x62,delay,4);
-  ok=write_cmd(0x63,4607,2);
-  ok=write_cmd(0x64,0,1);
+  ok*=write_cmd(0x63,4607,2);
+  ok*=write_cmd(0x64,0,1);
 
 // optional timed task2 if '/var/lib/pipicpowerd/wakeup' exists
   if(pwrup==1)
@@ -499,24 +510,24 @@ int powerdown(int delay, int pwrup)
       updelay=(int)(wdelay/picycle);
       sprintf(message,"power up after %d counts",updelay);
       logmessage(logfile,message,loglev,4);
-      ok=write_cmd(0x72,updelay,4);
-      ok=write_cmd(0x73,8703,2);
-      ok=write_cmd(0x74,0,1);
-      ok=write_cmd(0x71,0,0); // start task2
+      ok*=write_cmd(0x72,updelay,4);
+      ok*=write_cmd(0x73,8703,2);
+      ok*=write_cmd(0x74,0,1);
+      ok*=write_cmd(0x71,0,0); // start task2
     }
   }
   else if(pwrup>0) // watch dog power up for reboot
   {
     sprintf(message,"power up after %d counts",pwrup);
     logmessage(logfile,message,loglev,4);
-    ok=write_cmd(0x72,pwrup,4);
-    ok=write_cmd(0x73,8703,2);
-    ok=write_cmd(0x74,0,1);
-    ok=write_cmd(0x71,0,0); // start task2
+    ok*=write_cmd(0x72,pwrup,4);
+    ok*=write_cmd(0x73,8703,2);
+    ok*=write_cmd(0x74,0,1);
+    ok*=write_cmd(0x71,0,0); // start task2
   }
 
-  ok=button_powerup();
-  ok=write_cmd(0x61,0,0); // start task1
+  ok*=button_powerup();
+  ok*=write_cmd(0x61,0,0); // start task1
 
   return ok;
 }
@@ -735,6 +746,11 @@ void terminate(int sig)
   if(pwroff==1)
   {
     ok=powerdown(pwrdown,1);
+    if(ok!=1)
+    {
+      strcpy(message,"problem in i2c communication");
+      logmessage(logfile,message,loglev,4);
+    }
     sleep(1);
     strcpy(message,"save PIC timer value to file");
     logmessage(logfile,message,loglev,4);
@@ -745,6 +761,11 @@ void terminate(int sig)
   else if(pwroff==2)
   {
     ok=powerdown(pwrdown,0);
+    if(ok!=1)
+    {
+      strcpy(message,"problem in i2c communication");
+      logmessage(logfile,message,loglev,4);
+    }
     sleep(1);
     strcpy(message,"save PIC timer value to file");
     logmessage(logfile,message,loglev,4);
@@ -765,6 +786,11 @@ void terminate(int sig)
   else if(pwroff==4)
   {
     ok=powerdown(pwrdown,pwrdown+downmins*60/picycle);
+    if(ok!=1)
+    {
+      strcpy(message,"problem in i2c communication");
+      logmessage(logfile,message,loglev,4);
+    }
     sleep(1);
     strcpy(message,"save PIC timer value to file");
     logmessage(logfile,message,loglev,4);
@@ -1383,23 +1409,26 @@ int main()
     if(((unxs>=nxtpdown)||((nxtpdown-unxs)>pdownint))&&(pwroff==0)) 
     {
       nxtpdown=pdownint+unxs;
-      if(read_puptime(timerstart)==1)
+      if((solarpwr==0)||((solarpwr==1)&&(battfull=0)))
       {
-        strcpy(message,"time to go to sleep");
-        logmessage(logfile,message,loglev,4);
-        sleep(1);
-        if(access(atpwrdown,X_OK)!=-1)
+        if(read_puptime(timerstart)==1)
         {
-          sprintf(message,"execute power down script %s",atpwrdown);
-          logmessage(logfile,message,loglev,4); 
-          ok=system(atpwrdown);
-          sleep(5);
-        }
-        downmins=read_pdowntime();
-        pwroff=4;
-        ok=system("/bin/sync");
-        ok=system("/sbin/shutdown -h +1");
-      }
+          strcpy(message,"time to go to sleep");
+          logmessage(logfile,message,loglev,4);
+          sleep(1);
+          if(access(atpwrdown,X_OK)!=-1)
+          {
+            sprintf(message,"execute power down script %s",atpwrdown);
+            logmessage(logfile,message,loglev,4); 
+            ok=system(atpwrdown);
+            sleep(5);
+          }
+          downmins=read_pdowntime();
+          pwroff=4;
+          ok=system("/bin/sync");
+          ok=system("/sbin/shutdown -h +1");
+         }
+      }      
     }
 
     if(((unxs>=nxtsleep)||((nxtsleep-unxs)>sleepint))&&(pwroff==0)) 
@@ -1451,6 +1480,8 @@ int main()
       }
 
       battlev=battlevel(voltsV);
+      if(battlev>=100) battfull=1;
+      if(battlev<90) battfull=0;
       batim=battime(battlev,battcap,pkfact,phours,current);
       sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.0f hours)",volts,voltsV,battlev,batim);
       if((temp>-100)&&(temp<100)&&(volttempa!=0)) sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.0f hours at %4.1f C)",volts,voltsV,battlev,batim,temp);

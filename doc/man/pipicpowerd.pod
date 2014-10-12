@@ -163,6 +163,9 @@ I<SETTIME>
 If set the current time is estimated from PIC counter cycles at boot time
 and the system time is set accordingly.
 
+I<SOLARPOWER>
+If set small solar panel is used to charge the battery.
+
 I<VDROP>
 Voltage drop from battery to power supply in Volts
 

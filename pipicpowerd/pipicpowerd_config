@@ -1,7 +1,7 @@
 #
 # Example configuration file for pipicpowerd 
 # Fri Feb 14 21:06:59 CET 2014
-# Edit: Mon Jun 16 23:03:28 CEST 2014
+# Edit: Sun Oct 12 20:10:33 CEST 2014
 # Jaakko Koivuniemi
 
 # log level 0=debug messages, 1=system commands, 2=operation messages, 
@@ -52,6 +52,14 @@ MINBATTLEVEL 50
 # maximum battery voltage during charging, higher voltage than this could
 # damage the battery is applied for long time
 MAXBATTVOLTS 14.4
+
+# if set solar panel is used to charge the battery, in cycling power up
+# and down operation set by /var/lib/pipicpowerd/puptime and
+# /var/lib/pipicpowerd/pdowntime files this switch will prevent power
+# down if the battery has been fully charged to dissipate part of the 
+# energy that can not be stored to the battery, this only for small
+# solar panels, large ones need a separate charge controller 
+#SOLARPOWER 0
 
 # PIC internal timer cycle period in seconds, this can be checked with
 # 'pipictest -a 26 -c -n 10000' 
