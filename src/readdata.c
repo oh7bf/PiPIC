@@ -39,6 +39,7 @@ int read_data(int length)
   {
     sprintf(message,"Failed to lock i2c port");
     logmessage(logfile,message,loglev,4);
+    close(fd);
     return -2;
   }
 
@@ -46,6 +47,7 @@ int read_data(int length)
   {
     sprintf(message,"Unable to get bus access to talk to slave");
     logmessage(logfile,message,loglev,4);
+    close(fd);
     return -3;
   }
 
@@ -55,6 +57,7 @@ int read_data(int length)
      {
        sprintf(message,"Unable to read from slave");
        logmessage(logfile,message,loglev,4);
+       close(fd);
        return -4;
      }
      else 
@@ -70,6 +73,7 @@ int read_data(int length)
      {
        sprintf(message,"Unable to read from slave");
        logmessage(logfile,message,loglev,4);
+       close(fd);
        return -4;
      }
      else 
@@ -85,6 +89,7 @@ int read_data(int length)
      {
        sprintf(message,"Unable to read from slave");
        logmessage(logfile,message,loglev,4);
+       close(fd);
        return -4;
      }
      else 

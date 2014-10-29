@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Sun Aug 10 20:06:24 CEST 2014
- * Edit: Tue Sep 16 20:41:12 CEST 2014
+ * Edit: Wed Oct 29 20:12:36 CET 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -51,7 +51,7 @@
 
 #define CHECK_BIT(var,pos) !!((var) & (1<<(pos)))
 
-const int version=20140916; // program version
+const int version=20141029; // program version
 
 const char *i2cdev="/dev/i2c-1"; // i2c device file
 const int address=0x28; // PiPIC i2c address

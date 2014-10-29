@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Sun Oct 12 19:48:13 CEST 2014
+ * Edit: Wed Oct 29 20:11:09 CET 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -46,7 +46,7 @@
 #include "readdata.h"
 #include "testi2c.h"
 
-const int version=20141012; // program version
+const int version=20141029; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]

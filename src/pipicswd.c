@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Sun Feb 16 14:29:25 CET 2014
- * Edit: Sat Oct  4 22:08:45 CEST 2014
+ * Edit: Wed Oct 29 20:11:53 CET 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -51,7 +51,7 @@
 
 #define CHECK_BIT(var,pos) !!((var) & (1<<(pos)))
 
-const int version=20141004; // program version
+const int version=20141029; // program version
 
 int portno=5001; // socket port number
 

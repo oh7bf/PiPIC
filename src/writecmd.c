@@ -44,6 +44,7 @@ int write_cmd(int cmd, int data, int length)
     {
       sprintf(message,"Failed to lock i2c port");
       logmessage(logfile,message,loglev,4);
+      close(fd);
       return -2;
     }
 
@@ -51,6 +52,7 @@ int write_cmd(int cmd, int data, int length)
     {
       sprintf(message,"Unable to get bus access to talk to slave");
       logmessage(logfile,message,loglev,4);
+      close(fd);
       return -3;
     }
     buf[0]=cmd;
@@ -63,6 +65,7 @@ int write_cmd(int cmd, int data, int length)
       {
         sprintf(message,"Error writing to i2c slave");
         logmessage(logfile,message,loglev,4);
+        close(fd);
         return -4;
       }
    }
@@ -76,6 +79,7 @@ int write_cmd(int cmd, int data, int length)
       {
         sprintf(message,"Error writing to i2c slave");
         logmessage(logfile,message,loglev,4);
+        close(fd);
         return -4;
       }
    }
@@ -93,6 +97,7 @@ int write_cmd(int cmd, int data, int length)
       {
         sprintf(message,"Error writing to i2c slave");
         logmessage(logfile,message,loglev,4);
+        close(fd);
         return -4;
       }
    }
@@ -104,6 +109,7 @@ int write_cmd(int cmd, int data, int length)
       {
         sprintf(message,"Error writing to i2c slave");
         logmessage(logfile,message,loglev,4);
+        close(fd);
         return -4;
       }
    }
