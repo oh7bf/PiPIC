@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Sat Nov  1 08:38:20 CET 2014
+ * Edit: Sat Nov  1 10:18:06 CET 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -1428,6 +1428,11 @@ int main()
           ok=system("/bin/sync");
           ok=system("/sbin/shutdown -h +1");
          }
+      }
+      else if((solarpwr==1)&&(battfull==1))
+      {
+        strcpy(message,"battery full, no power down");
+        logmessage(logfile,message,loglev,4);
       }      
     }
 
@@ -1480,8 +1485,8 @@ int main()
       }
 
       battlev=battlevel(voltsV);
-      if(battlev>=100) battfull=1;
-      if(battlev<90) battfull=0;
+      if(battlev>=95) battfull=1;
+      if(battlev<85) battfull=0;
       batim=battime(battlev,battcap,pkfact,phours,current);
       sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.0f hours)",volts,voltsV,battlev,batim);
       if((temp>-100)&&(temp<100)&&(volttempa!=0)) sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.0f hours at %4.1f C)",volts,voltsV,battlev,batim,temp);
