@@ -1432,7 +1432,7 @@ int main()
       else if((solarpwr==1)&&(battfull==1))
       {
         strcpy(message,"battery full, no power down");
-        logmessage(logfile,message,loglev,4);
+        logmessage(logfile,message,loglev,2);
       }      
     }
 
@@ -1485,8 +1485,24 @@ int main()
       }
 
       battlev=battlevel(voltsV);
-      if(battlev>=95) battfull=1;
-      if(battlev<85) battfull=0;
+      if(battlev>=95) 
+      {
+        if((battfull==0)&&(solarpwr==1))
+        {
+          strcpy(message,"battery full, stop cyclic power down");
+          logmessage(logfile,message,loglev,4); 
+        }
+        battfull=1;
+      }
+      if(battlev<85) 
+      {
+        if((battfull==1)&&(solarpwr==1))
+        {
+          strcpy(message,"battery not full any more, restart cyclic power down");
+          logmessage(logfile,message,loglev,4); 
+        }
+        battfull=0;
+      }
       batim=battime(battlev,battcap,pkfact,phours,current);
       sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.0f hours)",volts,voltsV,battlev,batim);
       if((temp>-100)&&(temp<100)&&(volttempa!=0)) sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.0f hours at %4.1f C)",volts,voltsV,battlev,batim,temp);
