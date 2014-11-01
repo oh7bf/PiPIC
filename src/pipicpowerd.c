@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Wed Oct 29 20:11:09 CET 2014
+ * Edit: Sat Nov  1 08:38:20 CET 2014
  *
  * Jaakko Koivuniemi
  **/
@@ -46,7 +46,7 @@
 #include "readdata.h"
 #include "testi2c.h"
 
-const int version=20141029; // program version
+const int version=20141101; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -1409,7 +1409,7 @@ int main()
     if(((unxs>=nxtpdown)||((nxtpdown-unxs)>pdownint))&&(pwroff==0)) 
     {
       nxtpdown=pdownint+unxs;
-      if((solarpwr==0)||((solarpwr==1)&&(battfull=0)))
+      if((solarpwr==0)||((solarpwr==1)&&(battfull==0)))
       {
         if(read_puptime(timerstart)==1)
         {
