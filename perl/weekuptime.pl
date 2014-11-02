@@ -13,12 +13,13 @@ my $unxs0=0;
 my $unxs1=0;
 my $timer0=0;
 my $timer1=0;
-my ($Vmin,$Vave,$Vmax);
+my $dt=0;
+my $Vmin=0;
+my $Vave=0;
+my $Vmax=0;
 my ($Tmin,$Tave,$Tmax);
 my ($Tcpumin,$Tcpuave,$Tcpumax);
 my $wifiup=0;
-
-use integer;
 
 my $now=time;
 my $weekago=$now-7*24*3600;
@@ -32,29 +33,23 @@ my $Tmx=-100;
 my $Tcpumi=100;
 my $Tcpuav=0;
 my $Tcpumx=-100;
-my $dt=0;
 my $uptime=0;
 
 $line=<>;
 while($line) 
 {
   chomp $line; 
-  ($dat,$tim,$unxs0,$unxs1,$timer0,$timer1,$Vmin,$Vave,$Vmax,$Tmin,$Tave,$Tmax,$Tcpumin,$Tcpuave,$Tcpumax,$wifiup) = split /\s+/,$line;
-  $dt=0;
+  ($dat,$tim,$unxs0,$unxs1,$timer0,$timer1,$dt,$Vmin,$Vave,$Vmax,$Tmin,$Tave,$Tmax,$Tcpumin,$Tcpuave,$Tcpumax,$wifiup) = split /\s+/,$line;
   if($unxs1>=$weekago)
   {
-    print "$dat $tim";
-    if($unxs0>$weekago)
-    {
-#      print " $unxs0 $unxs1";
-      $dt=$unxs1-$unxs0;
-    }
-    else
+#    print "$dat $tim";
+    if($unxs0<$weekago)
     {
 #      print " $weekago $unxs1";
       $dt=$unxs1-$weekago;
     }
-    print " $dt\n";
+#    print " $dt\n";
+    $dt*=1;
     if($dt>0)
     {
       $uptime+=$dt;
@@ -91,5 +86,5 @@ print (sprintf "from total %02d:%02d:%02d or %-3.0f%% of up time.", $hh, $mm, $s
 $Vav/=$uptime;
 $Tav/=$uptime;
 $Tcpuav/=$uptime;
-print (sprintf " %4.1f/%4.1f/%4.1f V, %+3.0f/%+3.0f/%+3.0f °C and CPU %3.0f/%3.0f/%3.0f °C.\n",$Vmi,$Vav,$Vmx,$Tmi,$Tav,$Tmx,$Tcpumi,$Tcpuav,$Tcpumx);
+print (sprintf " %4.1f/%4.1f/%4.1f V, %+3.0f/%+3.0f/%+3.0f °C and CPU %2.0f/%2.0f/%2.0f °C.\n",$Vmi,$Vav,$Vmx,$Tmi,$Tav,$Tmx,$Tcpumi,$Tcpuav,$Tcpumx);
  
