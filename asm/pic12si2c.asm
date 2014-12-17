@@ -9,7 +9,7 @@
 ; to the PIC with parameter data. The result data can be read from the PIC.
 ; There is a separate command line utility pipic(1) for this. 
 ;
-; Copyright (C) 2013 Jaakko Koivuniemi.
+; Copyright (C) 2013 - 2014 Jaakko Koivuniemi.
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Sat Nov 30 18:12:11 CET 2013
+; Wed Dec 17 20:41:53 CET 2014
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 pic12si2c.asm
@@ -528,8 +528,30 @@ ftatlow         btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
                 goto    ftatlow
 
                 incf    i2cstate, F        ; i2cstate++          1 us
+
+; repeated start could be detected here if SCL=1 and SDA=1->0
+; in this case jump to 'sdaint'
+; if SDA=0 continue to follow data transfer
+; if SDA=1 check if SDA goes to low while SCL is high
+                btfss   GPIO, SDA
+                goto    ftathigh1
+
+ftathigh0       btfss   GPIO, SDA
+                goto    sdaint
+                btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
+                goto    ftathigh0          ;                     2 us
+
+                goto    ftatlow1
+
+ftathigh1       btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
+                goto    ftathigh1          ;                     2 us
+
+ftatlow1        btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
+                goto    ftatlow1
+
+                incf    i2cstate, F        ; i2cstate++          1 us
                 btfss   i2cstate, I2RCVD   ; 8 bits transmitted? 1-2 us
-                goto    ftathigh           ;                     2 us
+                goto    ftathigh1          ;                     2 us
 
 ftathigh2       btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 goto    ftathigh2          ;                     2 us
