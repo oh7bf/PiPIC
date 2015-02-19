@@ -3,7 +3,7 @@
  * Monitor and control Raspberry Pi power supply using i2c bus. The power
  * supply has a PIC processor to interprete commands send by this daemon.  
  *       
- * Copyright (C) 2013 - 2014 Jaakko Koivuniemi.
+ * Copyright (C) 2013 - 2015 Jaakko Koivuniemi.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Sat Nov  1 10:18:06 CET 2014
+ * Edit: Thu Feb 19 18:42:51 CET 2015
  *
  * Jaakko Koivuniemi
  **/
@@ -41,12 +41,11 @@
 #include <signal.h>
 #include <syslog.h>
 #include "pipicpowerd.h"
-#include "logmessage.h"
 #include "writecmd.h"
 #include "readdata.h"
 #include "testi2c.h"
 
-const int version=20141101; // program version
+const int version=20150219; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -104,7 +103,7 @@ const char wifistate[200]="/sys/class/net/wlan0/operstate";
 
 const char pidfile[200]="/var/run/pipicpowerd.pid";
 
-int loglev=3;
+int loglev=5;
 const char *logfile="/var/log/pipicpowerd.log";
 char message[200]="";
 int logstats=0;
@@ -160,8 +159,7 @@ void read_config()
   cfile=fopen(confile, "r");
   if(NULL!=cfile)
   {
-    sprintf(message,"Read configuration file");
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_INFO, "Read configuration file");
 
     while((read=getline(&line,&len,cfile))!=-1)
     {
@@ -171,94 +169,91 @@ void read_config()
           {
              loglev=(int)value;
              sprintf(message,"Log level set to %d",(int)value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
+             setlogmask(LOG_UPTO (loglev));
           }
           if(strncmp(par,"LOGSTAT",7)==0)
           {
              logstats=(int)value;
-             if(value==1)
-             {
-                sprintf(message,"Log statistics to 'pipicpowers.log'");
-                logmessage(logfile,message,loglev,4);
-             }
+             if(value==1) syslog(LOG_INFO, "Log statistics to 'pipicpowers.log'");
           }
           if(strncmp(par,"VOLTINT",7)==0)
           {
              voltint=(int)value;
              sprintf(message,"Voltage reading interval set to %d s",(int)value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"VOLTCAL",7)==0)
           {
              voltcal=value;
              sprintf(message,"Voltage calibration constant set to %f",value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"VOLTTEMPA",9)==0)
           {
              volttempa=value;
              sprintf(message,"Voltage temperature non-linear set to %e",value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"VOLTTEMPB",9)==0)
           {
              volttempb=value;
              sprintf(message,"Voltage temperature coefficient set to %f",value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"VOLTTEMPC",9)==0)
           {
              volttempc=value;
              sprintf(message,"Voltage temperature constant set to %f",value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"VDROP",5)==0)
           {
              vdrop=value;
              sprintf(message,"Voltage drop set to %f",value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"BUTTONINT",9)==0)
           {
              buttonint=(int)value;
              sprintf(message,"Button reading interval set to %d s",(int)value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"CONFDELAY",9)==0)
           {
              confdelay=(int)value;
              sprintf(message,"Confirmation delay set to %d s",(int)value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"PWRDOWN",7)==0)
           {
              pwrdown=(int)value;
              sprintf(message,"Delay to power down set to %d cycles",(int)value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"PICYCLE",7)==0)
           {
              picycle=value;
              sprintf(message,"PIC cycle %f s",value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"COUNTINT",8)==0)
           {
              countint=(int)value;
              sprintf(message,"PIC counter reading interval %d s",(int)value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"WIFINT",6)==0)
           {
              wifint=(int)value;
              sprintf(message,"WiFi check interval %d s",(int)value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"WIFITIMEOUT",11)==0)
           {
              wifitimeout=(int)value;
              sprintf(message,"WiFi timeout %d s",(int)value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"WIFIACT",7)==0)
           {
@@ -267,7 +262,7 @@ void read_config()
              else if(value==1) sprintf(message,"Interface down-up"); 
              else if(value==2) sprintf(message,"Reboot if WiFi down");
              else if(value==2) sprintf(message,"Power cycle if WiFi down"); 
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"FORCEPOWEROFF",13)==0)
           {
@@ -275,7 +270,7 @@ void read_config()
              if(forceoff>0)
              {
                sprintf(message,"Force power off after %d PIC cycles",(int)value);
-               logmessage(logfile,message,loglev,4);
+               syslog(LOG_INFO, "%s", message);
              }
           }
           if(strncmp(par,"FORCEPOWERUP",12)==0)
@@ -284,61 +279,55 @@ void read_config()
              if(forceon>0)
              {
                sprintf(message,"Force power up after %d PIC cycles",(int)value);
-               logmessage(logfile,message,loglev,4);
+               syslog(LOG_INFO, "%s", message);
              }
           }
           if(strncmp(par,"LOWBATTERY",10)==0)
           {
              minvolts=(int)value;
              sprintf(message,"Minimum voltage set to %d [1023-0]",(int)value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"BATTCAP",7)==0)
           {
              battcap=value;
              sprintf(message,"Nominal battery capacity  %f",value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"CURRENT",7)==0)
           {
              current=value;
              sprintf(message,"Current consumption  %f",value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"MINBATTLEVEL",12)==0)
           {
              minbattlev=value;
              sprintf(message,"Minimum battery level for operating %f %%",value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"MAXBATTVOLTS",12)==0)
           {
              maxbattvolts=value;
              sprintf(message,"Maximum safe charging voltage %f V",value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"SOLARPOWER",10)==0)
           {
              solarpwr=(int)value;
-             if(solarpwr==1)
-             {
-                sprintf(message,"Using solar power to charge battery");
-                logmessage(logfile,message,loglev,4);
-             }
+             if(solarpwr==1) syslog(LOG_INFO, "Using solar power to charge battery");
           }
           if(strncmp(par,"SETTIME",7)==0)
           {
              if(value==1)
              {
                 settime=1;
-                sprintf(message,"Set system time from PIC counter in power up");
-                logmessage(logfile,message,loglev,4);
+                syslog(LOG_INFO, "Set system time from PIC counter in power up");
              }
              else
              {
                 settime=0;
-                sprintf(message,"Do not set system time from PIC counter");
-                logmessage(logfile,message,loglev,4);
+                syslog(LOG_INFO, "Do not set system time from PIC counter");
              }
           }
           if(strncmp(par,"FORCERESET",10)==0)
@@ -346,14 +335,12 @@ void read_config()
              if(value==1)
              {
                 forcereset=1;
-                sprintf(message,"Force PIC timer reset at start if i2c test fails");
-                logmessage(logfile,message,loglev,4);
+                syslog(LOG_INFO, "Force PIC timer reset at start if i2c test fails");
              }
              else
              {
                 forcereset=0;
-                sprintf(message,"Exit in case of i2c test failure");
-                logmessage(logfile,message,loglev,4);
+                syslog(LOG_INFO, "Exit in case of i2c test failure");
              }
           }
 
@@ -364,7 +351,7 @@ void read_config()
   else
   {
     sprintf(message, "Could not open %s", confile);
-    logmessage(logfile, message, loglev,4);
+    syslog(LOG_ERR, "%s", message);
   }
 }
 
@@ -407,39 +394,22 @@ int readvolts()
   int volts=-1;
 
 // set GP5=1
-  if(write_cmd(0x25,0,0)!=1)
-  {
-    strcpy(message,"failed to set GP5=1");
-    logmessage(logfile,message,loglev,4);
-  }
+  if(write_cmd(0x25,0,0)!=1) syslog(LOG_ERR, "failed to set GP5=1");
   sleep(1);
 
 // read AN3
-  if(write_cmd(0x43,0,0)!=1)
-  {
-    strcpy(message,"failed send read AN3 command");
-    logmessage(logfile,message,loglev,4);
-  }
+  if(write_cmd(0x43,0,0)!=1) syslog(LOG_ERR, "failed send read AN3 command");
   else volts=read_data(2);
   sleep(1);
 
 // read again AN3
-  if(write_cmd(0x43,0,0)!=1)
-  {
-    strcpy(message,"failed send read AN3 command");
-    logmessage(logfile,message,loglev,4);
-  }
+  if(write_cmd(0x43,0,0)!=1) syslog(LOG_ERR, "failed send read AN3 command");
   else volts=read_data(2);
   sleep(1);
 
 // reset GP5=0
-  if(write_cmd(0x15,0,0)!=1)
-  {
-    strcpy(message,"failed to clear GP5=0");
-    logmessage(logfile,message,loglev,4);
-  }
+  if(write_cmd(0x15,0,0)!=1) syslog(LOG_ERR, "failed to clear GP5=0");
   sleep(1);
-
 
   return volts;
 }
@@ -494,7 +464,7 @@ int powerdown(int delay, int pwrup)
   int updelay=0;
 
   sprintf(message,"power down after %d counts",delay);
-  logmessage(logfile,message,loglev,4);
+  syslog(LOG_WARNING, "%s", message);
 
 // timed task1
   ok=write_cmd(0x62,delay,4);
@@ -509,7 +479,7 @@ int powerdown(int delay, int pwrup)
     {
       updelay=(int)(wdelay/picycle);
       sprintf(message,"power up after %d counts",updelay);
-      logmessage(logfile,message,loglev,4);
+      syslog(LOG_WARNING, "%s", message);
       ok*=write_cmd(0x72,updelay,4);
       ok*=write_cmd(0x73,8703,2);
       ok*=write_cmd(0x74,0,1);
@@ -519,7 +489,7 @@ int powerdown(int delay, int pwrup)
   else if(pwrup>0) // watch dog power up for reboot
   {
     sprintf(message,"power up after %d counts",pwrup);
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_WARNING, "%s", message);
     ok*=write_cmd(0x72,pwrup,4);
     ok*=write_cmd(0x73,8703,2);
     ok*=write_cmd(0x74,0,1);
@@ -537,11 +507,8 @@ int read_timer()
 {
   int timer=-1;
 
-  if(write_cmd(0x51,0,0)!=1)
-  {
-    strcpy(message,"failed to send read timer command");
-    logmessage(logfile,message,loglev,4);
-  }
+  if(write_cmd(0x51,0,0)!=1) 
+    syslog(LOG_ERR, "failed to send read timer command");
   else timer=read_data(4);
 
   return timer;
@@ -566,7 +533,7 @@ int resetimer()
   if(NULL==timefile)
   {
     sprintf(message,"could not write to file: %s",resetfile);
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "%s", message);
   }
   else
   { 
@@ -585,7 +552,7 @@ void write_timer(int timer)
   if(NULL==tfile)
   {
     sprintf(message,"could not write file: %s",timerfile);
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "%s", message);
   }
   else
   { 
@@ -606,7 +573,7 @@ int read_timer_file()
     if(fscanf(tfile,"%d",&timer)==EOF)
     {
       sprintf(message,"reading %s failed",timerfile);
-      logmessage(logfile,message,loglev,4);
+      syslog(LOG_ERR, "%s", message);
     }
   }
 
@@ -643,7 +610,7 @@ int test_ntp()
               if(sscanf(line,"%s %s %s %s %s %s %s %s %s %s",p1,p2,p3,p4,p5,p6,p7,p8,p9,p10)!=EOF)
               {
                 ntpruns=1;
-                logmessage(logfile,line,loglev,4);
+                syslog(LOG_INFO, "%s", line);
               }
             }
           }
@@ -654,15 +621,9 @@ int test_ntp()
   }
 
   if(ntpruns==0)
-  {
-    sprintf(str,"test 'ntpq -p > /tmp/pipicpowerd_ntp_test' failed");
-    logmessage(logfile,str,loglev,4);
-  }
+    syslog(LOG_INFO, "test 'ntpq -p > /tmp/pipicpowerd_ntp_test' failed");
   else
-  {
-    sprintf(str,"test 'ntpq -p > /tmp/pipicpowerd_ntp_test' success");
-    logmessage(logfile,str,loglev,4);
-  }
+    syslog(LOG_INFO, "test 'ntpq -p > /tmp/pipicpowerd_ntp_test' success");
 
   return ntpruns;
 }
@@ -682,12 +643,11 @@ int writeuptime(int timer)
     h=0;
     m=0;
     sprintf(str,"timer0=%d has higher value than timer=%d!",timer0,timer);
-    logmessage(logfile,str,loglev,4);
-    strcpy(message,"force hours=0 and minutes=0");
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "%s", str);
+    syslog(LOG_ERR, "force hours=0 and minutes=0");
   }
   sprintf(str,"date --date='%d hours %d minutes' > /var/lib/pipicpowerd/waketime",h,m);
-  logmessage(logfile,str,loglev,4);
+  syslog(LOG_DEBUG, "%s", str);
   ok=system(str);
 
   return ok;
@@ -702,14 +662,14 @@ int pwrupfile_create()
   if(NULL==pwrup)
   {
     sprintf(message,"could not create file: %s",pwrupfile);
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "%s", message);
   }
   else
   { 
     fclose(pwrup);
     ok=1;
     sprintf(message,"created file: %s",pwrupfile);
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_NOTICE, "%s", message);
   }
   return ok;
 }
@@ -721,7 +681,7 @@ int pwrupfile_delete()
 
   ok=remove(pwrupfile);
   sprintf(message,"removed file: %s",pwrupfile);
-  logmessage(logfile,message,loglev,4);
+  syslog(LOG_NOTICE, "%s", message);
 
   return ok;
 }
@@ -731,7 +691,7 @@ int cont=1; /* main loop flag */
 void stop(int sig)
 {
   sprintf(message,"signal %d catched, stop",sig);
-  logmessage(logfile,message,loglev,4);
+  syslog(LOG_NOTICE, "%s", message);
   cont=0;
 }
 
@@ -741,19 +701,14 @@ void terminate(int sig)
   int timer=0;
 
   sprintf(message,"signal %d catched",sig);
-  logmessage(logfile,message,loglev,4);
+  syslog(LOG_NOTICE, "%s", message);
 
   if(pwroff==1)
   {
     ok=powerdown(pwrdown,1);
-    if(ok!=1)
-    {
-      strcpy(message,"problem in i2c communication");
-      logmessage(logfile,message,loglev,4);
-    }
+    if(ok!=1) syslog(LOG_ERR, "problem in i2c communication");
     sleep(1);
-    strcpy(message,"save PIC timer value to file");
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_NOTICE, "save PIC timer value to file");
     timer=read_timer(); 
     write_timer(timer);// save last PIC timer value to file 
     ok=pwrupfile_create();
@@ -761,14 +716,9 @@ void terminate(int sig)
   else if(pwroff==2)
   {
     ok=powerdown(pwrdown,0);
-    if(ok!=1)
-    {
-      strcpy(message,"problem in i2c communication");
-      logmessage(logfile,message,loglev,4);
-    }
+    if(ok!=1) syslog(LOG_ERR, "problem in i2c communication");
     sleep(1);
-    strcpy(message,"save PIC timer value to file");
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_NOTICE, "save PIC timer value to file");
     timer=read_timer();
     write_timer(timer); // save last PIC timer value to file
     ok=pwrupfile_create();
@@ -777,8 +727,7 @@ void terminate(int sig)
   {
     ok=powerdown(pwrdown,pwrdown+60);
     sleep(1);
-    strcpy(message,"save PIC timer value to file");
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_NOTICE, "save PIC timer value to file");
     timer=read_timer();
     write_timer(timer); // save last PIC timer value to file
     ok=pwrupfile_create();
@@ -786,22 +735,16 @@ void terminate(int sig)
   else if(pwroff==4)
   {
     ok=powerdown(pwrdown,pwrdown+downmins*60/picycle);
-    if(ok!=1)
-    {
-      strcpy(message,"problem in i2c communication");
-      logmessage(logfile,message,loglev,4);
-    }
+    if(ok!=1) syslog(LOG_ERR, "problem in i2c communication");
     sleep(1);
-    strcpy(message,"save PIC timer value to file");
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_NOTICE, "save PIC timer value to file");
     timer=read_timer();
     write_timer(timer); // save last PIC timer value to file
     ok=pwrupfile_create();
   }
 
   sleep(1);
-  strcpy(message,"stop");
-  logmessage(logfile,message,loglev,4);
+  syslog(LOG_NOTICE, "stop");
   cont=0;
 }
 
@@ -811,42 +754,28 @@ void hup(int sig)
   int timer=0;
 
   sprintf(message,"signal %d catched",sig);
-  logmessage(logfile,message,loglev,4);
+  syslog(LOG_NOTICE, "%s", message);
 
   if(access(pdownfile,F_OK)!=-1)
   {
-    sprintf(message,"shut down and power off");
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_NOTICE, "shut down and power off");
     sleep(1);
     if(powerdown(pwrdown,1)!=1)
-    {
-      sprintf(message,"sending timed power down command failed");
-      logmessage(logfile,message,loglev,4);
-    }
+      syslog(LOG_ERR, "sending timed power down command failed");
     sleep(1);
 
-    strcpy(message,"save PIC timer value to file");
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_NOTICE, "save PIC timer value to file");
     timer=read_timer();
     write_timer(timer); // save last PIC timer value to file
 
     sleep(1);
     if(pwrupfile_create()!=1)
-    {
-      sprintf(message,"failed to create 'pwrup' file");
-      logmessage(logfile,message,loglev,4);
-    }
+      syslog(LOG_ERR, "failed to create 'pwrup' file");
     cont=0;
     if(system("/bin/sync")==-1)
-    {
-      sprintf(message,"sync to disk failed");
-      logmessage(logfile,message,loglev,4);
-    }
+      syslog(LOG_ERR, "sync to disk failed");
     if(system("/sbin/shutdown -h now")==-1)
-    {
-      sprintf(message,"system shutdown failed");
-      logmessage(logfile,message,loglev,4);
-    }
+      syslog(LOG_ERR, "system shutdown failed");
   }
 }
 
@@ -936,7 +865,7 @@ int write_battery(int b, float v, float h, float t, float l)
   if(NULL==bfile)
   {
     sprintf(message,"could not write file: %s",batteryfile);
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "%s", message);
   }
   else
   { 
@@ -949,7 +878,7 @@ int write_battery(int b, float v, float h, float t, float l)
   if(NULL==vfile)
   {
     sprintf(message,"could not write file: %s",voltfile);
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "%s", message);
   }
   else
   { 
@@ -962,7 +891,7 @@ int write_battery(int b, float v, float h, float t, float l)
   if(NULL==hfile)
   {
     sprintf(message,"could not write file: %s",batterytime);
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "%s", message);
   }
   else
   { 
@@ -975,7 +904,7 @@ int write_battery(int b, float v, float h, float t, float l)
   if(NULL==tfile)
   {
     sprintf(message,"could not write file: %s",operationtime);
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "%s", message);
   }
   else
   { 
@@ -988,7 +917,7 @@ int write_battery(int b, float v, float h, float t, float l)
   if(NULL==lfile)
   {
     sprintf(message,"could not write file: %s",batterylevel);
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "%s", message);
   }
   else
   { 
@@ -1006,10 +935,7 @@ float readcputemp()
   FILE *tfile;
   tfile=fopen(cputempfile, "r");
   if(NULL==tfile)
-  {
-    sprintf(message,"could not read file: %s",cputempfile);
-    logmessage(logfile,message,loglev,4);
-  }
+    syslog(LOG_ERR, "could not read file: %s", cputempfile);
   else
   { 
     if(fscanf(tfile,"%f",&temp)==EOF) temp=-100000;
@@ -1026,10 +952,7 @@ float readtemp()
   FILE *tfile;
   tfile=fopen(tempfile, "r");
   if(NULL==tfile)
-  {
-    sprintf(message,"could not read file: %s",tempfile);
-    logmessage(logfile,message,loglev,4);
-  }
+    syslog(LOG_ERR, "could not read file: %s", tempfile);
   else
   { 
     if(fscanf(tfile,"%f",&temp)==EOF) temp=-100;
@@ -1113,10 +1036,7 @@ int read_wifi()
   FILE *wfile;
   wfile=fopen(wifistate, "r");
   if(NULL==wfile)
-  {
-    sprintf(message,"could not read file: %s",wifistate);
-    logmessage(logfile,message,loglev,4);
-  }
+    syslog(LOG_ERR, "could not read file: %s",wifistate);
   else
   { 
     if(fscanf(wfile,"%s",state)!=EOF) 
@@ -1163,8 +1083,8 @@ int main()
   int da,hh,mm,ss,yy;
   FILE *wakef;
 
-  sprintf(message,"pipicpowerd v. %d started",version); 
-  logmessage(logfile,message,loglev,4);
+  setlogmask(LOG_UPTO (loglev));
+  syslog(LOG_NOTICE, "pipicpowerd v. %d started", version);
 
   signal(SIGINT,&stop); 
   signal(SIGKILL,&stop); 
@@ -1187,92 +1107,63 @@ int main()
   unsigned nxtwifi=wifint+unxs; // next time to check WiFi status
 
   int i2cok=testi2c(); // test i2c data flow to PIC 
-  if(i2cok==1)
-  {
-    strcpy(message,"i2c dataflow test ok"); 
-    logmessage(logfile,message,loglev,4);
-  }
+  if(i2cok==1) syslog(LOG_NOTICE, "PIC i2c dataflow test ok");
   else
   {
     pwrupfile_delete();
-    strcpy(message,"i2c dataflow test failed");
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_NOTICE, "PIC i2c dataflow test failed");
     if(forcereset==1)
     {
       sleep(1); 
-      strcpy(message,"try to reset timer now");
-      logmessage(logfile,message,loglev,4); 
+      syslog(LOG_NOTICE, "try to reset PIC timer now");
       ok=resetimer();
       sleep(1);
       if(resetimer()!=1)
       {
-        strcpy(message,"failed to reset timer");
-        logmessage(logfile,message,loglev,4);
+        syslog(LOG_ERR, "failed to reset PIC timer");
         cont=0; 
       }
       else
       {
         sleep(1);
         i2cok=testi2c(); // test i2c data flow to PIC 
-        if(i2cok==1)
-        {
-          strcpy(message,"i2c dataflow test ok"); 
-          logmessage(logfile,message,loglev,4);
-        }
+        if(i2cok==1) syslog(LOG_NOTICE, "PIC i2c dataflow test ok");
         else
         {
-          strcpy(message,"i2c dataflow test failed");
-          logmessage(logfile,message,loglev,4);
+          syslog(LOG_ERR, "PIC i2c dataflow test failed");
           cont=0;
         }
       }
     }
     else
     {
-      strcpy(message,"try to reset timer with 'pipic -a 26 -c 50'");
-      logmessage(logfile,message,loglev,4); 
-      strcpy(message,"and restart with 'service pipicpowerd start'");
-      logmessage(logfile,message,loglev,4); 
+      syslog(LOG_ERR, "try to reset timer with 'pipic -a 26 -c 50' and restart with 'service pipicpowerd start'");
       cont=0;
     }
   }
   if(cont==1)
   {
-    strcpy(message,"disable event triggered tasks");
-    logmessage(logfile,message,loglev,4); 
-    if(event_task_disable()!=1)
-    {
-      strcpy(message,"failed to disable event triggered tasks");
-      logmessage(logfile,message,loglev,4); 
-    }
+    syslog(LOG_NOTICE, "disable PIC event triggered tasks");
+    if(event_task_disable()!=1) syslog(LOG_ERR, "failed to disable PIC event triggered tasks");
     sleep(1);
 
-    strcpy(message,"reset event register");
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_NOTICE, "reset PIC event register");
     if(reset_event_register()!=1)
-    {
-      strcpy(message,"failed to reset event register");
-      logmessage(logfile,message,loglev,4); 
-    }
+      syslog(LOG_ERR, "failed to reset PIC event register");
     sleep(1);
 
     if(reset_event_register()!=1)
-    {
-      strcpy(message,"failed to reset event register");
-      logmessage(logfile,message,loglev,4); 
-    }
+      syslog(LOG_ERR, "failed to reset PIC event register");
     sleep(1);
 
-    strcpy(message,"disable timed task 1 and 2");
-    logmessage(logfile,message,loglev,4); 
+    syslog(LOG_NOTICE, "disable PIC timed task 1 and 2");
     ok=write_cmd(0x60,0,0); // disable timed task 1
     sleep(1);
     ok=write_cmd(0x70,0,0); // disable timed task 2
     sleep(1);
     timer=read_timer();
     timerstart=timer;
-    sprintf(message,"PIC timer at %d",timer);
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_INFO, "PIC timer at %d",timer);
 
     ntpok=test_ntp();
     if((access(pwrupfile,F_OK)!=-1)&&(ntpok==0))
@@ -1282,32 +1173,24 @@ int main()
       if(NULL==wakef)
       {
         sprintf(message,"could not read file: %s",upfile);
-        logmessage(logfile,message,loglev,4);
+        syslog(LOG_ERR, "%s", message);
       }
       else
       { 
         if(fscanf(wakef,"%s %s %d %d:%d:%d %s %d",wd,mo,&da,&hh,&mm,&ss,tzone,&yy)!=EOF)
         {
           sprintf(s,"/bin/date -s '%s %s %d %02d:%02d:%02d %s %d'",wd,mo,da,hh,mm,ss,tzone,yy);
-          logmessage(logfile,s,loglev,4);
+          syslog(LOG_DEBUG, "%s", s);
           fclose(wakef);
           if(settime==1)
-          {
              ok=system(s);
-          }
           else
-          {
-             sprintf(message,"system time can be set with command above");
-             logmessage(logfile,s,loglev,4);
-          }
+             syslog(LOG_INFO, "system time can be set with command above");
         }
       } 
     }
     else if(access(pwrupfile,F_OK)==-1)
-    {
-      sprintf(message,"not power up, leave time untouched");
-      logmessage(logfile,message,loglev,4);
-    } 
+      syslog(LOG_NOTICE, "not power up, leave time untouched");
     
     if(access(pwrupfile,F_OK)!=-1)
     {
@@ -1315,7 +1198,7 @@ int main()
       if(access(atpwrup,X_OK)!=-1)
       {
         sprintf(message,"execute power up script %s",atpwrup);
-        logmessage(logfile,message,loglev,4);
+        syslog(LOG_NOTICE, "%s", message);
         ok=system(atpwrup);
       }
     }
@@ -1345,15 +1228,13 @@ int main()
   sid=setsid();
   if(sid<0) 
   {
-    strcpy(message,"failed to create child process"); 
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "failed to create child process"); 
     exit(EXIT_FAILURE);
   }
         
   if((chdir("/")) < 0) 
   {
-    strcpy(message,"failed to change to root directory"); 
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "failed to change to root directory"); 
     exit(EXIT_FAILURE);
   }
         
@@ -1368,14 +1249,14 @@ int main()
   if(pidf==NULL)
   {
     sprintf(message,"Could not open PID lock file %s, exiting", pidfile);
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "%s", message);
     exit(EXIT_FAILURE);
   }
 
   if(flock(fileno(pidf),LOCK_EX||LOCK_NB)==-1)
   {
     sprintf(message,"Could not lock PID lock file %s, exiting", pidfile);
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "%s", message);
     exit(EXIT_FAILURE);
   }
 
@@ -1384,8 +1265,7 @@ int main()
 
   if(forceoff>0)
   {
-    strcpy(message,"forced power off active");
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_NOTICE, "forced power off active");
     ok=powerdown(forceoff,forceon);
   }
 
@@ -1413,13 +1293,12 @@ int main()
       {
         if(read_puptime(timerstart)==1)
         {
-          strcpy(message,"time to go to sleep");
-          logmessage(logfile,message,loglev,4);
+          syslog(LOG_NOTICE, "time to go to sleep");
           sleep(1);
           if(access(atpwrdown,X_OK)!=-1)
           {
             sprintf(message,"execute power down script %s",atpwrdown);
-            logmessage(logfile,message,loglev,4); 
+            syslog(LOG_NOTICE, message); 
             ok=system(atpwrdown);
             sleep(5);
           }
@@ -1430,10 +1309,7 @@ int main()
          }
       }
       else if((solarpwr==1)&&(battfull==1))
-      {
-        strcpy(message,"battery full, no power down");
-        logmessage(logfile,message,loglev,2);
-      }      
+        syslog(LOG_NOTICE, "battery full, no power down");
     }
 
     if(((unxs>=nxtsleep)||((nxtsleep-unxs)>sleepint))&&(pwroff==0)) 
@@ -1441,13 +1317,12 @@ int main()
       nxtsleep=sleepint+unxs;
       if(read_sleeptime()==1)
       {
-        strcpy(message,"time to go to sleep");
-        logmessage(logfile,message,loglev,4);
+        syslog(LOG_NOTICE, "time to go to sleep");
         sleep(1);
         if(access(atpwrdown,X_OK)!=-1)
         {
           sprintf(message,"execute power down script %s",atpwrdown);
-          logmessage(logfile,message,loglev,4); 
+          syslog(LOG_NOTICE, "%s", message); 
           ok=system(atpwrdown);
           sleep(5);
         }
@@ -1488,36 +1363,29 @@ int main()
       if(battlev>=95) 
       {
         if((battfull==0)&&(solarpwr==1))
-        {
-          strcpy(message,"battery full, stop cyclic power down");
-          logmessage(logfile,message,loglev,4); 
-        }
+          syslog(LOG_NOTICE, "battery full, stop cyclic power down");
         battfull=1;
       }
       if(battlev<85) 
       {
         if((battfull==1)&&(solarpwr==1))
-        {
-          strcpy(message,"battery not full any more, restart cyclic power down");
-          logmessage(logfile,message,loglev,4); 
-        }
+          syslog(LOG_NOTICE, "battery not full any more, restart cyclic power down");
         battfull=0;
       }
       batim=battime(battlev,battcap,pkfact,phours,current);
       sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.0f hours)",volts,voltsV,battlev,batim);
       if((temp>-100)&&(temp<100)&&(volttempa!=0)) sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.0f hours at %4.1f C)",volts,voltsV,battlev,batim,temp);
-      logmessage(logfile,message,loglev,4);
+      syslog(LOG_INFO, "%s", message);
       ophours=optime(battlev,minbattlev,battcap,pkfact,phours,current);
       write_battery(volts,voltsV,batim,ophours,battlev);
       if(volts>minvolts)
       {
-        strcpy(message,"battery voltage low, shut down and power off");
-        logmessage(logfile,message,loglev,4);
+        syslog(LOG_WARNING, "battery voltage low, shut down and power off");
         sleep(1);
         if(access(atpwrdown,X_OK)!=-1)
         {
           sprintf(message,"execute power down script %s",atpwrdown);
-          logmessage(logfile,message,loglev,4); 
+          syslog(LOG_NOTICE, "%s", message);
           ok=system(atpwrdown);
           sleep(5);
         }
@@ -1527,13 +1395,12 @@ int main()
       }
       if(battlev<minbattlev)
       {
-        strcpy(message,"battery charge low, shut down and power off");
-        logmessage(logfile,message,loglev,4);
+        syslog(LOG_WARNING, "battery charge low, shut down and power off");
         sleep(1);
         if(access(atpwrdown,X_OK)!=-1)
         {
-          sprintf(message,"execute power down script %s",atpwrdown);
-          logmessage(logfile,message,loglev,4); 
+          sprintf(message, "execute power down script %s", atpwrdown);
+          syslog(LOG_NOTICE, "%s", message); 
           ok=system(atpwrdown);
           sleep(5);
         }
@@ -1543,24 +1410,16 @@ int main()
       }
       if(voltsV>maxbattvolts)
       {
-        strcpy(message,"too high charging voltage reached");
-        logmessage(logfile,message,loglev,4);
+        syslog(LOG_WARNING, "too high charging voltage reached");
         sleep(1);
         ok=system("/usr/bin/wall too high charging voltage reached");
       }
-      sprintf(message,"unxs=%d nxtvolts=%d",unxs,nxtvolts);
-      logmessage(logfile,message,loglev,2);
+      syslog(LOG_DEBUG, "unxs=%d nxtvolts=%d",unxs,nxtvolts);
       if(reset_event_register()!=1)
-      {
-        strcpy(message,"failed to reset event register");
-        logmessage(logfile,message,loglev,4); 
-      }
+        syslog(LOG_ERR, "failed to reset event register");
       sleep(1);
       if(reset_event_register()!=1)
-      {
-        strcpy(message,"failed to reset event register");
-        logmessage(logfile,message,loglev,4); 
-      }
+        syslog(LOG_ERR, "failed to reset event register");
       sleep(1);
     }
 
@@ -1570,23 +1429,16 @@ int main()
       nxtbutton=buttonint+unxs;
       if((button==0x01)||(button==0x81))
       {
-        strcpy(message,"button pressed");
-        logmessage(logfile,message,loglev,4);
+        syslog(LOG_NOTICE, "button pressed");
         ok=write_cmd(0x25,0,0); // turn on red LED
         sleep(1);
 
         if(reset_event_register()!=1)
-        {
-          strcpy(message,"failed to reset event register");
-          logmessage(logfile,message,loglev,4); 
-         }
+          syslog(LOG_ERR, "failed to reset event register");
         sleep(1);
 
         if(reset_event_register()!=1)
-        {
-          strcpy(message,"failed to reset event register");
-          logmessage(logfile,message,loglev,4); 
-         }
+          syslog(LOG_ERR, "failed to reset event register");
         sleep(1);
 
         button=0;
@@ -1598,13 +1450,12 @@ int main()
           button=read_button();
           if((button==0x01)||(button==0x81))
           {
-            strcpy(message,"shutdown confirmed");
-            logmessage(logfile,message,loglev,4);
+            syslog(LOG_NOTICE, "shutdown confirmed");
             sleep(1);
             if(access(atpwrdown,X_OK)!=-1)
             {
               sprintf(message,"execute power down script %s",atpwrdown);
-              logmessage(logfile,message,loglev,4); 
+              syslog(LOG_NOTICE, "%s", message);
               ok=system(atpwrdown);
               sleep(5);
             }
@@ -1617,15 +1468,14 @@ int main()
         ok=write_cmd(0x15,0,0); // turn off red LED
       }
       sprintf(message,"unxs=%d nxtbutton=%d",unxs,nxtbutton);
-      logmessage(logfile,message,loglev,2);
+      syslog(LOG_DEBUG, "%s", message);
     }
 
     if(((unxs>=nxtcounter)||((nxtcounter-unxs)>countint))&&(pwroff==0)&&(countint>10)) 
     {
       nxtcounter=countint+unxs;
       timer=read_timer();
-      sprintf(message,"PIC timer at %d",timer);
-      logmessage(logfile,message,loglev,4);
+      syslog(LOG_INFO, "PIC timer at %d",timer);
       write_timer(timer);
     }
 
@@ -1633,8 +1483,7 @@ int main()
     {
       nxtwifi=wifint+unxs;
       wifiup=read_wifi();
-      sprintf(message,"WiFi status %d",wifiup);
-      logmessage(logfile,message,loglev,4);
+      syslog(LOG_INFO, "WiFi status %d",wifiup);
       if(wifiup==1) 
       {
         wifiuptime+=wifint;
@@ -1646,25 +1495,21 @@ int main()
       {
         if(wifiact==1)
         {
-          strcpy(message,"interface down");
-          logmessage(logfile,message,loglev,4);
+          syslog(LOG_NOTICE, "interface down");
           ok=system("/sbin/ifdown wlan0");
           sleep(10);
-          strcpy(message,"interface up");
-          logmessage(logfile,message,loglev,4);
+          syslog(LOG_NOTICE, "interface up");
           ok=system("/sbin/ifup wlan0");
         }
         else if(wifiact==2)
         {
-          strcpy(message,"reboot system");
-          logmessage(logfile,message,loglev,4);
+          syslog(LOG_WARNING, "reboot system");
           ok=system("/bin/sync");
           ok=system("/sbin/shutdown -r now");
         }
         else if(wifiact==3)
         {
-          strcpy(message,"power cycle system");
-          logmessage(logfile,message,loglev,4);
+          syslog(LOG_WARNING, "power cycle system");
           pwroff=3; 
           ok=system("/bin/sync");
           ok=system("/sbin/shutdown -h now");
@@ -1680,8 +1525,7 @@ int main()
   unxstop=time(NULL);
   if(logstats==1) 
   {
-    sprintf(message,"write power up statistics");
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_NOTICE, "write power up statistics");
     timerstop=read_timer();
     Vave/=Vaven;
     Tave/=Taven;
@@ -1689,8 +1533,7 @@ int main()
     writestat(statfile,unxstart,unxstop,timerstart,timerstop,Vmin,Vave,Vmax,Tmin,Tave,Tmax,Tcpumin,Tcpuave,Tcpumax,wifiuptime);
   }
 
-  strcpy(message,"remove PID file");
-  logmessage(logfile,message,loglev,4);
+  syslog(LOG_NOTICE, "remove PID file");
   ok=remove(pidfile);
 
   return ok;

@@ -1,12 +1,13 @@
 #
 # Example configuration file for pipicpowerd 
 # Fri Feb 14 21:06:59 CET 2014
-# Edit: Sun Oct 12 20:10:33 CEST 2014
+# Edit: Thu Feb 19 18:49:35 CET 2015
 # Jaakko Koivuniemi
 
-# log level 0=debug messages, 1=system commands, 2=operation messages, 
-# 3=status messages, 4=errors/warnings
-LOGLEVEL 3
+# log level, see syslog(3) 
+# 2=critical condition, 3=error condition, 4=warning condition, 
+# 5=significant condition, 6=information, 7=debugging
+LOGLEVEL 5
 
 # log statistics on power up time to a separate log file 'pipicpowers.log'
 LOGSTATS 0

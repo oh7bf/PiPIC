@@ -5,7 +5,7 @@
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
 #include <sys/file.h>
-#include "logmessage.h"
+#include <syslog.h>
 #include "pipichbd.h"
 
 // write i2c command to PIC optionally followed by data, length is the number 
@@ -25,8 +25,7 @@ int write_cmd(int cmd, int data, int length)
   {
     if((fd=open(i2cdev, O_RDWR)) < 0)
     {
-      sprintf(message,"Failed to open i2c port");
-      logmessage(logfile,message,loglev,4);
+      syslog(LOG_ERR, "Failed to open i2c port");
       return -1;
     }
 
@@ -42,16 +41,14 @@ int write_cmd(int cmd, int data, int length)
 
     if(rd)
     {
-      sprintf(message,"Failed to lock i2c port");
-      logmessage(logfile,message,loglev,4);
+      syslog(LOG_ERR, "Failed to lock i2c port");
       close(fd);
       return -2;
     }
 
     if(ioctl(fd, I2C_SLAVE, address) < 0)
     {
-      sprintf(message,"Unable to get bus access to talk to slave");
-      logmessage(logfile,message,loglev,4);
+      syslog(LOG_ERR, "Unable to get bus access to talk to slave");
       close(fd);
       return -3;
     }
@@ -60,11 +57,10 @@ int write_cmd(int cmd, int data, int length)
     {
       buf[1]=data;
       sprintf(message,"Send 0x%02x%02x",buf[0],buf[1]);
-      logmessage(logfile,message,loglev,1);
+      syslog(LOG_DEBUG, "%s", message);
       if((write(fd, buf, 2)) != 2)
       {
-        sprintf(message,"Error writing to i2c slave");
-        logmessage(logfile,message,loglev,4);
+        syslog(LOG_ERR, "Error writing to i2c slave");
         close(fd);
         return -4;
       }
@@ -74,11 +70,10 @@ int write_cmd(int cmd, int data, int length)
       buf[1]=(int)(data/256);
       buf[2]=data%256;
       sprintf(message,"Send 0x%02x%02x%02x",buf[0],buf[1],buf[2]);
-      logmessage(logfile,message,loglev,1);
+      syslog(LOG_DEBUG, "%s", message);
       if((write(fd, buf, 3)) != 3)
       {
-        sprintf(message,"Error writing to i2c slave");
-        logmessage(logfile,message,loglev,4);
+        syslog(LOG_ERR, "Error writing to i2c slave");
         close(fd);
         return -4;
       }
@@ -92,11 +87,10 @@ int write_cmd(int cmd, int data, int length)
       buf[3]=(int)(rnxt/256);
       buf[4]=rnxt%256;
       sprintf(message,"Send 0x%02x%02x%02x%02x%02x",buf[0],buf[1],buf[2],buf[3],buf[4]);
-      logmessage(logfile,message,loglev,1);
+      syslog(LOG_DEBUG, "%s", message);
       if((write(fd, buf, 5)) != 5)
       {
-        sprintf(message,"Error writing to i2c slave");
-        logmessage(logfile,message,loglev,4);
+        syslog(LOG_ERR, "Error writing to i2c slave");
         close(fd);
         return -4;
       }
@@ -104,11 +98,10 @@ int write_cmd(int cmd, int data, int length)
    else
    {
       sprintf(message,"Send 0x%02x",buf[0]);
-      logmessage(logfile,message,loglev,1);
+      syslog(LOG_DEBUG, "%s", message);
       if((write(fd, buf, 1)) != 1)
       {
-        sprintf(message,"Error writing to i2c slave");
-        logmessage(logfile,message,loglev,4);
+        syslog(LOG_ERR, "Error writing to i2c slave");
         close(fd);
         return -4;
       }

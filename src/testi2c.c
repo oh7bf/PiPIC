@@ -7,7 +7,7 @@
 #include <sys/ioctl.h>
 #include <sys/file.h>
 #include <time.h>
-#include "logmessage.h"
+#include <syslog.h>
 #include "pipichbd.h"
 #include "writecmd.h"
 #include "readdata.h"
@@ -18,7 +18,6 @@ int testi2c()
   int ok=-1;
   int testint=0;
   int testres=1;
-  char message[200]="";
 
   srand((unsigned int)time(NULL));
 
@@ -30,20 +29,13 @@ int testi2c()
 
   ok=write_cmd(0x02,testint,4);
 
-  if(ok!=1)
-  {
-    strcpy(message,"failed to write 4 test bytes"); 
-    logmessage(logfile,message,loglev,4);
-  }
+  if(ok!=1) syslog(LOG_ERR, "failed to write 4 test bytes"); 
   else
   {
     testres=read_data(4);
 
     if((testres==-1)||(testres==-2)||(testres==-3)||(testres==-4))
-    {
-      strcpy(message,"failed to read 4 test bytes"); 
-      logmessage(logfile,message,loglev,4);
-    }
+      syslog(LOG_ERR, "failed to read 4 test bytes"); 
     else
     {
       if(testint==testres) ok=1; else ok=0;

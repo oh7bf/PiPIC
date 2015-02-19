@@ -5,7 +5,7 @@
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
 #include <sys/file.h>
-#include "logmessage.h"
+#include <syslog.h>
 #include "pipichbd.h"
 
 // read data with i2c from PIC, length is the number of bytes to read 
@@ -21,8 +21,7 @@ int read_data(int length)
 
   if((fd=open(i2cdev, O_RDWR)) < 0) 
   {
-    sprintf(message,"Failed to open i2c port");
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "Failed to open i2c port");
     return -1;
   }
 
@@ -37,16 +36,14 @@ int read_data(int length)
   }
   if(rd)
   {
-    sprintf(message,"Failed to lock i2c port");
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "Failed to lock i2c port");
     close(fd);
     return -2;
   }
 
   if(ioctl(fd, I2C_SLAVE, address) < 0) 
   {
-    sprintf(message,"Unable to get bus access to talk to slave");
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "Unable to get bus access to talk to slave");
     close(fd);
     return -3;
   }
@@ -55,15 +52,14 @@ int read_data(int length)
   {
      if(read(fd, buf,1)!=1) 
      {
-       sprintf(message,"Unable to read from slave");
-       logmessage(logfile,message,loglev,4);
+       syslog(LOG_ERR, "Unable to read from slave");
        close(fd);
        return -4;
      }
      else 
      {
-       sprintf(message,"Receive 0x%02x",buf[0]);
-       logmessage(logfile,message,loglev,1); 
+       sprintf(message, "Receive 0x%02x",buf[0]);
+       syslog(LOG_DEBUG, "%s", message); 
        rdata=buf[0];
      }
   } 
@@ -71,15 +67,14 @@ int read_data(int length)
   {
      if(read(fd, buf,2)!=2) 
      {
-       sprintf(message,"Unable to read from slave");
-       logmessage(logfile,message,loglev,4);
+       syslog(LOG_ERR, "Unable to read from slave");
        close(fd);
        return -4;
      }
      else 
      {
        sprintf(message,"Receive 0x%02x%02x",buf[0],buf[1]);
-       logmessage(logfile,message,loglev,1);  
+       syslog(LOG_DEBUG, "%s", message);  
        rdata=256*buf[0]+buf[1];
      }
   }
@@ -87,15 +82,14 @@ int read_data(int length)
   {
      if(read(fd, buf,4)!=4) 
      {
-       sprintf(message,"Unable to read from slave");
-       logmessage(logfile,message,loglev,4);
+       syslog(LOG_ERR, "Unable to read from slave");
        close(fd);
        return -4;
      }
      else 
      {
         sprintf(message,"Receive 0x%02x%02x%02x%02x",buf[0],buf[1],buf[2],buf[3]);
-        logmessage(logfile,message,loglev,1);  
+        syslog(LOG_DEBUG, "%s", message);  
         rdata=16777216*buf[0]+65536*buf[1]+256*buf[2]+buf[3];
      }
   }
