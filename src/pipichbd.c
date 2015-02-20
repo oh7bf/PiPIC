@@ -3,7 +3,7 @@
  * Control external H-bridge using i2c bus on Raspberry Pi. The H-bridge 
  * has a PIC processor to interprete commands send by this program.  
  *       
- * Copyright (C) 2014 Jaakko Koivuniemi.
+ * Copyright (C) 2014 - 2015 Jaakko Koivuniemi.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Sun Aug 10 20:06:24 CEST 2014
- * Edit: Wed Oct 29 20:12:36 CET 2014
+ * Edit: Fri Feb 20 21:40:02 CET 2015
  *
  * Jaakko Koivuniemi
  **/
@@ -43,8 +43,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <syslog.h>
 #include "pipichbd.h"
-#include "logmessage.h"
 #include "writecmd.h"
 #include "readdata.h"
 #include "testi2c.h"
@@ -56,8 +56,7 @@ const int version=20141029; // program version
 const char *i2cdev="/dev/i2c-1"; // i2c device file
 const int address=0x28; // PiPIC i2c address
 const int i2lockmax=10; // maximum number of times to try lock i2c port  
-int loglev=3; // log level
-const char *logfile="/var/log/pipichbd.log"; // log file
+int loglev=5; // log level
 char message[200]="";
 
 int portno=5002; // socket port number
@@ -90,8 +89,7 @@ void read_config()
   cfile=fopen(confile, "r");
   if(NULL!=cfile)
   {
-    sprintf(message,"Read configuration file");
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_INFO, "Read configuration file");
 
     while((read=getline(&line,&len,cfile))!=-1)
     {
@@ -101,66 +99,60 @@ void read_config()
           {
              loglev=(int)value;
              sprintf(message,"Log level set to %d",(int)value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"HBRIDGEPORT",11)==0)
           {
              portno=(int)value;
              sprintf(message,"Bridge port number set to %d",(int)value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"PICYCLE",7)==0)
           {
              picycle=value;
              sprintf(message,"PIC cycle %f s",value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"ROTMAX",6)==0)
           {
              rotmax=value;
              sprintf(message,"maximum motor turns %f",value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"MOTRPM",6)==0)
           {
              motrpm=value;
              sprintf(message,"motor speed %f rpm",value);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"TRACK",5)==0)
           {
              track=(int)value;
-             if(track==1)
-             {
-                sprintf(message,"track potentiometer");
-                logmessage(logfile,message,loglev,4);
-             }
+             if(track==1) syslog(LOG_INFO, "track potentiometer");
           }
           if(strncmp(par,"MINPOS",6)==0)
           {
              minpos=(int)value;
              sprintf(message,"set minimum position to %d",minpos);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"MAXPOS",6)==0)
           {
              maxpos=(int)value;
              sprintf(message,"set maximum position to %d",maxpos);
-             logmessage(logfile,message,loglev,4);
+             syslog(LOG_INFO, "%s", message);
           }
           if(strncmp(par,"FORCERESET",10)==0)
           {
              if(value==1)
              {
                 forcereset=1;
-                sprintf(message,"Force PIC timer reset at start if i2c test fails");
-                logmessage(logfile,message,loglev,4);
+                syslog(LOG_INFO, "Force PIC timer reset at start if i2c test fails");
              }
              else
              {
                 forcereset=0;
-                sprintf(message,"Exit in case of i2c test failure");
-                logmessage(logfile,message,loglev,4);
+                syslog(LOG_INFO, "Exit in case of i2c test failure");
              }
           }
        }
@@ -170,7 +162,7 @@ void read_config()
   else
   {
     sprintf(message, "Could not open %s", confile);
-    logmessage(logfile, message, loglev,4);
+    syslog(LOG_ERR, "%s", message);
   }
 }
 
@@ -205,13 +197,9 @@ int read_status()
       strcpy(status,"breaking");
     }
 
-    logmessage(logfile,message,loglev,3);
+    syslog(LOG_INFO, "%s", message);
   }
-  else
-  {
-    strcpy(message,"failed to read PIC GPIO register"); 
-    logmessage(logfile,message,loglev,4);
-  }
+  else syslog(LOG_ERR, "failed to read PIC GPIO register"); 
 
   return ok;
 }
@@ -227,14 +215,11 @@ int read_motorpos()
   { 
     pos=read_data(2);
     sprintf(message,"Motor position at %d",pos);
-    logmessage(logfile,message,loglev,2);
+    syslog(LOG_INFO, "%s", message);
     if((pos<0)||(pos>1023)) pos=-1;
   }
-  else
-  {
-    strcpy(message,"Failed to read PIC AN0"); 
-    logmessage(logfile,message,loglev,4);
-  }
+  else syslog(LOG_ERR, "Failed to read PIC AN0"); 
+
   return pos;
 }
 
@@ -249,13 +234,10 @@ int read_potentiometer()
   { 
     pot=read_data(2);
     sprintf(message,"Potentiometer at %d",pot);
-    logmessage(logfile,message,loglev,2);
+    syslog(LOG_INFO, "%s", message);
   }
-  else
-  {
-    strcpy(message,"Failed to read PIC AN1"); 
-    logmessage(logfile,message,loglev,4);
-  }
+  else syslog(LOG_ERR, "Failed to read PIC AN1"); 
+
   return pot;
 }
 
@@ -264,16 +246,9 @@ int stop_motor()
 {
   int ok=0;
   ok=write_cmd(0x30,0x0F,1);
-  if(ok!=1) 
-  {
-    sprintf(message,"stopping motor failed");
-    logmessage(logfile,message,loglev,4);
-  }
-  else
-  {
-    sprintf(message,"motor stopped");
-    logmessage(logfile,message,loglev,2);
-  }
+  if(ok!=1) syslog(LOG_ERR, "stopping motor failed");
+  else syslog(LOG_INFO, "motor stopped");
+
   return ok;
 }
 
@@ -290,14 +265,12 @@ int turn_motor(int rotcw, int cycles)
      if(rotcw==+1) 
      {
        ok=write_cmd(0x63,0x301F,2);
-       sprintf(message,"turn motor cw");
-       logmessage(logfile,message,loglev,2);
+       syslog(LOG_INFO, "turn motor cw");
      } 
      else if(rotcw==-1) 
      {
        ok=write_cmd(0x63,0x302F,2);
-       sprintf(message,"turn motor ccw");
-       logmessage(logfile,message,loglev,2);
+       syslog(LOG_INFO, "turn motor ccw");
      } 
      ok=write_cmd(0x64,0,1); // do task once
 
@@ -305,7 +278,7 @@ int turn_motor(int rotcw, int cycles)
      ok=write_cmd(0x72,cycles,4); // stop after given cycles
      ok=write_cmd(0x73,0x300F,2);
      sprintf(message,"stop motor after %d PIC cycles",cycles);
-     logmessage(logfile,message,loglev,2);
+     syslog(LOG_INFO, "%s", message);
      ok=write_cmd(0x74,0,1); // do task once
 
      ok=write_cmd(0x61,0,0); // start task1
@@ -331,14 +304,14 @@ int goto_pos(int topos)
     cycles=(int)abs(rotmax*60.0*(topos-mpos)/(1024.0*motrpm*picycle));
     dt=cycles*picycle;
     sprintf(message,"turning time %d PIC cycles and direction %d",cycles,rotcw);
-    logmessage(logfile,message,loglev,2);
+    syslog(LOG_INFO, "%s", message);
 
     ok=turn_motor(rotcw,cycles);
   }
   else
   {
     sprintf(message,"motor position out of range [%d-%d]",minpos,maxpos);
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_NOTICE, "%s", message);
   }
 
   return (dt*ok);
@@ -378,17 +351,16 @@ int cont=1; /* main loop flag */
 void stop(int sig)
 {
   sprintf(message,"signal %d catched, stop",sig);
-  logmessage(logfile,message,loglev,4);
+  syslog(LOG_NOTICE, "%s", message);
   cont=0;
 }
 
 void terminate(int sig)
 {
   sprintf(message,"signal %d catched",sig);
-  logmessage(logfile,message,loglev,4);
+  syslog(LOG_NOTICE, "%s", message);
   sleep(1);
-  strcpy(message,"stop");
-  logmessage(logfile,message,loglev,4);
+  syslog(LOG_NOTICE, "stop");
 
   cont=0;
 }
@@ -396,9 +368,8 @@ void terminate(int sig)
 void hup(int sig)
 {
   sprintf(message,"signal %d catched",sig);
-  logmessage(logfile,message,loglev,4);
-  sprintf(message,"stop tracking potentiometer");
-  logmessage(logfile,message,loglev,4);
+  syslog(LOG_NOTICE, "%s", message);
+  syslog(LOG_NOTICE, "stop tracking potentiometer");
   track=0;
 }
 
@@ -406,8 +377,8 @@ int main()
 {  
   int ok=0;
 
-  sprintf(message,"pipichbd v. %d started",version); 
-  logmessage(logfile,message,loglev,4);
+  setlogmask(LOG_UPTO (loglev));
+  syslog(LOG_NOTICE, "pipichbd v. %d started", version);
 
   signal(SIGINT,&stop); 
   signal(SIGKILL,&stop); 
@@ -418,42 +389,31 @@ int main()
   read_config(); // read configuration file
   maxcycles=(int)(rotmax*60/(motrpm*picycle));
   sprintf(message,"set maximum turning time to %d cycles",maxcycles); 
-  logmessage(logfile,message,loglev,4);
+  syslog(LOG_NOTICE, "%s", message);
 
   int i2cok=testi2c(); // test i2c data flow to PIC 
-  if(i2cok==1)
-  {
-    strcpy(message,"i2c dataflow test ok"); 
-    logmessage(logfile,message,loglev,4);
-  }
+  if(i2cok==1) syslog(LOG_NOTICE, "i2c dataflow test ok"); 
   else
   {
     if(forcereset==1)
     {
       sleep(1); 
-      strcpy(message,"try to reset timer now");
-      logmessage(logfile,message,loglev,4); 
+      syslog(LOG_NOTICE, "try to reset timer now");
       ok=resetimer();
       sleep(1);
       if(resetimer()!=1)
       {
-        strcpy(message,"failed to reset timer");
-        logmessage(logfile,message,loglev,4);
+        syslog(LOG_ERR, "failed to reset timer");
         cont=0; 
       }
       else
       {
         sleep(1);
         i2cok=testi2c(); // test i2c data flow to PIC 
-        if(i2cok==1)
-        {
-          strcpy(message,"i2c dataflow test ok"); 
-          logmessage(logfile,message,loglev,4);
-        }
+        if(i2cok==1) syslog(LOG_NOTICE, "i2c dataflow test ok"); 
         else
         {
-          strcpy(message,"i2c dataflow test failed");
-          logmessage(logfile,message,loglev,4);
+          syslog(LOG_ERR, "i2c dataflow test failed");
           cont=0;
           exit(EXIT_FAILURE);
         }
@@ -461,12 +421,8 @@ int main()
     }
     else
     {
-      strcpy(message,"i2c dataflow test failed, exit");
-      logmessage(logfile,message,loglev,4); 
-      strcpy(message,"try to reset timer with 'pipic -a 28 -c 50'");
-      logmessage(logfile,message,loglev,4); 
-      strcpy(message,"and restart with 'service pipichbd start'");
-      logmessage(logfile,message,loglev,4); 
+      syslog(LOG_ERR, "i2c dataflow test failed, exit");
+      syslog(LOG_NOTICE, "try to reset timer with 'pipic -a [address] -c 50' and restart with 'service pipichbd start'");
       cont=0;
       exit(EXIT_FAILURE);
     }
@@ -491,15 +447,13 @@ int main()
   sid=setsid();
   if(sid<0) 
   {
-    strcpy(message,"failed to create child process"); 
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "failed to create child process"); 
     exit(EXIT_FAILURE);
   }
         
   if((chdir("/")) < 0) 
   {
-    strcpy(message,"failed to change to root directory"); 
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "failed to change to root directory"); 
     exit(EXIT_FAILURE);
   }
         
@@ -513,15 +467,15 @@ int main()
 
   if(pidf==NULL)
   {
-    sprintf(message,"Could not open PID lock file %s, exiting", pidfile);
-    logmessage(logfile,message,loglev,4);
+    sprintf(message, "Could not open PID lock file %s, exiting", pidfile);
+    syslog(LOG_ERR, "%s", message);
     exit(EXIT_FAILURE);
   }
 
   if(flock(fileno(pidf),LOCK_EX||LOCK_NB)==-1)
   {
     sprintf(message,"Could not lock PID lock file %s, exiting", pidfile);
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "%s", message);
     exit(EXIT_FAILURE);
   }
 
@@ -537,15 +491,10 @@ int main()
   sockfd=socket(AF_INET, SOCK_STREAM, 0);
   if(sockfd<0) 
   {
-    sprintf(message,"Could not open socket");
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "Could not open socket");
     exit(EXIT_FAILURE);
   }
-  else
-  {
-    sprintf(message,"Socket open");
-    logmessage(logfile,message,loglev,2);
-  }
+  else syslog(LOG_NOTICE, "Socket open");
   
   memset(&serv_addr, '0', sizeof(serv_addr));
   memset(sbuff, '0', sizeof(sbuff)); 
@@ -556,14 +505,12 @@ int main()
 
   if(bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr))<0)
   {
-    sprintf(message,"Could not bind socket");
-    logmessage(logfile,message,loglev,4);
+    syslog(LOG_ERR, "Could not bind socket");
     exit(EXIT_FAILURE);
   }
-else
-{
-    sprintf(message,"Socket binding successful");
-    logmessage(logfile,message,loglev,2);
+  else
+  {
+    syslog(LOG_NOTICE, "Socket binding successful");
   }
 
   listen(sockfd, 1); // listen one client only 
@@ -581,8 +528,8 @@ else
   pot=read_potentiometer();
   if(loglev>2)
   {
-    sprintf(message,"motor at %d and pot at %d",mpos,pot);
-    logmessage(logfile,message,loglev,4);
+    sprintf(message, "motor at %d and pot at %d",mpos,pot);
+    syslog(LOG_INFO, "%s", message);
   }
 
   int n=0;
@@ -605,7 +552,7 @@ else
       if((mpos!=mpos2)||(pot!=pot2))
       {
         sprintf(message,"motor at %d and potentiometer at %d",mpos,pot);
-        logmessage(logfile,message,loglev,3);
+        syslog(LOG_INFO, "%s", message);
       }
       mpos2=mpos;
       pot2=pot;
@@ -622,28 +569,22 @@ else
     connfd=accept(sockfd, (struct sockaddr*)&cli_addr, (socklen_t *)&clilen); 
     if(connfd<0) 
     {
-      sprintf(message,"Socket accept failed");
-      logmessage(logfile,message,loglev,4);
+      syslog(LOG_ERR, "Socket accept failed");
       exit(EXIT_FAILURE);
     }
-    else
-    {
-      sprintf(message,"Socket accepted");
-      logmessage(logfile,message,loglev,2);
-    }
+    else syslog(LOG_NOTICE, "Socket accepted");
 
     bzero(rbuff,25);
     n=read(connfd,rbuff,24);
     if(n<0)
     {
-      sprintf(message,"Socket reading failed");
-      logmessage(logfile,message,loglev,4);
+      syslog(LOG_ERR, "Socket reading failed");
       exit(EXIT_FAILURE);
     }
     else
     {
       sprintf(message,"Received: %s",rbuff);
-      logmessage(logfile,message,loglev,1);
+      syslog(LOG_DEBUG, "%s", message);
     }
 
     if(strncmp(rbuff,"stop",4)==0)
@@ -699,8 +640,7 @@ else
     }
     else if(strncmp(rbuff,"track",5)==0)
     {
-      sprintf(message,"start tracking motor position");
-      logmessage(logfile,message,loglev,4);
+      syslog(LOG_NOTICE, "start tracking motor position");
       sprintf(status,"start tracking motor position");
       track=1;
     }
@@ -721,7 +661,7 @@ else
     else
     {
       sprintf(message,"Send: %s",sbuff);
-      logmessage(logfile,message,loglev,1);
+      syslog(LOG_DEBUG, "%s", message);
     }
 
     close(connfd);
@@ -729,8 +669,7 @@ else
     sleep(1);
   }
 
-  strcpy(message,"remove PID file");
-  logmessage(logfile,message,loglev,4);
+  syslog(LOG_NOTICE, "remove PID file");
   ok=remove(pidfile);
 
   return ok;
