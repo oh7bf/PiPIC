@@ -100,6 +100,7 @@ void read_config()
              loglev=(int)value;
              sprintf(message,"Log level set to %d",(int)value);
              syslog(LOG_INFO, "%s", message);
+             setlogmask(LOG_UPTO (loglev));
           }
           if(strncmp(par,"HBRIDGEPORT",11)==0)
           {
