@@ -3,7 +3,7 @@
 # Makefile for compiling PiPIC programs on Raspberry Pi. 
 #
 # Wed May 14 22:55:55 CEST 2014
-# Edit: Thu Feb 19 23:13:22 CET 2015
+# Edit: Fri Feb 20 23:10:29 CET 2015
 #
 # Jaakko Koivuniemi
 
@@ -26,7 +26,7 @@ pipicfile: pipicfile.o
 pipicpowerd: pipicpowerd.o writecmd.o readdata.o testi2c.o
 	$(LD) $(LDFLAGS) -lm $^ -o $@
 
-pipicswd: pipicswd.o logmessage.o writecmd.o readdata.o testi2c.o 
+pipicswd: pipicswd.o writecmd.o readdata.o testi2c.o 
 	$(LD) $(LDFLAGS) $^ -o $@
 
 pipicsw: pipicsw.o
