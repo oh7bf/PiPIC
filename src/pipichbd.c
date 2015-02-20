@@ -51,7 +51,7 @@
 
 #define CHECK_BIT(var,pos) !!((var) & (1<<(pos)))
 
-const int version=20141029; // program version
+const int version=20150220; // program version
 
 const char *i2cdev="/dev/i2c-1"; // i2c device file
 const int address=0x28; // PiPIC i2c address
