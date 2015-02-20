@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Thu Feb 19 18:42:51 CET 2015
+ * Edit: Fri Feb 20 21:42:00 CET 2015
  *
  * Jaakko Koivuniemi
  **/
@@ -45,7 +45,7 @@
 #include "readdata.h"
 #include "testi2c.h"
 
-const int version=20150219; // program version
+const int version=20150220; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -104,7 +104,6 @@ const char wifistate[200]="/sys/class/net/wlan0/operstate";
 const char pidfile[200]="/var/run/pipicpowerd.pid";
 
 int loglev=5;
-const char *logfile="/var/log/pipicpowerd.log";
 char message[200]="";
 int logstats=0;
 const char statfile[200]="/var/log/pipicpowers.log";
