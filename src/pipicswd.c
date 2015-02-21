@@ -476,6 +476,7 @@ int calcwtime(int hh, int mm)
   tm_info=localtime(&now);
   int hour=tm_info->tm_hour;
   int minute=tm_info->tm_min; 
+  int second=tm_info->tm_sec;
 
   if(mm<minute)
   {
@@ -483,7 +484,8 @@ int calcwtime(int hh, int mm)
     hh--;
   }
   if(hh<hour) hh+=24;
-  wtime=3600*(hh-hour)+60*(mm-minute);
+  wtime=3600*(hh-hour)+60*(mm-minute)-second;
+  if(wtime<0) wtime=0;
 
   return wtime;
 }
