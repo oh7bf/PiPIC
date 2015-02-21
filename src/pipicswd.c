@@ -379,7 +379,7 @@ int newtask(int sw, int operation, int delay)
 
   if(timer1status()==0)
   {
-    sprintf(message,"task1 delay %d and %04x command", delay, cmd);
+    sprintf(message,"task1 delay %d and command 0x%04x", delay, cmd);
     syslog(LOG_NOTICE, "%s", message);
 // timed task1
     ok=write_cmd(0x62,delay,4);
@@ -389,7 +389,7 @@ int newtask(int sw, int operation, int delay)
   }
   else if(timer2status()==0)
   {
-    sprintf(message,"task2 delay %d and %04x command", delay, cmd);
+    sprintf(message,"task2 delay %d and command 0x%04x", delay, cmd);
     syslog(LOG_NOTICE, "%s", message);
 // timed task2
     ok=write_cmd(0x72,delay,4);
@@ -511,14 +511,12 @@ void stop(int sig)
 
 void terminate(int sig)
 {
-  int ok=0;
-
   sprintf(message,"signal %d catched",sig);
   syslog(LOG_NOTICE, "%s", message);
 
   sleep(1);
-  ok=operate_switch1(stopswitch1,0);
-  ok=operate_switch2(stopswitch2,0);
+  operate_switch1(stopswitch1,0);
+  operate_switch2(stopswitch2,0);
 
   sleep(1);
   syslog(LOG_NOTICE, "stop");
@@ -686,7 +684,7 @@ int main()
       syslog(LOG_ERR, "Socket accept failed");
       exit(EXIT_FAILURE);
     }
-    else syslog(LOG_NOTICE, "Socket accepted");
+    else syslog(LOG_INFO, "Socket accepted");
 
     bzero(rbuff,25);
     n=read(connfd,rbuff,24);

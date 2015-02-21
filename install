@@ -19,19 +19,17 @@
 #
 # g) sudo service pipicpowerd start
 # 
-# h) tail -f /var/log/pipicpowerd.log
+# h) tail -f /var/log/messages
 #
 # i) sudo update-rc.d pipicpowerd defaults (optional)
-# 
+#
+# Similar way for the daemons 'pipicswd' and 'pipichbd'. 
 #
 # The directories used and files created by this script:
 #
 # /etc/init.d/pipichbd               - H-bridge init script
 # /etc/init.d/pipicpowerd            - power supply init script
 # /etc/init.d/pipicswd               - power switch init script
-# /etc/logrotate.d/pipichbd          - H-bridge log rotation file
-# /etc/logrotate.d/pipicpowerd       - power supply log rotation file
-# /etc/logrotate.d/pipicswd          - power switch log rotation file
 # /etc/pipichbdd_config              - H-bridge configuration file
 # /etc/pipicpowerd_config            - power supply configuration file
 # /etc/pipicswd_config               - power switch configuration file
@@ -46,11 +44,10 @@
 # /usr/sbin/pipictest                - send and read test data from PiPIC 
 #
 # Wed May 14 21:59:43 CEST 2014
-# Edit: Wed Feb 18 21:19:34 CET 2015
+# Edit: Sat Feb 21 11:11:49 CET 2015
 # 
 # Jaakko Koivuniemi
 #
-
 
 # source directory for 'PiPIC'
 SOURCEDIR=${PWD}
