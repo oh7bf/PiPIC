@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Sat Feb 21 12:13:46 CET 2015
+ * Edit: Sat Feb 21 17:50:32 CET 2015
  *
  * Jaakko Koivuniemi
  **/
@@ -158,7 +158,7 @@ void read_config()
   cfile=fopen(confile, "r");
   if(NULL!=cfile)
   {
-    syslog(LOG_INFO, "Read configuration file");
+    syslog(LOG_INFO|LOG_DAEMON, "Read configuration file");
 
     while((read=getline(&line,&len,cfile))!=-1)
     {
@@ -168,91 +168,91 @@ void read_config()
           {
              loglev=(int)value;
              sprintf(message,"Log level set to %d",(int)value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
              setlogmask(LOG_UPTO (loglev));
           }
           if(strncmp(par,"LOGSTAT",7)==0)
           {
              logstats=(int)value;
-             if(value==1) syslog(LOG_INFO, "Log statistics to 'pipicpowers.log'");
+             if(value==1) syslog(LOG_INFO|LOG_DAEMON, "Log statistics to 'pipicpowers.log'");
           }
           if(strncmp(par,"VOLTINT",7)==0)
           {
              voltint=(int)value;
              sprintf(message,"Voltage reading interval set to %d s",(int)value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"VOLTCAL",7)==0)
           {
              voltcal=value;
              sprintf(message,"Voltage calibration constant set to %f",value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"VOLTTEMPA",9)==0)
           {
              volttempa=value;
              sprintf(message,"Voltage temperature non-linear set to %e",value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"VOLTTEMPB",9)==0)
           {
              volttempb=value;
              sprintf(message,"Voltage temperature coefficient set to %f",value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"VOLTTEMPC",9)==0)
           {
              volttempc=value;
              sprintf(message,"Voltage temperature constant set to %f",value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"VDROP",5)==0)
           {
              vdrop=value;
              sprintf(message,"Voltage drop set to %f",value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"BUTTONINT",9)==0)
           {
              buttonint=(int)value;
              sprintf(message,"Button reading interval set to %d s",(int)value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"CONFDELAY",9)==0)
           {
              confdelay=(int)value;
              sprintf(message,"Confirmation delay set to %d s",(int)value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"PWRDOWN",7)==0)
           {
              pwrdown=(int)value;
              sprintf(message,"Delay to power down set to %d cycles",(int)value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"PICYCLE",7)==0)
           {
              picycle=value;
              sprintf(message,"PIC cycle %f s",value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"COUNTINT",8)==0)
           {
              countint=(int)value;
              sprintf(message,"PIC counter reading interval %d s",(int)value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"WIFINT",6)==0)
           {
              wifint=(int)value;
              sprintf(message,"WiFi check interval %d s",(int)value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"WIFITIMEOUT",11)==0)
           {
              wifitimeout=(int)value;
              sprintf(message,"WiFi timeout %d s",(int)value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"WIFIACT",7)==0)
           {
@@ -261,7 +261,7 @@ void read_config()
              else if(value==1) sprintf(message,"Interface down-up"); 
              else if(value==2) sprintf(message,"Reboot if WiFi down");
              else if(value==2) sprintf(message,"Power cycle if WiFi down"); 
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"FORCEPOWEROFF",13)==0)
           {
@@ -269,7 +269,7 @@ void read_config()
              if(forceoff>0)
              {
                sprintf(message,"Force power off after %d PIC cycles",(int)value);
-               syslog(LOG_INFO, "%s", message);
+               syslog(LOG_INFO|LOG_DAEMON, "%s", message);
              }
           }
           if(strncmp(par,"FORCEPOWERUP",12)==0)
@@ -278,55 +278,55 @@ void read_config()
              if(forceon>0)
              {
                sprintf(message,"Force power up after %d PIC cycles",(int)value);
-               syslog(LOG_INFO, "%s", message);
+               syslog(LOG_INFO|LOG_DAEMON, "%s", message);
              }
           }
           if(strncmp(par,"LOWBATTERY",10)==0)
           {
              minvolts=(int)value;
              sprintf(message,"Minimum voltage set to %d [1023-0]",(int)value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"BATTCAP",7)==0)
           {
              battcap=value;
              sprintf(message,"Nominal battery capacity  %f",value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"CURRENT",7)==0)
           {
              current=value;
              sprintf(message,"Current consumption  %f",value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"MINBATTLEVEL",12)==0)
           {
              minbattlev=value;
              sprintf(message,"Minimum battery level for operating %f %%",value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"MAXBATTVOLTS",12)==0)
           {
              maxbattvolts=value;
              sprintf(message,"Maximum safe charging voltage %f V",value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"SOLARPOWER",10)==0)
           {
              solarpwr=(int)value;
-             if(solarpwr==1) syslog(LOG_INFO, "Using solar power to charge battery");
+             if(solarpwr==1) syslog(LOG_INFO|LOG_DAEMON, "Using solar power to charge battery");
           }
           if(strncmp(par,"SETTIME",7)==0)
           {
              if(value==1)
              {
                 settime=1;
-                syslog(LOG_INFO, "Set system time from PIC counter in power up");
+                syslog(LOG_INFO|LOG_DAEMON, "Set system time from PIC counter in power up");
              }
              else
              {
                 settime=0;
-                syslog(LOG_INFO, "Do not set system time from PIC counter");
+                syslog(LOG_INFO|LOG_DAEMON, "Do not set system time from PIC counter");
              }
           }
           if(strncmp(par,"FORCERESET",10)==0)
@@ -334,12 +334,12 @@ void read_config()
              if(value==1)
              {
                 forcereset=1;
-                syslog(LOG_INFO, "Force PIC timer reset at start if i2c test fails");
+                syslog(LOG_INFO|LOG_DAEMON, "Force PIC timer reset at start if i2c test fails");
              }
              else
              {
                 forcereset=0;
-                syslog(LOG_INFO, "Exit in case of i2c test failure");
+                syslog(LOG_INFO|LOG_DAEMON, "Exit in case of i2c test failure");
              }
           }
 
@@ -350,7 +350,7 @@ void read_config()
   else
   {
     sprintf(message, "Could not open %s", confile);
-    syslog(LOG_ERR, "%s", message);
+    syslog(LOG_ERR|LOG_DAEMON, "%s", message);
   }
 }
 
@@ -393,21 +393,21 @@ int readvolts()
   int volts=-1;
 
 // set GP5=1
-  if(write_cmd(0x25,0,0)!=1) syslog(LOG_ERR, "failed to set GP5=1");
+  if(write_cmd(0x25,0,0)!=1) syslog(LOG_ERR|LOG_DAEMON, "failed to set GP5=1");
   sleep(1);
 
 // read AN3
-  if(write_cmd(0x43,0,0)!=1) syslog(LOG_ERR, "failed send read AN3 command");
+  if(write_cmd(0x43,0,0)!=1) syslog(LOG_ERR|LOG_DAEMON, "failed send read AN3 command");
   else volts=read_data(2);
   sleep(1);
 
 // read again AN3
-  if(write_cmd(0x43,0,0)!=1) syslog(LOG_ERR, "failed send read AN3 command");
+  if(write_cmd(0x43,0,0)!=1) syslog(LOG_ERR|LOG_DAEMON, "failed send read AN3 command");
   else volts=read_data(2);
   sleep(1);
 
 // reset GP5=0
-  if(write_cmd(0x15,0,0)!=1) syslog(LOG_ERR, "failed to clear GP5=0");
+  if(write_cmd(0x15,0,0)!=1) syslog(LOG_ERR|LOG_DAEMON, "failed to clear GP5=0");
   sleep(1);
 
   return volts;
@@ -507,7 +507,7 @@ int read_timer()
   int timer=-1;
 
   if(write_cmd(0x51,0,0)!=1) 
-    syslog(LOG_ERR, "failed to send read timer command");
+    syslog(LOG_ERR|LOG_DAEMON, "failed to send read timer command");
   else timer=read_data(4);
 
   return timer;
@@ -532,7 +532,7 @@ int resetimer()
   if(NULL==timefile)
   {
     sprintf(message,"could not write to file: %s",resetfile);
-    syslog(LOG_ERR, "%s", message);
+    syslog(LOG_ERR|LOG_DAEMON, "%s", message);
   }
   else
   { 
@@ -551,7 +551,7 @@ void write_timer(int timer)
   if(NULL==tfile)
   {
     sprintf(message,"could not write file: %s",timerfile);
-    syslog(LOG_ERR, "%s", message);
+    syslog(LOG_ERR|LOG_DAEMON, "%s", message);
   }
   else
   { 
@@ -572,7 +572,7 @@ int read_timer_file()
     if(fscanf(tfile,"%d",&timer)==EOF)
     {
       sprintf(message,"reading %s failed",timerfile);
-      syslog(LOG_ERR, "%s", message);
+      syslog(LOG_ERR|LOG_DAEMON, "%s", message);
     }
   }
 
@@ -609,7 +609,7 @@ int test_ntp()
               if(sscanf(line,"%s %s %s %s %s %s %s %s %s %s",p1,p2,p3,p4,p5,p6,p7,p8,p9,p10)!=EOF)
               {
                 ntpruns=1;
-                syslog(LOG_INFO, "%s", line);
+                syslog(LOG_INFO|LOG_DAEMON, "%s", line);
               }
             }
           }
@@ -620,9 +620,9 @@ int test_ntp()
   }
 
   if(ntpruns==0)
-    syslog(LOG_INFO, "test 'ntpq -p > /tmp/pipicpowerd_ntp_test' failed");
+    syslog(LOG_INFO|LOG_DAEMON, "test 'ntpq -p > /tmp/pipicpowerd_ntp_test' failed");
   else
-    syslog(LOG_INFO, "test 'ntpq -p > /tmp/pipicpowerd_ntp_test' success");
+    syslog(LOG_INFO|LOG_DAEMON, "test 'ntpq -p > /tmp/pipicpowerd_ntp_test' success");
 
   return ntpruns;
 }
@@ -642,11 +642,11 @@ int writeuptime(int timer)
     h=0;
     m=0;
     sprintf(str,"timer0=%d has higher value than timer=%d!",timer0,timer);
-    syslog(LOG_ERR, "%s", str);
-    syslog(LOG_ERR, "force hours=0 and minutes=0");
+    syslog(LOG_ERR|LOG_DAEMON, "%s", str);
+    syslog(LOG_ERR|LOG_DAEMON, "force hours=0 and minutes=0");
   }
   sprintf(str,"date --date='%d hours %d minutes' > /var/lib/pipicpowerd/waketime",h,m);
-  syslog(LOG_DEBUG, "%s", str);
+  syslog(LOG_DEBUG|LOG_DAEMON, "%s", str);
   ok=system(str);
 
   return ok;
@@ -661,14 +661,14 @@ int pwrupfile_create()
   if(NULL==pwrup)
   {
     sprintf(message,"could not create file: %s",pwrupfile);
-    syslog(LOG_ERR, "%s", message);
+    syslog(LOG_ERR|LOG_DAEMON, "%s", message);
   }
   else
   { 
     fclose(pwrup);
     ok=1;
     sprintf(message,"created file: %s",pwrupfile);
-    syslog(LOG_NOTICE, "%s", message);
+    syslog(LOG_NOTICE|LOG_DAEMON, "%s", message);
   }
   return ok;
 }
@@ -680,7 +680,7 @@ int pwrupfile_delete()
 
   ok=remove(pwrupfile);
   sprintf(message,"removed file: %s",pwrupfile);
-  syslog(LOG_NOTICE, "%s", message);
+  syslog(LOG_NOTICE|LOG_DAEMON, "%s", message);
 
   return ok;
 }
@@ -690,7 +690,7 @@ int cont=1; /* main loop flag */
 void stop(int sig)
 {
   sprintf(message,"signal %d catched, stop",sig);
-  syslog(LOG_NOTICE, "%s", message);
+  syslog(LOG_NOTICE|LOG_DAEMON, "%s", message);
   cont=0;
 }
 
@@ -700,14 +700,14 @@ void terminate(int sig)
   int timer=0;
 
   sprintf(message,"signal %d catched",sig);
-  syslog(LOG_NOTICE, "%s", message);
+  syslog(LOG_NOTICE|LOG_DAEMON, "%s", message);
 
   if(pwroff==1)
   {
     ok=powerdown(pwrdown,1);
-    if(ok!=1) syslog(LOG_ERR, "problem in i2c communication");
+    if(ok!=1) syslog(LOG_ERR|LOG_DAEMON, "problem in i2c communication");
     sleep(1);
-    syslog(LOG_NOTICE, "save PIC timer value to file");
+    syslog(LOG_NOTICE|LOG_DAEMON, "save PIC timer value to file");
     timer=read_timer(); 
     write_timer(timer);// save last PIC timer value to file 
     ok=pwrupfile_create();
@@ -715,9 +715,9 @@ void terminate(int sig)
   else if(pwroff==2)
   {
     ok=powerdown(pwrdown,0);
-    if(ok!=1) syslog(LOG_ERR, "problem in i2c communication");
+    if(ok!=1) syslog(LOG_ERR|LOG_DAEMON, "problem in i2c communication");
     sleep(1);
-    syslog(LOG_NOTICE, "save PIC timer value to file");
+    syslog(LOG_NOTICE|LOG_DAEMON, "save PIC timer value to file");
     timer=read_timer();
     write_timer(timer); // save last PIC timer value to file
     ok=pwrupfile_create();
@@ -726,7 +726,7 @@ void terminate(int sig)
   {
     ok=powerdown(pwrdown,pwrdown+60);
     sleep(1);
-    syslog(LOG_NOTICE, "save PIC timer value to file");
+    syslog(LOG_NOTICE|LOG_DAEMON, "save PIC timer value to file");
     timer=read_timer();
     write_timer(timer); // save last PIC timer value to file
     ok=pwrupfile_create();
@@ -734,16 +734,16 @@ void terminate(int sig)
   else if(pwroff==4)
   {
     ok=powerdown(pwrdown,pwrdown+downmins*60/picycle);
-    if(ok!=1) syslog(LOG_ERR, "problem in i2c communication");
+    if(ok!=1) syslog(LOG_ERR|LOG_DAEMON, "problem in i2c communication");
     sleep(1);
-    syslog(LOG_NOTICE, "save PIC timer value to file");
+    syslog(LOG_NOTICE|LOG_DAEMON, "save PIC timer value to file");
     timer=read_timer();
     write_timer(timer); // save last PIC timer value to file
     ok=pwrupfile_create();
   }
 
   sleep(1);
-  syslog(LOG_NOTICE, "stop");
+  syslog(LOG_NOTICE|LOG_DAEMON, "stop");
   cont=0;
 }
 
@@ -753,28 +753,28 @@ void hup(int sig)
   int timer=0;
 
   sprintf(message,"signal %d catched",sig);
-  syslog(LOG_NOTICE, "%s", message);
+  syslog(LOG_NOTICE|LOG_DAEMON, "%s", message);
 
   if(access(pdownfile,F_OK)!=-1)
   {
     syslog(LOG_NOTICE, "shut down and power off");
     sleep(1);
     if(powerdown(pwrdown,1)!=1)
-      syslog(LOG_ERR, "sending timed power down command failed");
+      syslog(LOG_ERR|LOG_DAEMON, "sending timed power down command failed");
     sleep(1);
 
-    syslog(LOG_NOTICE, "save PIC timer value to file");
+    syslog(LOG_NOTICE|LOG_DAEMON, "save PIC timer value to file");
     timer=read_timer();
     write_timer(timer); // save last PIC timer value to file
 
     sleep(1);
     if(pwrupfile_create()!=1)
-      syslog(LOG_ERR, "failed to create 'pwrup' file");
+      syslog(LOG_ERR|LOG_DAEMON, "failed to create 'pwrup' file");
     cont=0;
     if(system("/bin/sync")==-1)
-      syslog(LOG_ERR, "sync to disk failed");
+      syslog(LOG_ERR|LOG_DAEMON, "sync to disk failed");
     if(system("/sbin/shutdown -h now")==-1)
-      syslog(LOG_ERR, "system shutdown failed");
+      syslog(LOG_ERR|LOG_DAEMON, "system shutdown failed");
   }
 }
 
@@ -864,7 +864,7 @@ int write_battery(int b, float v, float h, float t, float l)
   if(NULL==bfile)
   {
     sprintf(message,"could not write file: %s",batteryfile);
-    syslog(LOG_ERR, "%s", message);
+    syslog(LOG_ERR|LOG_DAEMON, "%s", message);
   }
   else
   { 
@@ -877,7 +877,7 @@ int write_battery(int b, float v, float h, float t, float l)
   if(NULL==vfile)
   {
     sprintf(message,"could not write file: %s",voltfile);
-    syslog(LOG_ERR, "%s", message);
+    syslog(LOG_ERR|LOG_DAEMON, "%s", message);
   }
   else
   { 
@@ -890,7 +890,7 @@ int write_battery(int b, float v, float h, float t, float l)
   if(NULL==hfile)
   {
     sprintf(message,"could not write file: %s",batterytime);
-    syslog(LOG_ERR, "%s", message);
+    syslog(LOG_ERR|LOG_DAEMON, "%s", message);
   }
   else
   { 
@@ -903,7 +903,7 @@ int write_battery(int b, float v, float h, float t, float l)
   if(NULL==tfile)
   {
     sprintf(message,"could not write file: %s",operationtime);
-    syslog(LOG_ERR, "%s", message);
+    syslog(LOG_ERR|LOG_DAEMON, "%s", message);
   }
   else
   { 
@@ -916,7 +916,7 @@ int write_battery(int b, float v, float h, float t, float l)
   if(NULL==lfile)
   {
     sprintf(message,"could not write file: %s",batterylevel);
-    syslog(LOG_ERR, "%s", message);
+    syslog(LOG_ERR|LOG_DAEMON, "%s", message);
   }
   else
   { 
@@ -934,7 +934,7 @@ float readcputemp()
   FILE *tfile;
   tfile=fopen(cputempfile, "r");
   if(NULL==tfile)
-    syslog(LOG_ERR, "could not read file: %s", cputempfile);
+    syslog(LOG_ERR|LOG_DAEMON, "could not read file: %s", cputempfile);
   else
   { 
     if(fscanf(tfile,"%f",&temp)==EOF) temp=-100000;
@@ -951,7 +951,7 @@ float readtemp()
   FILE *tfile;
   tfile=fopen(tempfile, "r");
   if(NULL==tfile)
-    syslog(LOG_ERR, "could not read file: %s", tempfile);
+    syslog(LOG_ERR|LOG_DAEMON, "could not read file: %s", tempfile);
   else
   { 
     if(fscanf(tfile,"%f",&temp)==EOF) temp=-100;
@@ -1035,7 +1035,7 @@ int read_wifi()
   FILE *wfile;
   wfile=fopen(wifistate, "r");
   if(NULL==wfile)
-    syslog(LOG_ERR, "could not read file: %s",wifistate);
+    syslog(LOG_ERR|LOG_DAEMON, "could not read file: %s",wifistate);
   else
   { 
     if(fscanf(wfile,"%s",state)!=EOF) 
@@ -1083,7 +1083,7 @@ int main()
   FILE *wakef;
 
   setlogmask(LOG_UPTO (loglev));
-  syslog(LOG_NOTICE, "pipicpowerd v. %d started", version);
+  syslog(LOG_NOTICE|LOG_DAEMON, "pipicpowerd v. %d started", version);
 
   signal(SIGINT,&stop); 
   signal(SIGKILL,&stop); 
@@ -1106,63 +1106,63 @@ int main()
   unsigned nxtwifi=wifint+unxs; // next time to check WiFi status
 
   int i2cok=testi2c(); // test i2c data flow to PIC 
-  if(i2cok==1) syslog(LOG_NOTICE, "PIC i2c dataflow test ok");
+  if(i2cok==1) syslog(LOG_NOTICE|LOG_DAEMON, "PIC i2c dataflow test ok");
   else
   {
     pwrupfile_delete();
-    syslog(LOG_NOTICE, "PIC i2c dataflow test failed");
+    syslog(LOG_NOTICE|LOG_DAEMON, "PIC i2c dataflow test failed");
     if(forcereset==1)
     {
       sleep(1); 
-      syslog(LOG_NOTICE, "try to reset PIC timer now");
+      syslog(LOG_NOTICE|LOG_DAEMON, "try to reset PIC timer now");
       ok=resetimer();
       sleep(1);
       if(resetimer()!=1)
       {
-        syslog(LOG_ERR, "failed to reset PIC timer");
+        syslog(LOG_ERR|LOG_DAEMON, "failed to reset PIC timer");
         cont=0; 
       }
       else
       {
         sleep(1);
         i2cok=testi2c(); // test i2c data flow to PIC 
-        if(i2cok==1) syslog(LOG_NOTICE, "PIC i2c dataflow test ok");
+        if(i2cok==1) syslog(LOG_NOTICE|LOG_DAEMON, "PIC i2c dataflow test ok");
         else
         {
-          syslog(LOG_ERR, "PIC i2c dataflow test failed");
+          syslog(LOG_ERR|LOG_DAEMON, "PIC i2c dataflow test failed");
           cont=0;
         }
       }
     }
     else
     {
-      syslog(LOG_ERR, "try to reset timer with 'pipic -a 26 -c 50' and restart with 'service pipicpowerd start'");
+      syslog(LOG_ERR|LOG_DAEMON, "try to reset timer with 'pipic -a 26 -c 50' and restart with 'service pipicpowerd start'");
       cont=0;
     }
   }
   if(cont==1)
   {
-    syslog(LOG_NOTICE, "disable PIC event triggered tasks");
-    if(event_task_disable()!=1) syslog(LOG_ERR, "failed to disable PIC event triggered tasks");
+    syslog(LOG_NOTICE|LOG_DAEMON, "disable PIC event triggered tasks");
+    if(event_task_disable()!=1) syslog(LOG_ERR|LOG_DAEMON, "failed to disable PIC event triggered tasks");
     sleep(1);
 
-    syslog(LOG_NOTICE, "reset PIC event register");
+    syslog(LOG_NOTICE|LOG_DAEMON, "reset PIC event register");
     if(reset_event_register()!=1)
-      syslog(LOG_ERR, "failed to reset PIC event register");
+      syslog(LOG_ERR|LOG_DAEMON, "failed to reset PIC event register");
     sleep(1);
 
     if(reset_event_register()!=1)
-      syslog(LOG_ERR, "failed to reset PIC event register");
+      syslog(LOG_ERR|LOG_DAEMON, "failed to reset PIC event register");
     sleep(1);
 
-    syslog(LOG_NOTICE, "disable PIC timed task 1 and 2");
+    syslog(LOG_NOTICE|LOG_DAEMON, "disable PIC timed task 1 and 2");
     ok=write_cmd(0x60,0,0); // disable timed task 1
     sleep(1);
     ok=write_cmd(0x70,0,0); // disable timed task 2
     sleep(1);
     timer=read_timer();
     timerstart=timer;
-    syslog(LOG_INFO, "PIC timer at %d",timer);
+    syslog(LOG_INFO|LOG_DAEMON, "PIC timer at %d",timer);
 
     ntpok=test_ntp();
     if((access(pwrupfile,F_OK)!=-1)&&(ntpok==0))
@@ -1172,24 +1172,24 @@ int main()
       if(NULL==wakef)
       {
         sprintf(message,"could not read file: %s",upfile);
-        syslog(LOG_ERR, "%s", message);
+        syslog(LOG_ERR|LOG_DAEMON, "%s", message);
       }
       else
       { 
         if(fscanf(wakef,"%s %s %d %d:%d:%d %s %d",wd,mo,&da,&hh,&mm,&ss,tzone,&yy)!=EOF)
         {
           sprintf(s,"/bin/date -s '%s %s %d %02d:%02d:%02d %s %d'",wd,mo,da,hh,mm,ss,tzone,yy);
-          syslog(LOG_DEBUG, "%s", s);
+          syslog(LOG_DEBUG|LOG_DAEMON, "%s", s);
           fclose(wakef);
           if(settime==1)
              ok=system(s);
           else
-             syslog(LOG_INFO, "system time can be set with command above");
+             syslog(LOG_INFO|LOG_DAEMON, "system time can be set with command above");
         }
       } 
     }
     else if(access(pwrupfile,F_OK)==-1)
-      syslog(LOG_NOTICE, "not power up, leave time untouched");
+      syslog(LOG_NOTICE|LOG_DAEMON, "not power up, leave time untouched");
     
     if(access(pwrupfile,F_OK)!=-1)
     {
@@ -1227,13 +1227,13 @@ int main()
   sid=setsid();
   if(sid<0) 
   {
-    syslog(LOG_ERR, "failed to create child process"); 
+    syslog(LOG_ERR|LOG_DAEMON, "failed to create child process"); 
     exit(EXIT_FAILURE);
   }
         
   if((chdir("/")) < 0) 
   {
-    syslog(LOG_ERR, "failed to change to root directory"); 
+    syslog(LOG_ERR|LOG_DAEMON, "failed to change to root directory"); 
     exit(EXIT_FAILURE);
   }
         
@@ -1248,14 +1248,14 @@ int main()
   if(pidf==NULL)
   {
     sprintf(message,"Could not open PID lock file %s, exiting", pidfile);
-    syslog(LOG_ERR, "%s", message);
+    syslog(LOG_ERR|LOG_DAEMON, "%s", message);
     exit(EXIT_FAILURE);
   }
 
   if(flock(fileno(pidf),LOCK_EX||LOCK_NB)==-1)
   {
     sprintf(message,"Could not lock PID lock file %s, exiting", pidfile);
-    syslog(LOG_ERR, "%s", message);
+    syslog(LOG_ERR|LOG_DAEMON, "%s", message);
     exit(EXIT_FAILURE);
   }
 
@@ -1308,7 +1308,7 @@ int main()
          }
       }
       else if((solarpwr==1)&&(battfull==1))
-        syslog(LOG_NOTICE, "battery full, no power down");
+        syslog(LOG_NOTICE|LOG_DAEMON, "battery full, no power down");
     }
 
     if(((unxs>=nxtsleep)||((nxtsleep-unxs)>sleepint))&&(pwroff==0)) 
@@ -1374,7 +1374,7 @@ int main()
       batim=battime(battlev,battcap,pkfact,phours,current);
       sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.0f hours)",volts,voltsV,battlev,batim);
       if((temp>-100)&&(temp<100)&&(volttempa!=0)) sprintf(message,"read voltage %d (%4.1f V %3.0f %% %4.0f hours at %4.1f C)",volts,voltsV,battlev,batim,temp);
-      syslog(LOG_INFO, "%s", message);
+      syslog(LOG_INFO|LOG_DAEMON, "%s", message);
       ophours=optime(battlev,minbattlev,battcap,pkfact,phours,current);
       write_battery(volts,voltsV,batim,ophours,battlev);
       if(volts>minvolts)
@@ -1414,12 +1414,12 @@ int main()
         sleep(1);
         ok=system("/usr/bin/wall too high charging voltage reached");
       }
-      syslog(LOG_DEBUG, "unxs=%d nxtvolts=%d",unxs,nxtvolts);
+      syslog(LOG_DEBUG|LOG_DAEMON, "unxs=%d nxtvolts=%d",unxs,nxtvolts);
       if(reset_event_register()!=1)
-        syslog(LOG_ERR, "failed to reset event register");
+        syslog(LOG_ERR|LOG_DAEMON, "failed to reset event register");
       sleep(1);
       if(reset_event_register()!=1)
-        syslog(LOG_ERR, "failed to reset event register");
+        syslog(LOG_ERR|LOG_DAEMON, "failed to reset event register");
       sleep(1);
     }
 
@@ -1429,16 +1429,16 @@ int main()
       nxtbutton=buttonint+unxs;
       if((button==0x01)||(button==0x81))
       {
-        syslog(LOG_NOTICE, "button pressed");
+        syslog(LOG_NOTICE|LOG_DAEMON, "button pressed");
         ok=write_cmd(0x25,0,0); // turn on red LED
         sleep(1);
 
         if(reset_event_register()!=1)
-          syslog(LOG_ERR, "failed to reset event register");
+          syslog(LOG_ERR|LOG_DAEMON, "failed to reset event register");
         sleep(1);
 
         if(reset_event_register()!=1)
-          syslog(LOG_ERR, "failed to reset event register");
+          syslog(LOG_ERR|LOG_DAEMON, "failed to reset event register");
         sleep(1);
 
         button=0;
@@ -1468,14 +1468,14 @@ int main()
         ok=write_cmd(0x15,0,0); // turn off red LED
       }
       sprintf(message,"unxs=%d nxtbutton=%d",unxs,nxtbutton);
-      syslog(LOG_DEBUG, "%s", message);
+      syslog(LOG_DEBUG|LOG_DAEMON, "%s", message);
     }
 
     if(((unxs>=nxtcounter)||((nxtcounter-unxs)>countint))&&(pwroff==0)&&(countint>10)) 
     {
       nxtcounter=countint+unxs;
       timer=read_timer();
-      syslog(LOG_INFO, "PIC timer at %d",timer);
+      syslog(LOG_INFO|LOG_DAEMON, "PIC timer at %d",timer);
       write_timer(timer);
     }
 
@@ -1483,7 +1483,7 @@ int main()
     {
       nxtwifi=wifint+unxs;
       wifiup=read_wifi();
-      syslog(LOG_INFO, "WiFi status %d",wifiup);
+      syslog(LOG_INFO|LOG_DAEMON, "WiFi status %d",wifiup);
       if(wifiup==1) 
       {
         wifiuptime+=wifint;
@@ -1525,7 +1525,7 @@ int main()
   unxstop=time(NULL);
   if(logstats==1) 
   {
-    syslog(LOG_NOTICE, "write power up statistics");
+    syslog(LOG_NOTICE|LOG_DAEMON, "write power up statistics");
     timerstop=read_timer();
     Vave/=Vaven;
     Tave/=Taven;
@@ -1533,7 +1533,7 @@ int main()
     writestat(statfile,unxstart,unxstop,timerstart,timerstop,Vmin,Vave,Vmax,Tmin,Tave,Tmax,Tcpumin,Tcpuave,Tcpumax,wifiuptime);
   }
 
-  syslog(LOG_NOTICE, "remove PID file");
+  syslog(LOG_NOTICE|LOG_DAEMON, "remove PID file");
   ok=remove(pidfile);
 
   return ok;
