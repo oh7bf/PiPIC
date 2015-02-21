@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Fri Feb 20 21:42:00 CET 2015
+ * Edit: Sat Feb 21 12:13:46 CET 2015
  *
  * Jaakko Koivuniemi
  **/
@@ -45,7 +45,7 @@
 #include "readdata.h"
 #include "testi2c.h"
 
-const int version=20150220; // program version
+const int version=20150221; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -1379,7 +1379,7 @@ int main()
       write_battery(volts,voltsV,batim,ophours,battlev);
       if(volts>minvolts)
       {
-        syslog(LOG_WARNING, "battery voltage low, shut down and power off");
+        syslog(LOG_WARNING, "battery voltage low %d, shut down and power off", volts);
         sleep(1);
         if(access(atpwrdown,X_OK)!=-1)
         {
@@ -1394,7 +1394,8 @@ int main()
       }
       if(battlev<minbattlev)
       {
-        syslog(LOG_WARNING, "battery charge low, shut down and power off");
+        sprintf(message, "battery charge low %3.0f %%, shut down and power off",battlev);
+        syslog(LOG_WARNING, "%s", message);
         sleep(1);
         if(access(atpwrdown,X_OK)!=-1)
         {
@@ -1409,7 +1410,7 @@ int main()
       }
       if(voltsV>maxbattvolts)
       {
-        syslog(LOG_WARNING, "too high charging voltage reached");
+        syslog(LOG_WARNING, "too high charging voltage %4.1f V reached", voltsV);
         sleep(1);
         ok=system("/usr/bin/wall too high charging voltage reached");
       }
