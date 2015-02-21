@@ -646,7 +646,7 @@ int writeuptime(int timer)
     syslog(LOG_ERR|LOG_DAEMON, "force hours=0 and minutes=0");
   }
   sprintf(str,"date --date='%d hours %d minutes' > /var/lib/pipicpowerd/waketime",h,m);
-  syslog(LOG_DEBUG|LOG_DAEMON, "%s", str);
+  syslog(LOG_DEBUG, "%s", str);
   ok=system(str);
 
   return ok;
@@ -1179,7 +1179,7 @@ int main()
         if(fscanf(wakef,"%s %s %d %d:%d:%d %s %d",wd,mo,&da,&hh,&mm,&ss,tzone,&yy)!=EOF)
         {
           sprintf(s,"/bin/date -s '%s %s %d %02d:%02d:%02d %s %d'",wd,mo,da,hh,mm,ss,tzone,yy);
-          syslog(LOG_DEBUG|LOG_DAEMON, "%s", s);
+          syslog(LOG_DEBUG, "%s", s);
           fclose(wakef);
           if(settime==1)
              ok=system(s);
@@ -1414,7 +1414,7 @@ int main()
         sleep(1);
         ok=system("/usr/bin/wall too high charging voltage reached");
       }
-      syslog(LOG_DEBUG|LOG_DAEMON, "unxs=%d nxtvolts=%d",unxs,nxtvolts);
+      syslog(LOG_DEBUG, "unxs=%d nxtvolts=%d",unxs,nxtvolts);
       if(reset_event_register()!=1)
         syslog(LOG_ERR|LOG_DAEMON, "failed to reset event register");
       sleep(1);
@@ -1468,7 +1468,7 @@ int main()
         ok=write_cmd(0x15,0,0); // turn off red LED
       }
       sprintf(message,"unxs=%d nxtbutton=%d",unxs,nxtbutton);
-      syslog(LOG_DEBUG|LOG_DAEMON, "%s", message);
+      syslog(LOG_DEBUG, "%s", message);
     }
 
     if(((unxs>=nxtcounter)||((nxtcounter-unxs)>countint))&&(pwroff==0)&&(countint>10)) 
