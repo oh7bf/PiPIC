@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Sun Aug 10 20:06:24 CEST 2014
- * Edit: Fri Feb 20 21:40:02 CET 2015
+ * Edit: Sat Feb 21 19:49:35 CET 2015
  *
  * Jaakko Koivuniemi
  **/
@@ -51,7 +51,7 @@
 
 #define CHECK_BIT(var,pos) !!((var) & (1<<(pos)))
 
-const int version=20150220; // program version
+const int version=20150221; // program version
 
 const char *i2cdev="/dev/i2c-1"; // i2c device file
 const int address=0x28; // PiPIC i2c address
@@ -89,7 +89,7 @@ void read_config()
   cfile=fopen(confile, "r");
   if(NULL!=cfile)
   {
-    syslog(LOG_INFO, "Read configuration file");
+    syslog(LOG_INFO|LOG_DAEMON, "Read configuration file");
 
     while((read=getline(&line,&len,cfile))!=-1)
     {
@@ -99,61 +99,61 @@ void read_config()
           {
              loglev=(int)value;
              sprintf(message,"Log level set to %d",(int)value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
              setlogmask(LOG_UPTO (loglev));
           }
           if(strncmp(par,"HBRIDGEPORT",11)==0)
           {
              portno=(int)value;
              sprintf(message,"Bridge port number set to %d",(int)value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"PICYCLE",7)==0)
           {
              picycle=value;
              sprintf(message,"PIC cycle %f s",value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"ROTMAX",6)==0)
           {
              rotmax=value;
              sprintf(message,"maximum motor turns %f",value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"MOTRPM",6)==0)
           {
              motrpm=value;
              sprintf(message,"motor speed %f rpm",value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"TRACK",5)==0)
           {
              track=(int)value;
-             if(track==1) syslog(LOG_INFO, "track potentiometer");
+             if(track==1) syslog(LOG_INFO|LOG_DAEMON, "track potentiometer");
           }
           if(strncmp(par,"MINPOS",6)==0)
           {
              minpos=(int)value;
              sprintf(message,"set minimum position to %d",minpos);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"MAXPOS",6)==0)
           {
              maxpos=(int)value;
              sprintf(message,"set maximum position to %d",maxpos);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"FORCERESET",10)==0)
           {
              if(value==1)
              {
                 forcereset=1;
-                syslog(LOG_INFO, "Force PIC timer reset at start if i2c test fails");
+                syslog(LOG_INFO|LOG_DAEMON, "Force PIC timer reset at start if i2c test fails");
              }
              else
              {
                 forcereset=0;
-                syslog(LOG_INFO, "Exit in case of i2c test failure");
+                syslog(LOG_INFO|LOG_DAEMON, "Exit in case of i2c test failure");
              }
           }
        }
@@ -163,7 +163,7 @@ void read_config()
   else
   {
     sprintf(message, "Could not open %s", confile);
-    syslog(LOG_ERR, "%s", message);
+    syslog(LOG_ERR|LOG_DAEMON, "%s", message);
   }
 }
 
@@ -198,9 +198,9 @@ int read_status()
       strcpy(status,"breaking");
     }
 
-    syslog(LOG_INFO, "%s", message);
+    syslog(LOG_INFO|LOG_DAEMON, "%s", message);
   }
-  else syslog(LOG_ERR, "failed to read PIC GPIO register"); 
+  else syslog(LOG_ERR|LOG_DAEMON, "failed to read PIC GPIO register"); 
 
   return ok;
 }
@@ -216,10 +216,10 @@ int read_motorpos()
   { 
     pos=read_data(2);
     sprintf(message,"Motor position at %d",pos);
-    syslog(LOG_INFO, "%s", message);
+    syslog(LOG_INFO|LOG_DAEMON, "%s", message);
     if((pos<0)||(pos>1023)) pos=-1;
   }
-  else syslog(LOG_ERR, "Failed to read PIC AN0"); 
+  else syslog(LOG_ERR|LOG_DAEMON, "Failed to read PIC AN0"); 
 
   return pos;
 }
@@ -235,9 +235,9 @@ int read_potentiometer()
   { 
     pot=read_data(2);
     sprintf(message,"Potentiometer at %d",pot);
-    syslog(LOG_INFO, "%s", message);
+    syslog(LOG_INFO|LOG_DAEMON, "%s", message);
   }
-  else syslog(LOG_ERR, "Failed to read PIC AN1"); 
+  else syslog(LOG_ERR|LOG_DAEMON, "Failed to read PIC AN1"); 
 
   return pot;
 }
@@ -247,8 +247,8 @@ int stop_motor()
 {
   int ok=0;
   ok=write_cmd(0x30,0x0F,1);
-  if(ok!=1) syslog(LOG_ERR, "stopping motor failed");
-  else syslog(LOG_INFO, "motor stopped");
+  if(ok!=1) syslog(LOG_ERR|LOG_DAEMON, "stopping motor failed");
+  else syslog(LOG_INFO|LOG_DAEMON, "motor stopped");
 
   return ok;
 }
@@ -266,12 +266,12 @@ int turn_motor(int rotcw, int cycles)
      if(rotcw==+1) 
      {
        ok=write_cmd(0x63,0x301F,2);
-       syslog(LOG_INFO, "turn motor cw");
+       syslog(LOG_INFO|LOG_DAEMON, "turn motor cw");
      } 
      else if(rotcw==-1) 
      {
        ok=write_cmd(0x63,0x302F,2);
-       syslog(LOG_INFO, "turn motor ccw");
+       syslog(LOG_INFO|LOG_DAEMON, "turn motor ccw");
      } 
      ok=write_cmd(0x64,0,1); // do task once
 
@@ -279,7 +279,7 @@ int turn_motor(int rotcw, int cycles)
      ok=write_cmd(0x72,cycles,4); // stop after given cycles
      ok=write_cmd(0x73,0x300F,2);
      sprintf(message,"stop motor after %d PIC cycles",cycles);
-     syslog(LOG_INFO, "%s", message);
+     syslog(LOG_INFO|LOG_DAEMON, "%s", message);
      ok=write_cmd(0x74,0,1); // do task once
 
      ok=write_cmd(0x61,0,0); // start task1
@@ -305,14 +305,14 @@ int goto_pos(int topos)
     cycles=(int)abs(rotmax*60.0*(topos-mpos)/(1024.0*motrpm*picycle));
     dt=cycles*picycle;
     sprintf(message,"turning time %d PIC cycles and direction %d",cycles,rotcw);
-    syslog(LOG_INFO, "%s", message);
+    syslog(LOG_INFO|LOG_DAEMON, "%s", message);
 
     ok=turn_motor(rotcw,cycles);
   }
   else
   {
     sprintf(message,"motor position out of range [%d-%d]",minpos,maxpos);
-    syslog(LOG_NOTICE, "%s", message);
+    syslog(LOG_NOTICE|LOG_DAEMON, "%s", message);
   }
 
   return (dt*ok);
@@ -352,16 +352,16 @@ int cont=1; /* main loop flag */
 void stop(int sig)
 {
   sprintf(message,"signal %d catched, stop",sig);
-  syslog(LOG_NOTICE, "%s", message);
+  syslog(LOG_NOTICE|LOG_DAEMON, "%s", message);
   cont=0;
 }
 
 void terminate(int sig)
 {
   sprintf(message,"signal %d catched",sig);
-  syslog(LOG_NOTICE, "%s", message);
+  syslog(LOG_NOTICE|LOG_DAEMON, "%s", message);
   sleep(1);
-  syslog(LOG_NOTICE, "stop");
+  syslog(LOG_NOTICE|LOG_DAEMON, "stop");
 
   cont=0;
 }
@@ -369,8 +369,8 @@ void terminate(int sig)
 void hup(int sig)
 {
   sprintf(message,"signal %d catched",sig);
-  syslog(LOG_NOTICE, "%s", message);
-  syslog(LOG_NOTICE, "stop tracking potentiometer");
+  syslog(LOG_NOTICE|LOG_DAEMON, "%s", message);
+  syslog(LOG_NOTICE|LOG_DAEMON, "stop tracking potentiometer");
   track=0;
 }
 
@@ -379,7 +379,7 @@ int main()
   int ok=0;
 
   setlogmask(LOG_UPTO (loglev));
-  syslog(LOG_NOTICE, "pipichbd v. %d started", version);
+  syslog(LOG_NOTICE|LOG_DAEMON, "pipichbd v. %d started", version);
 
   signal(SIGINT,&stop); 
   signal(SIGKILL,&stop); 
@@ -390,31 +390,31 @@ int main()
   read_config(); // read configuration file
   maxcycles=(int)(rotmax*60/(motrpm*picycle));
   sprintf(message,"set maximum turning time to %d cycles",maxcycles); 
-  syslog(LOG_NOTICE, "%s", message);
+  syslog(LOG_NOTICE|LOG_DAEMON, "%s", message);
 
   int i2cok=testi2c(); // test i2c data flow to PIC 
-  if(i2cok==1) syslog(LOG_NOTICE, "i2c dataflow test ok"); 
+  if(i2cok==1) syslog(LOG_NOTICE|LOG_DAEMON, "i2c dataflow test ok"); 
   else
   {
     if(forcereset==1)
     {
       sleep(1); 
-      syslog(LOG_NOTICE, "try to reset timer now");
+      syslog(LOG_NOTICE|LOG_DAEMON, "try to reset timer now");
       ok=resetimer();
       sleep(1);
       if(resetimer()!=1)
       {
-        syslog(LOG_ERR, "failed to reset timer");
+        syslog(LOG_ERR|LOG_DAEMON, "failed to reset timer");
         cont=0; 
       }
       else
       {
         sleep(1);
         i2cok=testi2c(); // test i2c data flow to PIC 
-        if(i2cok==1) syslog(LOG_NOTICE, "i2c dataflow test ok"); 
+        if(i2cok==1) syslog(LOG_NOTICE|LOG_DAEMON, "i2c dataflow test ok"); 
         else
         {
-          syslog(LOG_ERR, "i2c dataflow test failed");
+          syslog(LOG_ERR|LOG_DAEMON, "i2c dataflow test failed");
           cont=0;
           exit(EXIT_FAILURE);
         }
@@ -422,8 +422,8 @@ int main()
     }
     else
     {
-      syslog(LOG_ERR, "i2c dataflow test failed, exit");
-      syslog(LOG_NOTICE, "try to reset timer with 'pipic -a [address] -c 50' and restart with 'service pipichbd start'");
+      syslog(LOG_ERR|LOG_DAEMON, "i2c dataflow test failed, exit");
+      syslog(LOG_NOTICE|LOG_DAEMON, "try to reset timer with 'pipic -a [address] -c 50' and restart with 'service pipichbd start'");
       cont=0;
       exit(EXIT_FAILURE);
     }
@@ -448,13 +448,13 @@ int main()
   sid=setsid();
   if(sid<0) 
   {
-    syslog(LOG_ERR, "failed to create child process"); 
+    syslog(LOG_ERR|LOG_DAEMON, "failed to create child process"); 
     exit(EXIT_FAILURE);
   }
         
   if((chdir("/")) < 0) 
   {
-    syslog(LOG_ERR, "failed to change to root directory"); 
+    syslog(LOG_ERR|LOG_DAEMON, "failed to change to root directory"); 
     exit(EXIT_FAILURE);
   }
         
@@ -469,14 +469,14 @@ int main()
   if(pidf==NULL)
   {
     sprintf(message, "Could not open PID lock file %s, exiting", pidfile);
-    syslog(LOG_ERR, "%s", message);
+    syslog(LOG_ERR|LOG_DAEMON, "%s", message);
     exit(EXIT_FAILURE);
   }
 
   if(flock(fileno(pidf),LOCK_EX||LOCK_NB)==-1)
   {
     sprintf(message,"Could not lock PID lock file %s, exiting", pidfile);
-    syslog(LOG_ERR, "%s", message);
+    syslog(LOG_ERR|LOG_DAEMON, "%s", message);
     exit(EXIT_FAILURE);
   }
 
@@ -492,10 +492,10 @@ int main()
   sockfd=socket(AF_INET, SOCK_STREAM, 0);
   if(sockfd<0) 
   {
-    syslog(LOG_ERR, "Could not open socket");
+    syslog(LOG_ERR|LOG_DAEMON, "Could not open socket");
     exit(EXIT_FAILURE);
   }
-  else syslog(LOG_NOTICE, "Socket open");
+  else syslog(LOG_NOTICE|LOG_DAEMON, "Socket open");
   
   memset(&serv_addr, '0', sizeof(serv_addr));
   memset(sbuff, '0', sizeof(sbuff)); 
@@ -506,12 +506,12 @@ int main()
 
   if(bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr))<0)
   {
-    syslog(LOG_ERR, "Could not bind socket");
+    syslog(LOG_ERR|LOG_DAEMON, "Could not bind socket");
     exit(EXIT_FAILURE);
   }
   else
   {
-    syslog(LOG_NOTICE, "Socket binding successful");
+    syslog(LOG_NOTICE|LOG_DAEMON, "Socket binding successful");
   }
 
   listen(sockfd, 1); // listen one client only 
@@ -530,7 +530,7 @@ int main()
   if(loglev>2)
   {
     sprintf(message, "motor at %d and pot at %d",mpos,pot);
-    syslog(LOG_INFO, "%s", message);
+    syslog(LOG_INFO|LOG_DAEMON, "%s", message);
   }
 
   int n=0;
@@ -553,7 +553,7 @@ int main()
       if((mpos!=mpos2)||(pot!=pot2))
       {
         sprintf(message,"motor at %d and potentiometer at %d",mpos,pot);
-        syslog(LOG_INFO, "%s", message);
+        syslog(LOG_INFO|LOG_DAEMON, "%s", message);
       }
       mpos2=mpos;
       pot2=pot;
@@ -570,16 +570,16 @@ int main()
     connfd=accept(sockfd, (struct sockaddr*)&cli_addr, (socklen_t *)&clilen); 
     if(connfd<0) 
     {
-      syslog(LOG_ERR, "Socket accept failed");
+      syslog(LOG_ERR|LOG_DAEMON, "Socket accept failed");
       exit(EXIT_FAILURE);
     }
-    else syslog(LOG_NOTICE, "Socket accepted");
+    else syslog(LOG_NOTICE|LOG_DAEMON, "Socket accepted");
 
     bzero(rbuff,25);
     n=read(connfd,rbuff,24);
     if(n<0)
     {
-      syslog(LOG_ERR, "Socket reading failed");
+      syslog(LOG_ERR|LOG_DAEMON, "Socket reading failed");
       exit(EXIT_FAILURE);
     }
     else
@@ -641,7 +641,7 @@ int main()
     }
     else if(strncmp(rbuff,"track",5)==0)
     {
-      syslog(LOG_NOTICE, "start tracking motor position");
+      syslog(LOG_NOTICE|LOG_DAEMON, "start tracking motor position");
       sprintf(status,"start tracking motor position");
       track=1;
     }
@@ -670,7 +670,7 @@ int main()
     sleep(1);
   }
 
-  syslog(LOG_NOTICE, "remove PID file");
+  syslog(LOG_NOTICE|LOG_DAEMON, "remove PID file");
   ok=remove(pidfile);
 
   return ok;
