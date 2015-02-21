@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Sun Feb 16 14:29:25 CET 2014
- * Edit: Fri Feb 20 22:26:59 CET 2015
+ * Edit: Sat Feb 21 19:23:17 CET 2015
  *
  * Jaakko Koivuniemi
  **/
@@ -51,7 +51,7 @@
 
 #define CHECK_BIT(var,pos) !!((var) & (1<<(pos)))
 
-const int version=20150220; // program version
+const int version=20150221; // program version
 
 int portno=5001; // socket port number
 
@@ -90,7 +90,7 @@ void read_config()
   cfile=fopen(confile, "r");
   if(NULL!=cfile)
   {
-    syslog(LOG_INFO, "Read configuration file");
+    syslog(LOG_INFO|LOG_DAEMON, "Read configuration file");
 
     while((read=getline(&line,&len,cfile))!=-1)
     {
@@ -100,56 +100,56 @@ void read_config()
           {
              loglev=(int)value;
              sprintf(message,"Log level set to %d",(int)value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
              setlogmask(LOG_UPTO (loglev));
           }
           if(strncmp(par,"DCSWITCHPORT",12)==0)
           {
              portno=(int)value;
              sprintf(message,"Switch port number set to %d",(int)value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"INITSWITCH1",11)==0)
           {
              initswitch1=(int)value;
              sprintf(message,"Switch 1 initialization set to %d",(int)value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"INITSWITCH2",11)==0)
           {
              initswitch2=(int)value;
              sprintf(message,"Switch 2 initialization set to %d",(int)value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"STOPSWITCH1",11)==0)
           {
              stopswitch1=(int)value;
              sprintf(message,"Switch 1 stop value set to %d",(int)value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"STOPSWITCH2",11)==0)
           {
              stopswitch2=(int)value;
              sprintf(message,"Switch 2 stop value set to %d",(int)value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"PICYCLE",7)==0)
           {
              picycle=value;
              sprintf(message,"PIC cycle %f s",value);
-             syslog(LOG_INFO, "%s", message);
+             syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
           if(strncmp(par,"FORCERESET",10)==0)
           {
              if(value==1)
              {
                 forcereset=1;
-                syslog(LOG_INFO, "Force PIC timer reset at start if i2c test fails");
+                syslog(LOG_INFO|LOG_DAEMON, "Force PIC timer reset at start if i2c test fails");
              }
              else
              {
                 forcereset=0;
-                syslog(LOG_INFO, "Exit in case of i2c test failure");
+                syslog(LOG_INFO|LOG_DAEMON, "Exit in case of i2c test failure");
              }
           }
        }
@@ -159,7 +159,7 @@ void read_config()
   else
   {
     sprintf(message, "Could not open %s", confile);
-    syslog(LOG_ERR, "%s", message);
+    syslog(LOG_ERR|LOG_DAEMON, "%s", message);
   }
 }
 
@@ -280,7 +280,7 @@ int timer1cancel()
   int ok=0;
 
   ok=write_cmd(0x60,0x00,1);
-  if(ok!=1) syslog(LOG_ERR, "failed to cancel timer 1 command");
+  if(ok!=1) syslog(LOG_ERR|LOG_DAEMON, "failed to cancel timer 1 command");
  
   return ok;
 }
@@ -291,7 +291,7 @@ int timer2cancel()
   int ok=0;
 
   ok=write_cmd(0x70,0x00,1);
-  if(ok!=1) syslog(LOG_ERR, "failed to cancel timer 2 command");
+  if(ok!=1) syslog(LOG_ERR|LOG_DAEMON, "failed to cancel timer 2 command");
 
   return ok;
 }
@@ -330,9 +330,9 @@ int read_status()
       strcat(message," switch 2 open");
       strcat(status," 2 open");
     }
-    syslog(LOG_INFO, "%s", message);
+    syslog(LOG_INFO|LOG_DAEMON, "%s", message);
   }
-  else syslog(LOG_ERR, "failed to read PIC GPIO register"); 
+  else syslog(LOG_ERR|LOG_DAEMON, "failed to read PIC GPIO register"); 
 
   if(timer1status()==1)
   {
@@ -343,7 +343,7 @@ int read_status()
     else if(cmd==0x25) sprintf(message,"close switch 2 after %d s",wtime);
     else if(cmd==0x15) sprintf(message,"open switch 2 after %d s",wtime); 
     else sprintf(message,"other command on timer 1 after %d s",wtime); 
-    syslog(LOG_INFO, "%s", message);
+    syslog(LOG_INFO|LOG_DAEMON, "%s", message);
     strncat(status,space,2);
     strncat(status,message,42);
   }
@@ -357,7 +357,7 @@ int read_status()
     else if(cmd==0x25) sprintf(message,"close switch 2 after %d s",wtime);
     else if(cmd==0x15) sprintf(message,"open switch 2 after %d s",wtime); 
     else sprintf(message,"other command on timer2 after %d s",wtime); 
-    syslog(LOG_INFO, "%s", message);
+    syslog(LOG_INFO|LOG_DAEMON, "%s", message);
     strncat(status,space,2);
     strncat(status,message,42);
   }
@@ -380,7 +380,7 @@ int newtask(int sw, int operation, int delay)
   if(timer1status()==0)
   {
     sprintf(message,"task1 delay %d and command 0x%04x", delay, cmd);
-    syslog(LOG_NOTICE, "%s", message);
+    syslog(LOG_NOTICE|LOG_DAEMON, "%s", message);
 // timed task1
     ok=write_cmd(0x62,delay,4);
     ok=write_cmd(0x63,cmd,2);
@@ -390,14 +390,14 @@ int newtask(int sw, int operation, int delay)
   else if(timer2status()==0)
   {
     sprintf(message,"task2 delay %d and command 0x%04x", delay, cmd);
-    syslog(LOG_NOTICE, "%s", message);
+    syslog(LOG_NOTICE|LOG_DAEMON, "%s", message);
 // timed task2
     ok=write_cmd(0x72,delay,4);
     ok=write_cmd(0x73,cmd,2);
     ok=write_cmd(0x74,0,1);
     ok=write_cmd(0x71,0,0); // start task2
   }
-  else syslog(LOG_NOTICE, "tasks 1 and 2 already in use, cancel one of them first");
+  else syslog(LOG_NOTICE|LOG_DAEMON, "tasks 1 and 2 already in use, cancel one of them first");
 
   return ok;
 }
@@ -415,8 +415,8 @@ int operate_switch1(int switch1, int wtime)
      if(delay==0)
      {
        ok=write_cmd(0x24,0x00,0); 
-       if(ok!=1) syslog(LOG_ERR, "closing switch 1 failed");
-       else syslog(LOG_NOTICE, "switch 1 closed");
+       if(ok!=1) syslog(LOG_ERR|LOG_DAEMON, "closing switch 1 failed");
+       else syslog(LOG_NOTICE|LOG_DAEMON, "switch 1 closed");
      }
      else if(delay>0) ok=newtask(1,1,delay);  
   }
@@ -425,8 +425,8 @@ int operate_switch1(int switch1, int wtime)
      if(delay==0)
      {
        ok=write_cmd(0x14,0x00,0); 
-       if(ok!=1) syslog(LOG_ERR, "opening switch 1 failed");
-       else syslog(LOG_NOTICE, "switch 1 opened");
+       if(ok!=1) syslog(LOG_ERR|LOG_DAEMON, "opening switch 1 failed");
+       else syslog(LOG_NOTICE|LOG_DAEMON, "switch 1 opened");
      }
      else if(delay>0) ok=newtask(1,2,delay); 
   }
@@ -446,8 +446,8 @@ int operate_switch2(int switch2, int wtime)
     if(delay==0)
     {
       ok=write_cmd(0x25,0x00,0); 
-      if(ok!=1) syslog(LOG_ERR, "closing switch 2 failed");
-      else syslog(LOG_NOTICE, "switch 2 closed");
+      if(ok!=1) syslog(LOG_ERR|LOG_DAEMON, "closing switch 2 failed");
+      else syslog(LOG_NOTICE|LOG_DAEMON, "switch 2 closed");
     }
     else if(delay>0) ok=newtask(2,1,delay);  
   }
@@ -456,8 +456,8 @@ int operate_switch2(int switch2, int wtime)
     if(delay==0)
     {
       ok=write_cmd(0x15,0x00,0); 
-      if(ok!=1) syslog(LOG_ERR, "opening switch 2 failed");
-      else syslog(LOG_NOTICE, "switch 2 opened");
+      if(ok!=1) syslog(LOG_ERR|LOG_DAEMON, "opening switch 2 failed");
+      else syslog(LOG_NOTICE|LOG_DAEMON, "switch 2 opened");
     }
     else if(delay>0) ok=newtask(2,2,delay);  
   }
@@ -507,21 +507,21 @@ int cont=1; /* main loop flag */
 void stop(int sig)
 {
   sprintf(message, "signal %d catched, stop",sig);
-  syslog(LOG_NOTICE, "%s", message);
+  syslog(LOG_NOTICE|LOG_DAEMON, "%s", message);
   cont=0;
 }
 
 void terminate(int sig)
 {
   sprintf(message,"signal %d catched",sig);
-  syslog(LOG_NOTICE, "%s", message);
+  syslog(LOG_NOTICE|LOG_DAEMON, "%s", message);
 
   sleep(1);
   operate_switch1(stopswitch1,0);
   operate_switch2(stopswitch2,0);
 
   sleep(1);
-  syslog(LOG_NOTICE, "stop");
+  syslog(LOG_NOTICE|LOG_DAEMON, "stop");
 
   cont=0;
 }
@@ -529,7 +529,7 @@ void terminate(int sig)
 void hup(int sig)
 {
   sprintf(message,"signal %d catched",sig);
-  syslog(LOG_NOTICE, "%s", message);
+  syslog(LOG_NOTICE|LOG_DAEMON, "%s", message);
 }
 
 
@@ -538,7 +538,7 @@ int main()
   int ok=0;
 
   setlogmask(LOG_UPTO (loglev));
-  syslog(LOG_NOTICE, "pipicswd v. %d started", version);
+  syslog(LOG_NOTICE | LOG_DAEMON, "pipicswd v. %d started", version);
 
   signal(SIGKILL,&stop); 
   signal(SIGTERM,&terminate); 
@@ -548,28 +548,28 @@ int main()
   read_config(); // read configuration file
 
   int i2cok=testi2c(); // test i2c data flow to PIC 
-  if(i2cok==1) syslog(LOG_NOTICE, "i2c dataflow test ok"); 
+  if(i2cok==1) syslog(LOG_NOTICE|LOG_DAEMON, "i2c dataflow test ok"); 
   else
   {
     if(forcereset==1)
     {
       sleep(1); 
-      syslog(LOG_NOTICE, "try to reset timer now");
+      syslog(LOG_NOTICE|LOG_DAEMON, "try to reset timer now");
       ok=resetimer();
       sleep(1);
       if(resetimer()!=1)
       {
-        syslog(LOG_ERR, "failed to reset timer");
+        syslog(LOG_ERR|LOG_DAEMON, "failed to reset timer");
         cont=0; 
       }
       else
       {
         sleep(1);
         i2cok=testi2c(); // test i2c data flow to PIC 
-        if(i2cok==1) syslog(LOG_NOTICE, "i2c dataflow test ok"); 
+        if(i2cok==1) syslog(LOG_NOTICE|LOG_DAEMON, "i2c dataflow test ok"); 
         else
         {
-          syslog(LOG_ERR, "i2c dataflow test failed");
+          syslog(LOG_ERR|LOG_DAEMON, "i2c dataflow test failed");
           cont=0;
           exit(EXIT_FAILURE);
         }
@@ -577,8 +577,8 @@ int main()
     }
     else
     {
-      syslog(LOG_ERR, "i2c dataflow test failed, exit");
-      syslog(LOG_NOTICE, "try to reset timer with 'pipic -a [address] -c 50' and restart with 'service pipicswd start'");
+      syslog(LOG_ERR|LOG_DAEMON, "i2c dataflow test failed, exit");
+      syslog(LOG_NOTICE|LOG_DAEMON, "try to reset timer with 'pipic -a [address] -c 50' and restart with 'service pipicswd start'");
       cont=0;
       exit(EXIT_FAILURE);
     }
@@ -603,13 +603,13 @@ int main()
   sid=setsid();
   if(sid<0) 
   {
-    syslog(LOG_ERR, "failed to create child process"); 
+    syslog(LOG_ERR|LOG_DAEMON, "failed to create child process"); 
     exit(EXIT_FAILURE);
   }
         
   if((chdir("/")) < 0) 
   {
-    syslog(LOG_ERR, "failed to change to root directory"); 
+    syslog(LOG_ERR|LOG_DAEMON, "failed to change to root directory"); 
     exit(EXIT_FAILURE);
   }
         
@@ -624,14 +624,14 @@ int main()
   if(pidf==NULL)
   {
     sprintf(message,"Could not open PID lock file %s, exiting", pidfile);
-    syslog(LOG_ERR, "%s", message);
+    syslog(LOG_ERR|LOG_DAEMON, "%s", message);
     exit(EXIT_FAILURE);
   }
 
   if(flock(fileno(pidf),LOCK_EX||LOCK_NB)==-1)
   {
     sprintf(message,"Could not lock PID lock file %s, exiting", pidfile);
-    syslog(LOG_ERR, "%s", message);
+    syslog(LOG_ERR|LOG_DAEMON, "%s", message);
     exit(EXIT_FAILURE);
   }
 
@@ -647,10 +647,10 @@ int main()
   sockfd=socket(AF_INET, SOCK_STREAM, 0);
   if(sockfd<0) 
   {
-    syslog(LOG_ERR, "Could not open socket");
+    syslog(LOG_ERR|LOG_DAEMON, "Could not open socket");
     exit(EXIT_FAILURE);
   }
-  else syslog(LOG_NOTICE, "Socket open");
+  else syslog(LOG_NOTICE|LOG_DAEMON, "Socket open");
   
   memset(&serv_addr, '0', sizeof(serv_addr));
   memset(sbuff, '0', sizeof(sbuff)); 
@@ -661,10 +661,10 @@ int main()
 
   if(bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr))<0)
   {
-    syslog(LOG_ERR, "Could not bind socket");
+    syslog(LOG_ERR|LOG_DAEMON, "Could not bind socket");
     exit(EXIT_FAILURE);
   }
-  else syslog(LOG_NOTICE, "Socket binding successful");
+  else syslog(LOG_NOTICE|LOG_DAEMON, "Socket binding successful");
 
   listen(sockfd, 1); // listen one client only 
   clilen=sizeof(cli_addr);
@@ -683,16 +683,16 @@ int main()
     connfd=accept(sockfd, (struct sockaddr*)&cli_addr, (socklen_t *)&clilen); 
     if(connfd<0) 
     {
-      syslog(LOG_ERR, "Socket accept failed");
+      syslog(LOG_ERR|LOG_DAEMON, "Socket accept failed");
       exit(EXIT_FAILURE);
     }
-    else syslog(LOG_INFO, "Socket accepted");
+    else syslog(LOG_INFO|LOG_DAEMON, "Socket accepted");
 
     bzero(rbuff,25);
     n=read(connfd,rbuff,24);
     if(n<0)
     {
-      syslog(LOG_ERR, "Socket reading failed");
+      syslog(LOG_ERR|LOG_DAEMON, "Socket reading failed");
       exit(EXIT_FAILURE);
     }
     else
@@ -756,7 +756,7 @@ int main()
     n=write(connfd,sbuff,strlen(sbuff)); 
     if(n<0)
     {
-      syslog(LOG_ERR, "Socket writing failed");
+      syslog(LOG_ERR|LOG_DAEMON, "Socket writing failed");
       exit(EXIT_FAILURE);
     }
     else
@@ -770,7 +770,7 @@ int main()
     sleep(1);
   }
 
-  syslog(LOG_NOTICE, "remove PID file");
+  syslog(LOG_NOTICE|LOG_DAEMON, "remove PID file");
   ok=remove(pidfile);
 
   return ok;
