@@ -13,11 +13,11 @@ switch status if no command is given. The commands can be
 
 I<cancel> I<N> stop timer I<N> command
 
-I<close> I<N> close switch with channel number I<N>
+I<close> I<N> I<[HH:MM]> close switch with channel number I<N>, time optional
 
 I<help> print usage message
 
-I<open> I<N> open switch with channel number I<N>
+I<open> I<N> I<[HH:MM]> open switch with channel number I<N>, time optional
 
 I<status> read switch status from server
 
