@@ -60,9 +60,6 @@ BINDIR=/usr/sbin
 # manual pages
 MANDIR=/usr/share/man/man1
 
-# pipicpowerd.log log rotation  
-LOGROTADIR=/etc/logrotate.d
-
 # init script
 INITDIR=/etc/init.d
 
@@ -101,14 +98,6 @@ else
   echo "Source directory ${SOURCEMAN} does not exist"
 fi
 
-if [ ! -r ${LOGROTADIR}/pipicpowerd ]; then
-  echo "Write log rotation file ${LOGROTADIR}/pipicpowerd"
-  /usr/bin/install -C -m 644 ${SOURCEDIR}/pipicpowerd/pipicpowerd.lrota ${LOGROTADIR}
-  /bin/mv ${LOGROTADIR}/pipicpowerd.lrota ${LOGROTADIR}/pipicpowerd
-else
-  echo "Log rotation file ${LOGROTADIR}/pipicpowerd already exists"
-fi
-
 if [ ! -x ${INITDIR}/pipicpowerd ]; then
   echo "Write init script ${INITDIR}/pipicpowerd"
   /usr/bin/install -C -m 755 ${SOURCEDIR}/pipicpowerd/pipicpowerd.sh ${INITDIR} 
@@ -124,13 +113,6 @@ else
   echo "Configuration file ${CONFDIR}/pipicpowerd.config already exists" 
 fi
 
-if [ ! -r ${LOGROTADIR}/pipicswd ]; then
-  echo "Write log rotation file ${LOGROTADIR}/pipicswd"
-  /usr/bin/install -C -m 644 ${SOURCEDIR}/pipicswd/pipicswd.lrota ${LOGROTADIR}
-  /bin/mv ${LOGROTADIR}/pipicswd.lrota ${LOGROTADIR}/pipicswd
-else
-  echo "Log rotation file ${LOGROTADIR}/pipicswd already exists"
-fi
 if [ ! -x ${INITDIR}/pipicswd ]; then
   echo "Write init script ${INITDIR}/pipicswd"
   /usr/bin/install -C -m 755 ${SOURCEDIR}/pipicswd/pipicswd.sh ${INITDIR} 
@@ -138,19 +120,12 @@ if [ ! -x ${INITDIR}/pipicswd ]; then
 else
   echo "Init script ${INITDIR}/pipicswd already exists"
 fi
+
 if [ ! -r ${CONFDIR}/pipicswd_config ]; then
   echo "Write default configuration file ${CONFDIR}/pipicswd_config"
   /usr/bin/install -C -m 664 ${SOURCEDIR}/pipicswd/pipicswd_config ${CONFDIR} 
 else
   echo "Configuration file ${CONFDIR}/pipicswd.config already exists" 
-fi
-
-if [ ! -r ${LOGROTADIR}/pipichbd ]; then
-  echo "Write log rotation file ${LOGROTADIR}/pipichbd"
-  /usr/bin/install -C -m 644 ${SOURCEDIR}/pipichbd/pipichbd.lrota ${LOGROTADIR}
-  /bin/mv ${LOGROTADIR}/pipichbd.lrota ${LOGROTADIR}/pipichbd
-else
-  echo "Log rotation file ${LOGROTADIR}/pipichbd already exists"
 fi
 
 if [ ! -x ${INITDIR}/pipichbd ]; then
