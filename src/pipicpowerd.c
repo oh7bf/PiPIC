@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Sat Feb 21 17:50:32 CET 2015
+ * Edit: Tue Mar  3 22:59:32 CET 2015
  *
  * Jaakko Koivuniemi
  **/
@@ -45,7 +45,7 @@
 #include "readdata.h"
 #include "testi2c.h"
 
-const int version=20150221; // program version
+const int version=20150303; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -155,8 +155,9 @@ void read_config()
   size_t len;
   ssize_t read;
 
-  cfile=fopen(confile, "r");
-  if(NULL!=cfile)
+  line = malloc(sizeof(char)*(200));
+  cfile = fopen(confile, "r");
+  if( NULL!=cfile )
   {
     syslog(LOG_INFO|LOG_DAEMON, "Read configuration file");
 
@@ -352,6 +353,7 @@ void read_config()
     sprintf(message, "Could not open %s", confile);
     syslog(LOG_ERR|LOG_DAEMON, "%s", message);
   }
+  free(line);
 }
 
 // read wake-up time from file and calculate how many seconds in future
@@ -593,6 +595,7 @@ int test_ntp()
   size_t len;
   ssize_t read;
 
+  line = malloc(sizeof(char)*200);
   nfile=fopen("/tmp/pipicpowerd_ntp_test", "r");
   if((NULL!=nfile)&&(ok!=-1))
   {
@@ -623,6 +626,7 @@ int test_ntp()
     syslog(LOG_INFO|LOG_DAEMON, "test 'ntpq -p > /tmp/pipicpowerd_ntp_test' failed");
   else
     syslog(LOG_INFO|LOG_DAEMON, "test 'ntpq -p > /tmp/pipicpowerd_ntp_test' success");
+  free(line);
 
   return ntpruns;
 }
