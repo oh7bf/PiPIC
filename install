@@ -19,7 +19,7 @@
 #
 # g) sudo service pipicpowerd start
 # 
-# h) tail -f /var/log/messages
+# h) tail -f /var/log/daemon.log
 #
 # i) sudo update-rc.d pipicpowerd defaults (optional)
 #
@@ -44,7 +44,7 @@
 # /usr/sbin/pipictest                - send and read test data from PiPIC 
 #
 # Wed May 14 21:59:43 CEST 2014
-# Edit: Sat Feb 21 11:11:49 CET 2015
+# Edit: Sun Apr 19 14:42:22 CEST 2015
 # 
 # Jaakko Koivuniemi
 #
@@ -148,6 +148,22 @@ if [ -d /var/lib/pipicpowerd ]; then
 else
   echo "Create directory /var/lib/pipicpowerd"
   /bin/mkdir -m 775 /var/lib/pipicpowerd
+fi
+
+if /bin/grep -Fxq "i2c-bcm2708" /etc/modules
+then
+  echo "i2c-bcm2708 found from /etc/modules"
+else
+  echo "Add i2c-bcm2708 to /etc/modules"
+  echo "i2c-bcm2708" >> /etc/modules
+fi
+
+if /bin/grep -Fxq "i2c-dev" /etc/modules
+then
+  echo "i2c-dev found from /etc/modules"
+else
+  echo "Add i2c-dev to /etc/modules"
+  echo "i2c-dev" >> /etc/modules
 fi
 
 echo "Run 'update-rc.d pipicpowerd defaults' to automatically start at boot time"
