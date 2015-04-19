@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Tue Mar  3 22:59:32 CET 2015
+ * Edit: Sat Mar  7 14:51:35 CET 2015
  *
  * Jaakko Koivuniemi
  **/
@@ -45,7 +45,7 @@
 #include "readdata.h"
 #include "testi2c.h"
 
-const int version=20150303; // program version
+const int version=20150307; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -1289,7 +1289,7 @@ int main()
        nxtstart=0;
     }
 
-    if(((unxs>=nxtpdown)||((nxtpdown-unxs)>pdownint))&&(pwroff==0)) 
+    if(((unxs>=nxtpdown)||((nxtpdown-unxs)>voltint))&&(pwroff==0)) 
     {
       nxtpdown=pdownint+unxs;
       if((solarpwr==0)||((solarpwr==1)&&(battfull==0)))
@@ -1312,7 +1312,10 @@ int main()
          }
       }
       else if((solarpwr==1)&&(battfull==1))
+      {
         syslog(LOG_NOTICE|LOG_DAEMON, "battery full, no power down");
+        nxtpdown=voltint+unxs-pdownint;
+      }
     }
 
     if(((unxs>=nxtsleep)||((nxtsleep-unxs)>sleepint))&&(pwroff==0)) 
