@@ -18,9 +18,18 @@ my ($Tmin,$Tave,$Tmax);
 my ($Tcpumin,$Tcpuave,$Tcpumax);
 my $wifiup=0;
 
-my $now=`/bin/date +%s --date='2014-11-03 00:00:00'`;
-my $weekago=$now-7*24*3600;
-my $weekno=`/bin/date +%V --date='2014-11-02 23:59:59'`;
+my $now = `/bin/date +%s`;
+my $wkstart = `/bin/date +%s --date='2015-04-06 00:00:00'`;
+
+while( ($now+7*24*3600)<$wkstart )
+{
+   $wkstart += 7*24*3600;
+}
+
+my $wkend = $wkstart-1;
+my $weekago = $wkstart-7*24*3600;
+my $weekno = `/bin/date +%V --date='\@$wkend'`; 
+my $year = `/bin/date +%y --date='\@$wkend'`; 
 
 my $Vmi=100;
 my $Vav=0;
@@ -36,14 +45,14 @@ my $uptime=0;
 my $hh=0;
 my @lines=<>;
 
-for(my $j=0;$j<20;$j++)
+for(my $j=0;$j<50;$j++)
 {
   foreach $line (@lines)
   {
     $dt=0;
     chomp $line; 
     ($dat,$tim,$unxs0,$unxs1,$timer0,$timer1,$dt,$Vmin,$Vave,$Vmax,$Tmin,$Tave,$Tmax,$Tcpumin,$Tcpuave,$Tcpumax,$wifiup) = split /\s+/,$line;
-    if(($unxs1>=$weekago)&&($unxs1<$now))
+    if(($unxs1>=$weekago)&&($unxs1<$wkstart))
     {
       if($dt>0)
       {
@@ -82,7 +91,7 @@ for(my $j=0;$j<20;$j++)
   }
 
   $hh=$uptime/3600;
-  print (sprintf "%02d %5.1f", $weekno, $hh);
+  print (sprintf "%02d %02d %5.1f", $year, $weekno, $hh);
   print (sprintf " %4.1f %4.1f %4.1f  %+3.0f %+3.0f %+3.0f  %3.0f %3.0f %3.0f\n",$Vmi,$Vav,$Vmx,$Tmi,$Tav,$Tmx,$Tcpumi,$Tcpuav,$Tcpumx);
 
   $Vmi=100;
@@ -96,7 +105,9 @@ for(my $j=0;$j<20;$j++)
   $Tcpumx=-100;
 
   $uptime=0;
-  $now-=7*24*3600; 
-  $weekago=$now-7*24*3600;
-  $weekno--;
+  $wkstart-=7*24*3600; 
+  $weekago=$wkstart-7*24*3600;
+  $wkend = $wkstart-1;
+  $weekno = `/bin/date +%V --date='\@$wkend'`; 
+  $year = `/bin/date +%y --date='\@$wkend'`; 
 }
