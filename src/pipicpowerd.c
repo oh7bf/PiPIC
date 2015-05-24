@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Sat Mar  7 14:51:35 CET 2015
+ * Edit: Sun May 24 14:26:03 CEST 2015
  *
  * Jaakko Koivuniemi
  **/
@@ -45,7 +45,7 @@
 #include "readdata.h"
 #include "testi2c.h"
 
-const int version=20150307; // program version
+const int version=20150524; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -70,6 +70,8 @@ const float phours=20; // Peukert's law discharge time for nominal capacity [h]
 float current=0.15; // estimated average current used [A]
 int battfull=0; // battery is full 100 %
 int solarpwr=0; // solar panel is used for charging
+int solardays=0; // how many days of history is used to calculate power up time
+int solarcycle=100; // how many minutes are used in cyclic operation
 int sleepint=60; // how often to check sleep file [s]
 int pdownint=60; // how often to check cyclic power up file [s]
 int downmins=10; // minutes for cyclic power down
@@ -143,6 +145,88 @@ void writestat(const char statfile[200], unsigned unxstart, unsigned unxstop, in
       fprintf(sfile," %d\n",wifiuptime);
       fclose(sfile);
   }
+}
+
+// read usage statistics file to calulate average power up time for last days
+// and update files /var/lib/pipicpowerd/puptime and 
+// /var/lib/pipicpowerd/pdowntime
+void calcuptime(const char statfile[200], int unxstart, int solardays, int solarcycle)
+{
+  FILE *sfile, *ufile;
+  char *line=NULL;
+  char dat[100];
+  char time[100];
+  int t,start,dt;
+  float v;
+  size_t len;
+  ssize_t read;
+
+  int t0 = unxstart - 24*3600*solardays;
+  int monthago = unxstart - 24*3600*30;
+  float uptime = 0;
+  float fuptime = 0;
+  int upmins = 0, downmins = 0; 
+  int histok = 0;
+
+  line = malloc(sizeof(char)*(200));
+  sfile = fopen(statfile, "r");
+  if( NULL!=sfile )
+  {
+    syslog(LOG_INFO|LOG_DAEMON, "Read usage statistics file");
+    while( ( read = getline(&line, &len, sfile) ) != -1 )
+    {
+// 2015-03-30 03:09:17 1427677740 1427677757 8535992 8536617 311 10.88 10.88 10.88 +9.00 +9.00 +9.00 +17.49 +17.49 +17.49 0
+       if(sscanf(line, "%s %s %d %d %d %d %d %f %f %f %f %f %f %f %f %f %d", dat, time, &start, &t, &t, &t, &dt, &v, &v, &v, &v, &v, &v, &v, &v, &v, &t) != EOF)
+       {
+          if( start > t0 )
+          {
+             sprintf(message, "%s %s %d %d", dat, time, start, dt);
+             syslog(LOG_DEBUG, "%s", message);
+             uptime += (float)dt;
+          }
+          else if( start > monthago ) histok = 1;
+       }
+    }
+    fuptime = 100*uptime/(24*3600*solardays); 
+    syslog(LOG_INFO|LOG_DAEMON, "Total uptime %8.0f s or %3.0f %% last %d days", uptime, fuptime, solardays);
+    if( ( fuptime > 0 ) && ( fuptime <= 100 ) && ( histok == 1 ) )
+    {
+       upmins = (int)(solarcycle * fuptime/100);
+       if( upmins < 3 ) upmins = 3;
+       downmins = (int)(solarcycle * (100-fuptime)/100);
+
+       ufile = fopen(puptimefile, "w");
+       if( NULL == ufile )
+       {
+         sprintf(message, "could not write file: %s", puptimefile);
+         syslog(LOG_ERR|LOG_DAEMON, "%s", message);
+       }
+       else
+       { 
+         fprintf(ufile, "%d\n", upmins);
+         fclose(ufile);
+       }
+
+       ufile = fopen(pdowntimefile, "w");
+       if( NULL == ufile )
+       {
+         sprintf(message,"could not write file: %s", pdowntimefile);
+         syslog(LOG_ERR|LOG_DAEMON, "%s", message);
+       }
+       else
+       { 
+         fprintf(ufile, "%d\n", downmins);
+         fclose(ufile);
+       }
+    }
+    else
+    {
+       syslog(LOG_ERR|LOG_DAEMON, "not enough history or problem in calculation");
+    }
+
+    fclose( sfile );
+  }
+  free( line );
 }
 
 // read configuration file if it exists
@@ -306,16 +390,26 @@ void read_config()
              sprintf(message,"Minimum battery level for operating %f %%",value);
              syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
-          if(strncmp(par,"MAXBATTVOLTS",12)==0)
+          if( strncmp(par,"MAXBATTVOLTS",12) == 0 )
           {
              maxbattvolts=value;
              sprintf(message,"Maximum safe charging voltage %f V",value);
              syslog(LOG_INFO|LOG_DAEMON, "%s", message);
           }
-          if(strncmp(par,"SOLARPOWER",10)==0)
+          if( strncmp(par,"SOLARPOWER", 10) == 0 )
           {
-             solarpwr=(int)value;
-             if(solarpwr==1) syslog(LOG_INFO|LOG_DAEMON, "Using solar power to charge battery");
+             solarpwr = (int)value;
+             if(solarpwr == 1) syslog(LOG_INFO|LOG_DAEMON, "Using solar power to charge battery");
+          }
+          if( strncmp(par,"SOLARDAYS", 9) == 0 )
+          {
+             solardays = (int)value;
+             if( solardays > 0 ) syslog(LOG_INFO|LOG_DAEMON, "Use %d days for power up calculation", solardays);
+          }
+          if( strncmp(par,"SOLARCYCLE", 10) == 0 )
+          {
+             solarcycle = (int)value;
+             syslog(LOG_INFO|LOG_DAEMON, "Use %d minutes in cyclic operation", solarcycle);
           }
           if(strncmp(par,"SETTIME",7)==0)
           {
@@ -1274,6 +1368,8 @@ int main()
 
   unsigned unxstart=time(NULL); // for power up statistics
   unsigned unxstop=0;
+
+  if(solardays>0) calcuptime(statfile, unxstart, solardays, solarcycle);
 
   int wifidown=0;
   int wifiuptime=0;

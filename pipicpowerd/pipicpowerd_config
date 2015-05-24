@@ -1,7 +1,7 @@
 #
 # Example configuration file for pipicpowerd 
 # Fri Feb 14 21:06:59 CET 2014
-# Edit: Thu Feb 19 18:49:35 CET 2015
+# Edit: Sat May 23 20:10:30 CEST 2015
 # Jaakko Koivuniemi
 
 # log level, see syslog(3) 
@@ -58,9 +58,20 @@ MAXBATTVOLTS 14.4
 # and down operation set by /var/lib/pipicpowerd/puptime and
 # /var/lib/pipicpowerd/pdowntime files this switch will prevent power
 # down if the battery has been fully charged to dissipate part of the 
-# energy that can not be stored to the battery, this only for small
+# energy that can not be stored to the battery, this is only for small
 # solar panels, large ones need a separate charge controller 
 #SOLARPOWER 0
+
+# how many days of history are used to calculate average power up time,
+# this is then used to update files /var/lib/pipicpowerd/puptime and
+# /var/lib/pipicpowerd/pdowntime with SOLARCYCLE in minutes
+# the LOGSTATS has be set to use this option
+# if SOLARDAYS is zero or not set no automatic power up time adjustment
+# is done
+#SOLARDAYS 3
+
+# number of minutes in cyclic power up - power down operation 
+#SOLARCYCLE 100
 
 # PIC internal timer cycle period in seconds, this can be checked with
 # 'pipictest -a 26 -c -n 10000' 

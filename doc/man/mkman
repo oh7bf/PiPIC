@@ -1,7 +1,7 @@
 #!/bin/bash
 pod2man -c "Raspberry Pi" -r "version 20130909" pipic.pod pipic.1
 pod2man -c "Raspberry Pi" -r "version 20130811" pipicfile.pod pipicfile.1
-pod2man -c "Raspberry Pi" -r "version 20141012" --section=8 pipicpowerd.pod pipicpowerd.1
+pod2man -c "Raspberry Pi" -r "version 20150524" --section=8 pipicpowerd.pod pipicpowerd.1
 pod2man -c "Raspberry Pi" -r "version 20150221" pipicsw.pod pipicsw.1
 pod2man -c "Raspberry Pi" -r "version 20141005" pipicswd.pod pipicswd.1
 pod2man -c "Raspberry Pi" -r "version 20130819" pipictest.pod pipictest.1

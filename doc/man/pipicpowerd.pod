@@ -52,8 +52,6 @@ down to be executed.
 
 =head1 FILES
 
-I</etc/logrotate.d/pipicpowerd>    Log rotation configuration file.
-
 I</etc/init.d/pipicpowerd>         Init script.
 
 I</etc/pipicpowerd_config>         Configuration file.
@@ -162,6 +160,14 @@ off.
 I<SETTIME>
 If set the current time is estimated from PIC counter cycles at boot time
 and the system time is set accordingly.
+
+I<SOLARCYCLE>
+Number of minutes used to write /var/lib/pipicpowerd/puptime and
+/var/lib/pipicpowerd/pdowntime files. The average power up time
+of recent days is used in this calculation.
+
+I<SOLARDAYS>
+Number of days used to calculate average power up time.
 
 I<SOLARPOWER>
 If set small solar panel is used to charge the battery.
