@@ -1,0 +1,13 @@
+load bmp180SDA.stc
+load bmp180SCL.stc
+node SDA
+node SCL
+attach SDA gpio2
+attach SDA bmp180SDA
+attach SCL gpio3
+attach SCL bmp180SCL
+scope.ch0 = "gpio2"
+scope.ch1 = "gpio3"
+load e p12f675 eeprom12Vpsu
+symbol i2cstate=0x20
+
