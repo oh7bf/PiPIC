@@ -9,7 +9,7 @@
 ; to the PIC with parameter data. The result data can be read from the PIC.
 ; There is a separate command line utility pipic(1) for this. 
 ;
-; Copyright (C) 2013 - 2014 Jaakko Koivuniemi.
+; Copyright (C) 2013 - 2015 Jaakko Koivuniemi.
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Wed Dec 17 20:41:53 CET 2014
+; Sat Oct  3 22:10:50 CEST 2015
 ; Jaakko Koivuniemi
 ;
 ; compile: gpasm -a inhx16 pic12si2c.asm
@@ -445,6 +445,7 @@ sclhigh         btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 btfss   i2cstate, I2RCVD   ; 8 bits received?    1-2 us
                 goto    sclow              ;                     2 us
 
+
 ; 8 bits received, check if address matches
                 bsf     i2cstate, I2ADDR   ; set I2ADDR=1        1 us
                 movlw   B'11111110'        ;                     1 us
@@ -454,7 +455,6 @@ sclhigh         btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 subwf   i2caddram, W       ;                     1 us
                 btfss   STATUS, Z          ;                     1-2 us
                 goto    noack              ;                     2 us
-
                 call    posack             ; positive acknowledgement 15-17 us
 
 ;                bsf     GPIO, LED          ; led on              1 us
@@ -513,62 +513,40 @@ tatlow3         btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
 
                 goto    reinit             ;                     2 us
 
-noack           call    negack             ; negative acknowledgement
-                bcf     i2cstate, I2ADDR   ; clear I2ADDR=0
+; follow data until stop bit received here 
+noack           bcf     i2cstate, I2ADDR   ; clear I2ADDR=0
+                clrf    i2cstate           ; clear i2cstate=0    1 us
 
-                btfss   i2cdata, 0         ; if R/_W=0 go to receive byte 1 us
-                goto    breceive           ;                      2 us
+wstopp          btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
+                goto    wstopp             ;                     2 us
 
-; follow byte transmit from an other chip here
-ftxloop         clrf    i2cstate           ; clear i2cstate=0    1 us
-ftathigh        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
-                goto    ftathigh           ;                     2 us
+                btfsc   GPIO, SDA          ; check if SDA=0 
+                goto    wstopp
 
-ftatlow         btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
-                goto    ftatlow
+                btfss   GPIO, SCL          ; check SCL=1 still
+                goto    wstopp
 
-                incf    i2cstate, F        ; i2cstate++          1 us
+                btfss   GPIO, SDA          ; check if SDA=1
+                goto    wstopp
 
-; repeated start could be detected here if SCL=1 and SDA=1->0
-; in this case jump to 'sdaint'
-; if SDA=0 continue to follow data transfer
-; if SDA=1 check if SDA goes to low while SCL is high
-                btfss   GPIO, SDA
-                goto    ftathigh1
+                btfss   GPIO, SCL          ; check SCL=1
+                goto    wstopp
 
-ftathigh0       btfss   GPIO, SDA
-                goto    sdaint
-                btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
-                goto    ftathigh0          ;                     2 us
+                btfss   GPIO, SDA          ; check if SDA=1
+                goto    wstopp
 
-                goto    ftatlow1
+                btfss   GPIO, SCL          ; check SCL=1
+                goto    wstopp
 
-ftathigh1       btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
-                goto    ftathigh1          ;                     2 us
+                btfss   GPIO, SDA          ; check if SDA=1
+                goto    wstopp
 
-ftatlow1        btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
-                goto    ftatlow1
-
-                incf    i2cstate, F        ; i2cstate++          1 us
-                btfss   i2cstate, I2RCVD   ; 8 bits transmitted? 1-2 us
-                goto    ftathigh1          ;                     2 us
-
-ftathigh2       btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
-                goto    ftathigh2          ;                     2 us
-
-ftatlow2        btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
-                goto    ftatlow2
-
-                btfss   GPIO, SDA          ; if postive acknowledgement
-                goto    ftxloop            ; from master continue following 
-
-ftathigh3       btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
-                goto    ftathigh3          ;                     2 us
-
-ftatlow3        btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
-                goto    ftatlow3
+                btfss   GPIO, SCL          ; check SCL=1
+                goto    wstopp
 
                 goto    reinit             ;                     2 us
+
+
 
 ; wait for stop bit here and read first data bit
 breceive        movlw   i2crec1            ; intialize FSR 
@@ -646,15 +624,6 @@ asclhigh        btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
                 bsf     TRISIO, SDA        ;                     1 us
                 bcf     STATUS, RP0        ; bank 0              1 us
                 return                     ;                     2 us
-
-; negative acknowledgement: follow acknowledgement cycle on SCL, do not act 
-; on SDA
-negack          btfss   GPIO, SCL          ; wait until SCL=1    1-2 us
-                goto    negack             ;                     2 us
-noackhigh       btfsc   GPIO, SCL          ; wait until SCL=0    1-2 us
-                goto    noackhigh          ;                     2 us
-;                bcf     GPIO, LED          ; led off             1 us
-                return
 
 ; for debugging reflect received bit on GPIO4
 ;debug4          bsf     GPIO, GPIO4        ; received bit to GPIO4 1 us
