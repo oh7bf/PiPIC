@@ -3,7 +3,7 @@
  * Monitor and control Raspberry Pi power supply using i2c bus. The power
  * supply has a PIC processor to interprete commands send by this daemon.  
  *       
- * Copyright (C) 2013 - 2015 Jaakko Koivuniemi.
+ * Copyright (C) 2013 - 2017 Jaakko Koivuniemi.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Sun May 24 14:26:03 CEST 2015
+ * Edit: Thu  7 Sep 21:51:07 EDT 2017
  *
  * Jaakko Koivuniemi
  **/
@@ -45,7 +45,7 @@
 #include "readdata.h"
 #include "testi2c.h"
 
-const int version=20150524; // program version
+const int version=20170907; // program version
 
 int voltint=300; // battery voltage reading interval [s]
 int buttonint=10; // button reading interval [s]
@@ -725,7 +725,7 @@ int test_ntp()
   return ntpruns;
 }
 
-// write calculated wakeup time calculated from PIC internal timer
+// write calculated wakeup time using PIC internal timer count 
 int writeuptime(int timer)
 {
   int ok=0;
@@ -733,17 +733,19 @@ int writeuptime(int timer)
   int s=(int)((timer-timer0)*picycle);
   int h=(int)(s/3600);
   int m=(int)((s%3600)/60);
+  int ss=(int)((s%3600)%60);
   char str[250];
 
   if(timer<timer0)
   {
     h=0;
     m=0;
+    ss=0;
     sprintf(str,"timer0=%d has higher value than timer=%d!",timer0,timer);
     syslog(LOG_ERR|LOG_DAEMON, "%s", str);
-    syslog(LOG_ERR|LOG_DAEMON, "force hours=0 and minutes=0");
+    syslog(LOG_ERR|LOG_DAEMON, "force hours=0, minutes=0 and seconds=0");
   }
-  sprintf(str,"date --date='%d hours %d minutes' > /var/lib/pipicpowerd/waketime",h,m);
+  sprintf(str,"date --date='%d hours %d minutes %d seconds' > /var/lib/pipicpowerd/waketime",h,m,ss);
   syslog(LOG_DEBUG, "%s", str);
   ok=system(str);
 
@@ -1251,7 +1253,7 @@ int main()
 
     if(reset_event_register()!=1)
       syslog(LOG_ERR|LOG_DAEMON, "failed to reset PIC event register");
-    sleep(1);
+sleep(1);
 
     syslog(LOG_NOTICE|LOG_DAEMON, "disable PIC timed task 1 and 2");
     ok=write_cmd(0x60,0,0); // disable timed task 1
@@ -1274,7 +1276,11 @@ int main()
       }
       else
       { 
-        if(fscanf(wakef,"%s %s %d %d:%d:%d %s %d",wd,mo,&da,&hh,&mm,&ss,tzone,&yy)!=EOF)
+// 'Thu  7 Sep 00:00:17 EDT 2017' works in US, could be in different order in
+// Europe or elsewhere 
+//        if(fscanf(wakef,"%s %s %d %d:%d:%d %s %d",wd,mo,&da,&hh,&mm,&ss,tzone,&yy)!=EOF)
+
+        if(fscanf(wakef,"%s %d %s %d:%d:%d %s %d",wd,&da,mo,&hh,&mm,&ss,tzone,&yy)!=EOF)
         {
           sprintf(s,"/bin/date -s '%s %s %d %02d:%02d:%02d %s %d'",wd,mo,da,hh,mm,ss,tzone,yy);
           syslog(LOG_DEBUG, "%s", s);
@@ -1350,7 +1356,7 @@ int main()
     exit(EXIT_FAILURE);
   }
 
-  if(flock(fileno(pidf),LOCK_EX||LOCK_NB)==-1)
+  if(flock(fileno(pidf),LOCK_EX|LOCK_NB)==-1)
   {
     sprintf(message,"Could not lock PID lock file %s, exiting", pidfile);
     syslog(LOG_ERR|LOG_DAEMON, "%s", message);
@@ -1554,6 +1560,7 @@ int main()
           if((button==0x01)||(button==0x81))
           {
             syslog(LOG_NOTICE, "shutdown confirmed");
+            ok=write_cmd(0x15, 0, 0); // turn off red LED 
             sleep(1);
             if(access(atpwrdown,X_OK)!=-1)
             {
