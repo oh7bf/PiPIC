@@ -3,14 +3,14 @@
 #
 ### BEGIN INIT INFO
 # Provides:          pipicpowerd
-# Required-Start:    $syslog $time $remote_fs
-# Required-Stop:     $syslog $time $remote_fs
+# Required-Start:    $syslog $time $local_fs $remote_fs $network
+# Required-Stop:     $syslog $time
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Control and monitor Raspberry Pi power supply 
+# Short-Description: Control and monitor Raspberry Pi power supply
 ### END INIT INFO
 #
-# Author:      Jaakko Koivuniemi <oh7bf@sral.fi>	
+# Author:      Jaakko Koivuniemi <oh7bf@sral.fi>
 #
 
 NAME=pipicpowerd
