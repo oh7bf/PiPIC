@@ -13,7 +13,7 @@
 #
 # d) sudo raspi-config (to enable I2C) 
 #
-# e) add line 'dtparam=i2c=on,i2c_baudrate=10000' to /boot/config.txt
+# e) add line 'dtparam=i2c_arm=on,i2c_baudrate=10000' to /boot/config.txt (10 kHz I2C clock)
 #
 # f) sudo pipic -a 26 -c 50 (or set FORCERESET from configuration file)
 #
@@ -44,7 +44,7 @@
 # /usr/sbin/pipictest                - send and read test data from PiPIC 
 #
 # Wed May 14 21:59:43 CEST 2014
-# Edit: Sun Apr 19 14:42:22 CEST 2015
+# Edit: Wed  6 Sep 21:52:50 EDT 2017
 # 
 # Jaakko Koivuniemi
 #
