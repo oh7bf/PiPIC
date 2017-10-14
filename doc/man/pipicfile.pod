@@ -54,5 +54,5 @@ Jaakko Koivuniemi
 
 =head1 SEE ALSO
 
-pipic(1), i2cdetect(8), i2cset(8), i2cget(8)
+pipic(1), pipictest(1), i2cdetect(8), i2cset(8), i2cget(8)
 
