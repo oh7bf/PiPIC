@@ -98,7 +98,7 @@ fi
 
 if [ ! -r ${UNITCONF}/pipicpowerd.service ]; then
   echo "Write systemd unit configuration file ${UNITCONF}/pipicpowerd.service"
-  /usr/bin/install -C -m 755 ${SOURCEDIR}/pipicpowerd/pipicpowerd.service ${UNITCONF} 
+  /usr/bin/install -C -m 664 ${SOURCEDIR}/pipicpowerd/pipicpowerd.service ${UNITCONF} 
 else
   echo "Unit file ${UNITCONF}/pipicpowerd.service already exists"
 fi
@@ -112,7 +112,7 @@ fi
 
 if [ ! -r ${UNITCONF}/pipicswd.service ]; then
   echo "Write systemd unit configuration file ${UNITCONF}/pipicswd.service"
-  /usr/bin/install -C -m 755 ${SOURCEDIR}/pipicswd/pipicswd.service ${UNITCONF} 
+  /usr/bin/install -C -m 664 ${SOURCEDIR}/pipicswd/pipicswd.service ${UNITCONF} 
 else
   echo "Unit file ${UNITCONF}/pipicswd.service already exists"
 fi
@@ -126,7 +126,7 @@ fi
 
 if [ ! -r ${UNITCONF}/pipichbd.service ]; then
   echo "Write systemd unit configuration file ${UNITCONF}/pipichbd.service"
-  /usr/bin/install -C -m 755 ${SOURCEDIR}/pipichbd/pipichbd.service ${UNITCONF} 
+  /usr/bin/install -C -m 664 ${SOURCEDIR}/pipichbd/pipichbd.service ${UNITCONF} 
 else
   echo "Unit file ${UNITCONF}/pipichbd.service already exists"
 fi
