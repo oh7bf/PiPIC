@@ -1,0 +1,16 @@
+[Unit]
+Description=Control and monitor Raspberry Pi power supply.
+After=syslog.target
+
+[Service]
+ExecStart=/usr/local/bin/pipicpowerd
+Type=forking
+PIDFile=/run/pipicpowerd.pid
+Restart=no
+TimeoutSec=5min
+IgnoreSIGPIPE=no
+KillMode=process
+GuessMainPID=no
+
+[Install]
+WantedBy=multi-user.target

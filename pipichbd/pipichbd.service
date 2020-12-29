@@ -1,0 +1,16 @@
+[Unit]
+Description=Control and monitor Raspberry Pi H-bridge.
+After=syslog.target
+
+[Service]
+ExecStart=/usr/local/bin/pipichbd
+Type=forking
+PIDFile=/run/pipichbd.pid
+Restart=no
+TimeoutSec=5min
+IgnoreSIGPIPE=no
+KillMode=process
+GuessMainPID=no
+
+[Install]
+WantedBy=multi-user.target
