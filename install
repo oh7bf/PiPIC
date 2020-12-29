@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Installation script for Rasbian Wheezy. The installation script can be
+# Installation script for Raspbian Buster. The installation script can be
 # run after compiling the binaries.
 #
 # 'pipicpowerd' installation:
@@ -13,38 +13,36 @@
 #
 # d) sudo raspi-config (to enable I2C) 
 #
-# e) add line 'dtparam=i2c_arm=on,i2c_baudrate=10000' to /boot/config.txt (10 kHz I2C clock)
+# e) add line 'dtparam=i2c_arm=on,i2c_arm_baudrate=10000' to /boot/config.txt (10 kHz I2C clock)
 #
 # f) sudo pipic -a 26 -c 50 (or set FORCERESET from configuration file)
 #
-# g) sudo service pipicpowerd start
+# g) sudo systemctl start pipicpowerd.service
 # 
-# h) tail -f /var/log/daemon.log
+# h) journalctl -u pipicpowerd.service --follow -p info
 #
-# i) sudo update-rc.d pipicpowerd defaults (optional)
+# i) sudo systemctl enable pipicpowerd.service (optional)
 #
 # Similar way for the daemons 'pipicswd' and 'pipichbd'. 
 #
 # The directories used and files created by this script:
 #
-# /etc/init.d/pipichbd               - H-bridge init script
-# /etc/init.d/pipicpowerd            - power supply init script
-# /etc/init.d/pipicswd               - power switch init script
 # /etc/pipichbdd_config              - H-bridge configuration file
 # /etc/pipicpowerd_config            - power supply configuration file
 # /etc/pipicswd_config               - power switch configuration file
 # /usr/share/man                     - manual pages
-# /usr/sbin/pipic                    - read and control PiPIC
-# /usr/sbin/pipicfile                - print files from PiPIC
-# /usr/sbin/pipichbd                 - H-bridge daemon
-# /usb/sbin/pipichb                  - H-bridge client
-# /usr/sbin/pipicpowerd              - power supply daemon
-# /usr/sbin/pipicswd                 - power switch daemon
-# /usr/sbin/pipicsw                  - power switch client
-# /usr/sbin/pipictest                - send and read test data from PiPIC 
+# /lib/systemd/system/pipicpowerd.service - service unit file
+# /usr/local/bin/pipic               - read and control PiPIC
+# /usr/local/bin/pipicfile           - print files from PiPIC
+# /usr/local/bin/pipichbd            - H-bridge daemon
+# /usb/local/bin/pipichb             - H-bridge client
+# /usr/local/bin/pipicpowerd         - power supply daemon
+# /usr/local/bin/pipicswd            - power switch daemon
+# /usr/local/bin/pipicsw             - power switch client
+# /usr/local/bin/pipictest           - send and read test data from PiPIC 
 #
 # Wed May 14 21:59:43 CEST 2014
-# Edit: Wed  6 Sep 21:52:50 EDT 2017
+# Edit: Mon 28 Dec 2020 05:51:48 PM CST
 # 
 # Jaakko Koivuniemi
 #
@@ -55,13 +53,13 @@ SOURCEBIN=${SOURCEDIR}/src
 SOURCEMAN=${SOURCEDIR}/doc/man
 
 # binary executables 
-BINDIR=/usr/sbin
+BINDIR=/usr/local/bin
 
 # manual pages
 MANDIR=/usr/share/man/man1
 
-# init script
-INITDIR=/etc/init.d
+# systemd unit configuration file 
+UNITCONF=/lib/systemd/system
 
 # for pipicpowerd_conf configuration file
 CONFDIR=/etc
@@ -98,12 +96,11 @@ else
   echo "Source directory ${SOURCEMAN} does not exist"
 fi
 
-if [ ! -x ${INITDIR}/pipicpowerd ]; then
-  echo "Write init script ${INITDIR}/pipicpowerd"
-  /usr/bin/install -C -m 755 ${SOURCEDIR}/pipicpowerd/pipicpowerd.sh ${INITDIR} 
-  /bin/mv ${INITDIR}/pipicpowerd.sh ${INITDIR}/pipicpowerd
+if [ ! -r ${UNITCONF}/pipicpowerd.service ]; then
+  echo "Write systemd unit configuration file ${UNITCONF}/pipicpowerd.service"
+  /usr/bin/install -C -m 755 ${SOURCEDIR}/pipicpowerd/pipicpowerd.service ${UNITCONF} 
 else
-  echo "Init script ${INITDIR}/pipicpowerd already exists"
+  echo "Unit file ${UNITCONF}/pipicpowerd.service already exists"
 fi
 
 if [ ! -r ${CONFDIR}/pipicpowerd_config ]; then
@@ -113,12 +110,11 @@ else
   echo "Configuration file ${CONFDIR}/pipicpowerd.config already exists" 
 fi
 
-if [ ! -x ${INITDIR}/pipicswd ]; then
-  echo "Write init script ${INITDIR}/pipicswd"
-  /usr/bin/install -C -m 755 ${SOURCEDIR}/pipicswd/pipicswd.sh ${INITDIR} 
-  /bin/mv ${INITDIR}/pipicswd.sh ${INITDIR}/pipicswd
+if [ ! -r ${UNITCONF}/pipicswd.service ]; then
+  echo "Write systemd unit configuration file ${UNITCONF}/pipicswd.service"
+  /usr/bin/install -C -m 755 ${SOURCEDIR}/pipicswd/pipicswd.service ${UNITCONF} 
 else
-  echo "Init script ${INITDIR}/pipicswd already exists"
+  echo "Unit file ${UNITCONF}/pipicswd.service already exists"
 fi
 
 if [ ! -r ${CONFDIR}/pipicswd_config ]; then
@@ -128,12 +124,11 @@ else
   echo "Configuration file ${CONFDIR}/pipicswd.config already exists" 
 fi
 
-if [ ! -x ${INITDIR}/pipichbd ]; then
-  echo "Write init script ${INITDIR}/pipichbd"
-  /usr/bin/install -C -m 755 ${SOURCEDIR}/pipichbd/pipichbd.sh ${INITDIR} 
-  /bin/mv ${INITDIR}/pipichbd.sh ${INITDIR}/pipichbd
+if [ ! -r ${UNITCONF}/pipichbd.service ]; then
+  echo "Write systemd unit configuration file ${UNITCONF}/pipichbd.service"
+  /usr/bin/install -C -m 755 ${SOURCEDIR}/pipichbd/pipichbd.service ${UNITCONF} 
 else
-  echo "Init script ${INITDIR}/pipichbd already exists"
+  echo "Unit file ${UNITCONF}/pipichbd.service already exists"
 fi
 
 if [ ! -r ${CONFDIR}/pipichbd_config ]; then
@@ -166,4 +161,3 @@ else
   echo "i2c-dev" >> /etc/modules
 fi
 
-echo "Run 'update-rc.d pipicpowerd defaults' to automatically start at boot time"
