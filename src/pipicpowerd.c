@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Mon 28 Dec 2020 09:14:01 PM CST
+ * Edit: Tue 29 Dec 2020 05:07:48 PM CST
  *
  * Jaakko Koivuniemi
  **/
@@ -45,7 +45,7 @@
 #include "readdata.h"
 #include "testi2c.h"
 
-const int version = 20201228; // program version
+const int version = 20201229; // program version
 
 int voltint = 300; // battery voltage reading interval [s]
 int buttonint = 10; // button reading interval [s]
@@ -106,13 +106,13 @@ const char wifistate[ 200 ] = "/sys/class/net/wlan0/operstate";
 const char pidfile[ 200 ] = "/run/pipicpowerd.pid";
 
 int loglev = 6;
-char message[ 200 ] = "";
+char message[ 250 ] = "";
 int logstats = 0;
 const char statfile[ 200 ] = "/var/log/pipicpowers.log";
 
 // optional scripts to execute at power up or power down
-const char atpwrup[ 200 ] = "/usr/sbin/atpwrup";
-const char atpwrdown[ 200 ] = "/usr/sbin/atpwrdown";
+const char atpwrup[ 200 ] = "/usr/local/bin/atpwrup";
+const char atpwrdown[ 200 ] = "/usr/local/bin/atpwrdown";
 
 // 1 SIGTERM causes power off
 // 2 no power up in future
@@ -201,7 +201,7 @@ void calcuptime(const char statfile[200], int unxstart, int solardays, int solar
        {
           if( start > t0 )
           {
-             snprintf( message, 200, "%s %s %d %d", dat, time, start, dt);
+             snprintf( message, 224, "%s %s %d %d", dat, time, start, dt);
              syslog( LOG_DEBUG, "%s", message);
              uptime += (float)dt;
           }
@@ -602,7 +602,7 @@ int powerdown(int delay, int pwrup)
       ok *= write_cmd( 0x71, 0, 0); // start task2
     }
   }
-  else if( pwrup>0 ) // watch dog power up for reboot
+  else if( pwrup > 0 ) // watch dog power up for reboot
   {
     sprintf( message, "power up after %d counts", pwrup);
     syslog( LOG_WARNING, "%s", message);
@@ -701,7 +701,7 @@ int test_ntp_rtc()
 {
   int ntp_rtc = 0;
 
-  char str[ 250 ] = "/usr/bin/timedatectl --property=CanNTP --value show > /tmp/pipicpowerd_ntp_test";
+  char str[ 250 ] = "/usr/bin/timedatectl --property=NTP --value show > /tmp/pipicpowerd_ntp_test";
   int ok = system( str );
 
   FILE *nfile;
@@ -722,7 +722,7 @@ int test_ntp_rtc()
       {
         if( sscanf( line, "%s", p ) != EOF )
         {
-          syslog( LOG_INFO | LOG_DAEMON, "CanNTP=%s", line);
+          syslog( LOG_INFO | LOG_DAEMON, "NTP=%s", line);
       	  if( strncmp( p, "yes", 3 ) == 0 ) ntp_rtc = 1;
         }
       }
@@ -732,9 +732,9 @@ int test_ntp_rtc()
   }
 
   if( ntp_rtc == 0 )
-    syslog( LOG_INFO | LOG_DAEMON, "test 'timedatectl --property=CanNTP --value show > /tmp/pipicpowerd_ntp_test' failed");
+    syslog( LOG_INFO | LOG_DAEMON, "test 'timedatectl --property=NTP --value show > /tmp/pipicpowerd_ntp_test' failed");
   else
-    syslog( LOG_INFO | LOG_DAEMON, "test 'timedatectl --property=CanNTP --value show > /tmp/pipicpowerd_ntp_test' success");
+    syslog( LOG_INFO | LOG_DAEMON, "test 'timedatectl --property=NTP --value show > /tmp/pipicpowerd_ntp_test' success");
 
   char str2[ 250 ] = "/usr/bin/timedatectl --property=LocalRTC --value show > /tmp/pipicpowerd_rtc_test";
   ok = system( str2 );
@@ -770,8 +770,6 @@ int test_ntp_rtc()
 
   return ntp_rtc;
 }
-
-
 
 // test if ntp is running
 int test_ntp()
@@ -843,7 +841,8 @@ int writeuptime(int timer)
     syslog( LOG_ERR | LOG_DAEMON, "%s", str);
     syslog( LOG_ERR | LOG_DAEMON, "force hours=0, minutes=0 and seconds=0");
   }
-  sprintf( str, "date --date='%d hours %d minutes %d seconds' > /var/lib/pipicpowerd/waketime", h, m, ss);
+
+  sprintf( str, "date --date='%d hours %d minutes %d seconds' --iso-8601='second' > /var/lib/pipicpowerd/waketime", h, m, ss);
   syslog( LOG_DEBUG, "%s", str);
   ok = system( str );
 
@@ -900,6 +899,7 @@ void terminate(int sig)
   sprintf( message, "signal %d catched", sig);
   syslog( LOG_NOTICE | LOG_DAEMON, "%s", message);
 
+// 1 SIGTERM causes power off
   if( pwroff == 1 )
   {
     ok = powerdown( pwrdown, 1 );
@@ -910,6 +910,7 @@ void terminate(int sig)
     write_timer( timer );// save last PIC timer value to file 
     ok = pwrupfile_create();
   } 
+// 2 no power up in future
   else if( pwroff == 2 )
   {
     ok = powerdown( pwrdown, 0 );
@@ -920,6 +921,7 @@ void terminate(int sig)
     write_timer( timer ); // save last PIC timer value to file
     ok = pwrupfile_create();
   }
+// 3 power cycle
   else if( pwroff == 3 )
   {
     ok = powerdown( pwrdown, pwrdown + 60 );
@@ -929,6 +931,7 @@ void terminate(int sig)
     write_timer( timer ); // save last PIC timer value to file
     ok = pwrupfile_create();
   }
+// 4 power cycle with 'downmins'
   else if( pwroff == 4 )
   {
     ok = powerdown( pwrdown, pwrdown + downmins * 60 / picycle );
@@ -1275,9 +1278,9 @@ int main()
   int ntpok = 0; // does the ntpd seem to be running?
   int wifiup = 0; // WiFi 0=unknown,-1=down, +1=up
   int ok = 0;
-  char s[ 100 ];
-  char wd[ 25 ], mo[ 25 ], tzone[ 25 ];
-  int da, hh, mm, ss, yy;
+  char s[ 200 ];
+  char tzone[ 25 ];
+  int yy, mo, da, hh, mm, ss;
   FILE *wakef;
 
   setlogmask( LOG_UPTO (loglev) );
@@ -1338,6 +1341,7 @@ int main()
       cont = 0;
     }
   }
+
   if( cont == 1 )
   {
     syslog( LOG_NOTICE | LOG_DAEMON, "disable PIC event triggered tasks");
@@ -1375,14 +1379,11 @@ int main()
       }
       else
       { 
-// 'Thu  7 Sep 00:00:17 EDT 2017' works in US, could be in different order in
-// Europe or elsewhere 
-//        if(fscanf(wakef,"%s %s %d %d:%d:%d %s %d",wd,mo,&da,&hh,&mm,&ss,tzone,&yy)!=EOF)
-
-        if( fscanf( wakef, "%s %d %s %d:%d:%d %s %d", wd, &da, mo, &hh, &mm, &ss, tzone, &yy) != EOF )
+// '2020-12-29T17:19:14-06:00' from date --iso-8601='second'
+      	if( fscanf( wakef, "%d-%d-%dT%d:%d:%d%s", &yy, &mo, &da, &hh, &mm, &ss, tzone ) != EOF )
         {
-          snprintf( s, 100, "/bin/date -s '%s %s %d %02d:%02d:%02d %s %d'", wd, mo, da, hh, mm, ss, tzone, yy);
-          syslog( LOG_DEBUG, "%s", s);
+          snprintf( s, 200, "/usr/bin/timedatectl set-time '%4d-%02d-%02d %02d:%02d:%02d'", yy, mo, da, hh, mm, ss );
+          syslog( LOG_INFO | LOG_DAEMON, "%s", s);
           fclose( wakef );
           if( settime == 1 )
              ok = system( s );
