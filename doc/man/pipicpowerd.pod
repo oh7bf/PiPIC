@@ -9,60 +9,65 @@ B<pipicpowerd>
 =head1 DESCRIPTION
 
 The B<pipicpowerd> is used to monitor and control Raspberry Pi power supply
-with i2c bus. Initially the power is applied to the Raspberry Pi by pushing
-the red button on the power supply. The daemon is started with command
+with i2c bus. Initially power is applied to Raspberry Pi by pushing
+red button on the power supply. The daemon is started with command
 
-B<service> I<pipicpowerd> I<start>
+B<systemctl> I<start> I<pipicpowerd.service>
 
 and can be stopped any time with
 
-B<service> I<pipicpowerd> I<stop>
+B<systemctl> I<stop> I<pipicpowerd.service>
 
-The operation of the daemon can be checked from the log file.
-At the start four test bytes are written to the power supply and read back.
+Operation is seen from log file with
+
+B<journalctl> I<-u> I<pipicpowerd.service> I<--follow> I<-p> I<info>
+
+At start four test bytes are written to the power supply with i2c bus
+and read back.
 If this data flow test fails the daemon exits. One reason for this
 failure could be that the internal counter of PIC was not yet reset with
 command B<pipic> B<-a> 26 B<-c> 50.
-Otherwise the event triggered tasks on the PIC are disabled and the 
+Otherwise event triggered tasks on the PIC are disabled and 
 internal timer is read. If the file I</var/lib/pipicpowerd/pwrup> exists
-the PIC internal timer is used to estimate time now and the system time is
-set accordingly.
+PIC internal timer is used to estimate time now and the system time is
+set accordingly in absence of Network Time Protocol or local Real Time Clock. 
+This file is created and removed by B<pipicpowerd> service. 
 
 In the main
-loop the battery voltage is read at predetermined intervals. During the 
-reading the red LED on the power supply is turned on. If the battery
+loop battery voltage is read at pre-determined intervals. During
+measurement red LED on the power supply is turned on. If battery
 voltage is too low the power supply is programmed to a delayed power down and 
 the shutdown(8) command is called to put the Raspberry Pi into a halt state.
 Note that high value read from PIC means low battery voltage because of
 the inverting transistor circuit.
 
-The event register from the PIC is read at programmed intervals to see if
-the power button has been pressed. If this is the case the red LED is turned
-on and if the button is pressed again the shut down and delayed power down is 
-initiated. If the file I</var/lib/pipicpowerd/wakeup> exists the PIC is 
-programmed to wake up later in future at the given time. The time delay
-depends on how accurately the PIC internal counter cycle length is known.
+Event register from the PIC is read at programmed intervals to see if
+the power button has been pressed. If this is the case red LED is turned
+on and if button is pressed again, shut down and delayed power down is 
+initiated. If file I</var/lib/pipicpowerd/wakeup> exists PIC is 
+programmed to wake up later in future at given time. The time delay
+depends on how accurately PIC internal counter cycle length is known.
 This can be determined for example with command 
 B<pipictest> B<-a> 26 B<-c> B<-n> 10000. 
 
-The shut down and power down can be initiated by sending HUP signal to 
-the daemon with B<kill> B<-s> I<SIGHUP>. 
+Shutdown and power down can be initiated by sending HUP signal to 
+the daemon with B<systemctl> B<kill> B<-s> I<SIGHUP>. 
 The file I</var/lib/pipicpowerd/pwrdown> has to exists for HUP signal power
 down to be executed.
 
 =head1 FILES
 
-I</etc/init.d/pipicpowerd>         Init script.
+I</lib/systemd/system/pipicpowerd.service> Systemd unit file. 
 
 I</etc/pipicpowerd_config>         Configuration file.
 
-I</usr/sbin/atpwrdown>             Optional script to execute at power down.
+I</usr/local/bin/atpwrdown>        Optional script to execute at power down.
 
-I</usr/sbin/atpwrup>               Optional script to execute at power up.
+I</usr/local/bin/atpwrup>          Optional script to execute at power up.
 
-I</usr/sbin/pipicpowerd>           Daemon code.
+I</usr/local/bin/pipicpowerd>      Daemon code.
 
-I</var/lib/pipicpowerd/battery>    Most recent battery value 1023-0. 
+I</var/lib/pipicpowerd/battery>    Most recent battery value 1023 - 0. 
 
 I</var/lib/pipicpowerd/battlevel>  Battery level 0 - 100 %.
 
@@ -70,11 +75,11 @@ I</var/lib/pipicpowerd/hoursleft>  Hours left before battery flat.
 
 I</var/lib/pipicpowerd/ophours>    Operation hours before MINBATTLEVEL reached. 
 
-I</var/lib/pipicpowerd/pdowntime>   Power down time in minutes for cycling operation.
+I</var/lib/pipicpowerd/pdowntime>  Power down time in minutes for cycling operation.
 
-I</var/lib/pipicpowerd/puptime>     Power up time in minutes for cycling operation. 
+I</var/lib/pipicpowerd/puptime>    Power up time in minutes for cycling operation. 
  
-I</var/lib/pipicpowerd/pwrdown>    If this file exists power down with SIGINT.
+I</var/lib/pipicpowerd/pwrdown>    If this file exists power down with SIGHUP.
  
 I</var/lib/pipicpowerd/pwrup>      If this file exists approximative system time is set at power up.
 
@@ -88,9 +93,9 @@ I</var/lib/pipicpowerd/waketime>   Estimated time from PIC counter at boot.
 
 I</var/lib/pipicpowerd/wakeup>     Next wakeup time hh:mm.
  
-I</var/log/pipicpowerd.log>        Log file.
+I</var/log/pipicpowers.log>        Log file cyclic typically solar power operation.
 
-I</var/run/pipicpowerd.pid>        PID file.
+I</run/pipicpowerd.pid>            PID file.
 
 The configuration file can have following parameters.
 
@@ -109,7 +114,7 @@ I<COUNTINT>
 Read PIC internal timer at given intervals in seconds. 
 
 I<CURRENT>
-Estimated average discharge current in Amperes.
+Estimated average discharge current in Ampere.
 
 I<FORCEPOWEROFF>
 Force power off after given PIC counter cycles. This can be used as a 
@@ -188,7 +193,7 @@ and at room temperature 20 - 25 C it is better to use I<VOLTCAL> only.
 
 =head1 WARNING
 
-No check is done where the query data is written. Could make some hardware 
+No check is done where the i2c query data is written. Could make some hardware 
 unusable.
 
 =head1 BUGS
