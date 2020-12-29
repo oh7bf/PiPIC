@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Mon Sep 30 18:51:20 CEST 2013
- * Edit: Mon 28 Dec 2020 05:49:04 PM CST
+ * Edit: Mon 28 Dec 2020 09:14:01 PM CST
  *
  * Jaakko Koivuniemi
  **/
@@ -696,6 +696,83 @@ int read_timer_file()
   return timer;
 }
 
+// test if RTC or NTP is available
+int test_ntp_rtc()
+{
+  int ntp_rtc = 0;
+
+  char str[ 250 ] = "/usr/bin/timedatectl --property=CanNTP --value show > /tmp/pipicpowerd_ntp_test";
+  int ok = system( str );
+
+  FILE *nfile;
+  char *line = NULL;
+  char p[ 200 ];
+  size_t len;
+  ssize_t read;
+
+  line = malloc( 200 * sizeof(char) );
+
+  if( ok != -1 )
+  {
+    nfile = fopen( "/tmp/pipicpowerd_ntp_test", "r");
+
+    if( NULL != nfile  )
+    {
+      if( (read = getline( &line, &len, nfile ) ) != -1 )
+      {
+        if( sscanf( line, "%s", p ) != EOF )
+        {
+          syslog( LOG_INFO | LOG_DAEMON, "CanNTP=%s", line);
+      	  if( strncmp( p, "yes", 3 ) == 0 ) ntp_rtc = 1;
+        }
+      }
+    }
+
+    fclose( nfile );
+  }
+
+  if( ntp_rtc == 0 )
+    syslog( LOG_INFO | LOG_DAEMON, "test 'timedatectl --property=CanNTP --value show > /tmp/pipicpowerd_ntp_test' failed");
+  else
+    syslog( LOG_INFO | LOG_DAEMON, "test 'timedatectl --property=CanNTP --value show > /tmp/pipicpowerd_ntp_test' success");
+
+  char str2[ 250 ] = "/usr/bin/timedatectl --property=LocalRTC --value show > /tmp/pipicpowerd_rtc_test";
+  ok = system( str2 );
+
+  if( ok != -1 )
+  {
+    nfile = fopen( "/tmp/pipicpowerd_rtc_test", "r");
+
+    if( NULL != nfile  )
+    {
+      if( (read = getline( &line, &len, nfile ) ) != -1 )
+      {
+        if( sscanf( line, "%s", p ) != EOF )
+        {
+          syslog( LOG_INFO | LOG_DAEMON, "LocalRTC=%s", line);
+
+          if( strncmp( p, "yes", 3 ) == 0 ) 
+          {
+            syslog( LOG_INFO | LOG_DAEMON, "test 'timedatectl --property=LocalRTC --value show > /tmp/pipicpowerd_rtc_test' success");
+            ntp_rtc = 1;
+	  }
+          else
+          {
+            syslog( LOG_INFO | LOG_DAEMON, "test 'timedatectl --property=LocalRTC --value show > /tmp/pipicpowerd_rtc_test' failed");
+          }
+	}
+      }
+    }
+    fclose( nfile );
+  }
+
+  free( line );
+
+  return ntp_rtc;
+}
+
+
+
 // test if ntp is running
 int test_ntp()
 {
@@ -710,7 +787,7 @@ int test_ntp()
   size_t len;
   ssize_t read;
 
-  line = malloc( sizeof(char)*200 );
+  line = malloc( sizeof(char) * 200 );
   nfile = fopen( "/tmp/pipicpowerd_ntp_test", "r");
   if( ( NULL != nfile ) && ( ok != -1 ) )
   {
@@ -1285,7 +1362,8 @@ int main()
     timerstart = timer;
     syslog( LOG_INFO | LOG_DAEMON, "PIC timer at %d", timer);
 
-    ntpok = test_ntp();
+//    ntpok = test_ntp();
+    ntpok = test_ntp_rtc();
     if( access( pwrupfile, F_OK ) != -1  && ntpok == 0 )
     {
       ok = writeuptime( timer );
