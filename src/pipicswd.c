@@ -524,6 +524,8 @@ void terminate(int sig)
   syslog( LOG_NOTICE | LOG_DAEMON, "stop" );
 
   cont = 0;
+
+  exit( EXIT_SUCCESS );
 }
 
 void hup(int sig)
