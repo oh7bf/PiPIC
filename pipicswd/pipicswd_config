@@ -8,11 +8,7 @@
 # log level, see syslog(3) 
 # 2=critical condition, 3=error condition, 4=warning condition, 
 # 5=significant condition, 6=information, 7=debugging
-LOGLEVEL 5
-
-# log level 0=debug messages, 1=system commands, 2=operation messages, 
-# 3=status messages, 4=errors/warnings
-LOGLEVEL 2
+LOGLEVEL 6
 
 # force reset of PIC counter if initial i2c dataflow test fails, the PIC
 # counter needs to be reset after power cycling of the PIC 

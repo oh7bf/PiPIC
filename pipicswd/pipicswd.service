@@ -9,8 +9,9 @@ PIDFile=/run/pipicswd.pid
 Restart=no
 TimeoutSec=5min
 IgnoreSIGPIPE=no
-KillMode=process
-GuessMainPID=no
+TimeoutStopSec=10
+KillMode=mixed
+GuessMainPID=yes
 
 [Install]
 WantedBy=multi-user.target
