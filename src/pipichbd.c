@@ -21,7 +21,7 @@
  ****************************************************************************
  *
  * Sun Aug 10 20:06:24 CEST 2014
- * Edit: Fri  1 Jan 20:34:42 CST 2021
+ * Edit: Sat Jan  2 13:33:41 CST 2021
  *
  * Jaakko Koivuniemi
  **/
@@ -51,7 +51,7 @@
 
 #define CHECK_BIT(var,pos) !!((var) & (1<<(pos)))
 
-const int version=20150221; // program version
+const int version=20210102; // program version
 
 const char *i2cdev = "/dev/i2c-1"; // i2c device file
 const int address = 0x28; // PiPIC i2c address
@@ -363,7 +363,11 @@ void terminate(int sig)
   sleep( 1 );
   syslog( LOG_NOTICE | LOG_DAEMON, "stop" );
 
+  sleep( 1 );
+
   cont = 0;
+
+  exit( EXIT_SUCCESS );
 }
 
 void hup(int sig)
